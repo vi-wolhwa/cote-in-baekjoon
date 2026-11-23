@@ -18,6 +18,11 @@ export interface ReadyMessage {
   type: 'cib:ready';
 }
 
+/** Toolbar popup → problem page content script: open the IDE, like the title button (#79). */
+export interface OpenIdeMessage {
+  type: 'cib:open-ide';
+}
+
 /** IDE → sandbox iframe. */
 export interface RunRequest {
   type: 'cib:run';
@@ -66,6 +71,10 @@ export function isReadyMessage(v: unknown): v is ReadyMessage {
 
 export function isCloseMessage(v: unknown): v is CloseMessage {
   return isObject(v) && v.type === 'cib:close';
+}
+
+export function isOpenIdeMessage(v: unknown): v is OpenIdeMessage {
+  return isObject(v) && v.type === 'cib:open-ide';
 }
 
 export function isRunRequest(v: unknown): v is RunRequest {

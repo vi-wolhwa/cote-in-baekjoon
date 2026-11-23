@@ -66,6 +66,8 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const editorHost = useRef<HTMLDivElement>(null);
   const editor = useRef<EditorHandle | undefined>(undefined);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** When this problem was opened; kept in the popup's meta (#79). */
+  const openedAt = useRef(Date.now());
   const runner = useMemo(
     () => new SandboxRunner(browser.runtime.getURL('/sandbox.html'), runtimeUrl()),
     [],
@@ -75,7 +77,11 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const blockReason = runBlockReason(problem.labels);
   const note = runNote(problem.labels);
 
-  useEffect(() => {}, []);
+  /** Only real Baekjoon problems are listed in the popup, not the demo. */
+  const saveMeta = (lang: LanguageId) => {
+    if (!embedded || problem.id <= 0) return;
+    store.saveMeta(problem.id, problem.title, lang, openedAt.current).catch(() => undefined);
+  };
 
   // Load saved state, then create the editor once per problem.
   useEffect(() => {
@@ -93,6 +99,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       setCases(cs);
       setLanguage(lang);
       languageRef.current = lang;
+      saveMeta(lang);
       editor.current = createEditor(editorHost.current, {
         doc: code ?? languageInfo(lang).starter,
         keymap: km,
@@ -128,6 +135,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     languageRef.current = next;
     setLanguage(next);
     void store.saveLanguage(next);
+    saveMeta(next);
     editor.current?.setLanguage(nextInfo.engine);
     // Python 3 and PyPy3 share code; switching between them keeps the editor as it is.
     if (nextInfo.codeGroup !== info.codeGroup) editor.current?.setCode(saved ?? nextInfo.starter);
@@ -203,6 +211,14 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           >
             백업과 복원
           </button>
+          <a
+            class="link-button"
+            href={browser.runtime.getURL('/help.html')}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            도움말
+          </a>
           <a
             class="link-button"
             href={hookFileUrl('/THIRD_PARTY_NOTICES.txt')}

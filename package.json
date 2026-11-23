@@ -20,6 +20,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "licenses": "node scripts/third-party-notices.ts --check",
+    "help:md": "node scripts/help-md.ts",
     "test:watch": "vitest",
     "e2e": "playwright test"
   },

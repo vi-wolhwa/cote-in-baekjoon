@@ -1,0 +1,125 @@
+/**
+ * Frequently asked questions (#80). The single source for the extension's help page
+ * (help.html), the popup's 도움말 tab and docs/help.md (`npm run help:md` writes it).
+ *
+ * Text is plain with three inline marks: `code`, **bold** and [label](https://link).
+ * inlineParts() splits them so pages can render them as elements, never as HTML.
+ */
+import { ISSUE_FORMS, REPO_URL, type IssueKind } from './report.ts';
+
+export interface HelpSection {
+  /** Anchor on the help page: help.html#{id}. */
+  id: string;
+  title: string;
+  /** Paragraph before the list. */
+  intro?: string;
+  items: string[];
+  /** Paragraph after the list. */
+  outro?: string;
+  /** Issue form for "해결되지 않았나요? 신고하기". */
+  report: IssueKind;
+}
+
+export const HELP_TITLE = '자주 묻는 질문과 해결 방법';
+
+export const HELP_SECTIONS: readonly HelpSection[] = [
+  {
+    id: 'no-button',
+    title: '풀이 버튼이 안 보여요',
+    items: [
+      '백준 **문제 페이지**(`acmicpc.net/problem/번호`)에서만 문제 제목 옆에 "코테 화면으로 풀기" 버튼이 나옵니다.',
+      '확장을 설치하거나 업데이트한 직후에는 열려 있던 백준 탭을 새로고침해 주세요.',
+      '`chrome://extensions`에서 확장이 켜져 있는지 확인해 주세요.',
+    ],
+    report: 'bug',
+  },
+  {
+    id: 'auto-submit',
+    title: '자동 제출이 안 돼요',
+    items: [
+      '제출 창에 **보안 확인**(그림 고르기 등)이 나오면 자동으로 누르지 않습니다. 직접 확인하고 제출 버튼을 눌러 주세요.',
+      '고른 언어가 백준 **언어 목록**에 없으면 언어 설정 페이지로 이동합니다. 언어를 추가한 뒤 다시 제출해 주세요.',
+      '코드에 백준 방화벽에 막히는 문자열이 있으면 직접 제출을 안내합니다.',
+      '제출 창이 열리자마자 닫았다면 다시 "제출하기"를 눌러 주세요.',
+    ],
+    report: 'bug',
+  },
+  {
+    id: 'judge-result',
+    title: '채점 결과가 풀이 화면에 안 떠요',
+    items: [
+      '채점이 끝날 때까지 제출 창(채점 현황)을 닫지 말아 주세요. 결과를 읽으면 창이 저절로 닫힙니다.',
+      '백준 로그인이 풀려 있으면 결과를 읽을 수 없습니다.',
+    ],
+    report: 'bug',
+  },
+  {
+    id: 'run-diff',
+    title: '백준과 실행 결과가 달라요',
+    intro: '브라우저 실행은 백준 채점 서버와 다릅니다. 최종 결과는 항상 백준 채점입니다.',
+    items: [
+      '**시간**: 브라우저가 더 느릴 수 있어 문제 시간 제한의 3배(최대 10초)까지 기다립니다.',
+      '**메모리**: 메모리 제한은 검사하지 않습니다.',
+      '**재귀 깊이**: C++, Java는 약 1만 단계까지 안정적입니다. 백준에서는 더 깊이 될 수 있습니다.',
+      '**C++**: 예외(`throw`, `try`)를 쓸 수 없습니다. 백준 제출에서는 정상 동작합니다.',
+      '**Java**: `String.format("%.2f")` 반올림이 조금 다를 수 있고, 예외가 나면 이름만 보입니다.',
+      '**Python**: 표준 라이브러리만 쓸 수 있습니다.',
+    ],
+    outro: `차이가 이상하면 [실행 결과가 백준과 달라요](${REPO_URL}/issues/new?template=${ISSUE_FORMS['run-diff']})로 알려 주세요.`,
+    report: 'run-diff',
+  },
+  {
+    id: 'code-lost',
+    title: '코드가 사라졌어요',
+    items: [
+      '코드는 문제·언어별로 브라우저에 자동 저장됩니다. 언어를 바꿨다면 원래 언어로 돌아가 보세요.',
+      '**확장을 삭제하면 저장된 코드도 지워집니다.** 팝업의 **백업** 탭에서 파일로 내보내 두세요.',
+    ],
+    report: 'bug',
+  },
+  {
+    id: 'slow-start',
+    title: '첫 실행이 느려요',
+    intro:
+      'Python, C++, Java는 처음 실행할 때 실행 환경을 불러오느라 1~7초 걸립니다. 그다음부터는 빠릅니다.',
+    items: [],
+    report: 'bug',
+  },
+];
+
+export type InlinePart =
+  { kind: 'text' | 'code' | 'strong'; text: string } | { kind: 'link'; text: string; href: string };
+
+const INLINE = /`([^`]+)`|\*\*([^*]+)\*\*|\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g;
+
+/** Splits help text into plain text, `code`, **bold** and https links. */
+export function inlineParts(text: string): InlinePart[] {
+  const parts: InlinePart[] = [];
+  let last = 0;
+  for (const m of text.matchAll(INLINE)) {
+    if (m.index > last) parts.push({ kind: 'text', text: text.slice(last, m.index) });
+    if (m[1] !== undefined) parts.push({ kind: 'code', text: m[1] });
+    else if (m[2] !== undefined) parts.push({ kind: 'strong', text: m[2] });
+    else parts.push({ kind: 'link', text: m[3] ?? '', href: m[4] ?? '' });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ kind: 'text', text: text.slice(last) });
+  return parts;
+}
+
+/** docs/help.md, generated from HELP_SECTIONS. */
+export function helpMarkdown(): string {
+  const lines = [
+    `# ${HELP_TITLE}`,
+    '',
+    `확장 팝업의 **도움말** 탭과 같은 내용입니다. 해결되지 않으면 [문제 신고](${REPO_URL}/issues/new/choose)를 남겨 주세요.`,
+    '',
+  ];
+  for (const section of HELP_SECTIONS) {
+    lines.push(`## ${section.title}`, '');
+    if (section.intro) lines.push(section.intro, '');
+    if (section.items.length) lines.push(...section.items.map((item) => `- ${item}`), '');
+    if (section.outro) lines.push(section.outro, '');
+  }
+  return `${lines.join('\n').trimEnd()}\n`;
+}
