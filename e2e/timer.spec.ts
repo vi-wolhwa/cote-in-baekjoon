@@ -166,7 +166,7 @@ test('the timer survives closing the IDE and reloading the problem page', async 
       : route.abort(),
   );
   await page.goto('https://acmicpc.net/problem/1000');
-  await page.getByRole('button', { name: '코테 화면으로 풀기' }).click();
+  await page.getByRole('button', { name: '코딩테스트' }).click();
   let ide = page.frameLocator('#cib-ide-overlay');
   await ide.getByRole('button', { name: '타이머' }).click();
   await ide.getByRole('dialog', { name: '타이머' }).getByRole('button', { name: '시작' }).click();
@@ -174,7 +174,7 @@ test('the timer survives closing the IDE and reloading the problem page', async 
 
   await ide.getByRole('button', { name: '돌아가기' }).click();
   await page.reload();
-  await page.getByRole('button', { name: '코테 화면으로 풀기' }).click();
+  await page.getByRole('button', { name: '코딩테스트' }).click();
   ide = page.frameLocator('#cib-ide-overlay');
   const badge = ide.getByTestId('timer-badge');
   await expect(badge).toHaveText(/^00:0[1-9]$/);

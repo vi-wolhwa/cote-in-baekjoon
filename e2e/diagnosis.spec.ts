@@ -21,7 +21,7 @@ test('says so when the problem page layout changed (#87)', async ({ context, pag
   expect(url.pathname).toBe('/vi-wolhwa/cote-in-baekjoon/issues/new');
   expect(url.searchParams.get('problem')).toBe('1000');
   expect(url.searchParams.get('what')).toContain('문제 제목');
-  await expect(page.getByRole('button', { name: '코테 화면으로 풀기' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '코딩테스트' })).toHaveCount(0);
 });
 
 test('puts the button after the title when the problem menu is missing', async ({
@@ -36,7 +36,7 @@ test('puts the button after the title when the problem menu is missing', async (
       : route.abort(),
   );
   await page.goto('https://acmicpc.net/problem/1000');
-  const open = page.locator('h1').getByRole('button', { name: '코테 화면으로 풀기' });
+  const open = page.locator('h1').getByRole('button', { name: '코딩테스트' });
   await expect(open).toBeVisible();
   await expect(open).toHaveCSS('background-color', 'rgb(38, 55, 71)');
   // The fallback works, so a missing menu alone is not reported.
@@ -52,6 +52,6 @@ test('stays quiet on a normal problem page', async ({ context, page }) => {
       : route.abort(),
   );
   await page.goto('https://acmicpc.net/problem/1000');
-  await expect(page.getByRole('button', { name: '코테 화면으로 풀기' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '코딩테스트' })).toBeVisible();
   await expect(page.locator('#cib-diagnosis-notice')).toHaveCount(0);
 });

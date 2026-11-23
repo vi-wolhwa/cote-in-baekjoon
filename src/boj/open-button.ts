@@ -1,5 +1,5 @@
 /**
- * "코테 화면으로 풀기" on a Baekjoon problem page (PRD F1). It goes into Baekjoon's problem
+ * "코딩테스트" on a Baekjoon problem page (PRD F1). It goes into Baekjoon's problem
  * menu (`ul.problem-menu`), between "N번" and "제출", as a navy pill that matches the
  * menu's height. When the menu is missing but the title is there, it goes after the title
  * instead, so a menu change alone never hides the button. Styles: open-button.css.
@@ -8,7 +8,7 @@
  */
 export const OPEN_BUTTON_ID = 'cib-open-ide';
 export const OPEN_ITEM_ID = 'cib-open-ide-item';
-export const OPEN_LABEL = '코테 화면으로 풀기';
+export const OPEN_LABEL = '코딩테스트';
 
 export type OpenButtonPlace = 'menu' | 'title';
 
@@ -47,6 +47,7 @@ function createButton(doc: Document, onOpen: () => void, place: OpenButtonPlace)
   link.id = OPEN_BUTTON_ID;
   link.href = '#';
   link.setAttribute('role', 'button');
+  link.title = '코딩테스트 풀이 화면에서 풀기';
   link.dataset.place = place;
   const label = doc.createElement('span');
   label.textContent = OPEN_LABEL;
