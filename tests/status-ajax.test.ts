@@ -66,9 +66,9 @@ describe('applyAjaxResult', () => {
 });
 
 describe('pollDelay', () => {
-  it('backs off and then stays at 5 seconds', () => {
-    expect(pollDelay(0)).toBe(1000);
-    expect(pollDelay(4)).toBe(3000);
+  it('checks quickly at first, then backs off to 5 seconds', () => {
+    expect(pollDelay(0)).toBe(700);
+    expect(pollDelay(4)).toBe(1000);
     expect(pollDelay(50)).toBe(5000);
   });
 });

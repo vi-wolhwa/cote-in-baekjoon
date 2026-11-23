@@ -290,3 +290,66 @@ export function showJudgingNotice(doc: Document): { finish(): void } {
     },
   };
 }
+
+export const LANGUAGE_NOTICE_ID = 'cib-language-notice';
+
+/**
+ * Notice on Baekjoon's language settings page (#59): explains why the submit window came
+ * here and links back to the submit page, which fills and submits the code again.
+ */
+export function showLanguageMissingNotice(
+  doc: Document,
+  input: { languageName: string; submitUrl: string },
+): HTMLElement {
+  doc.getElementById(LANGUAGE_NOTICE_ID)?.remove();
+  const colors = COLORS.warning;
+  const host = doc.createElement('div');
+  host.id = LANGUAGE_NOTICE_ID;
+  Object.assign(host.style, {
+    position: 'fixed',
+    top: '12px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: '2147483647',
+    width: 'min(720px, calc(100vw - 32px))',
+  } satisfies Partial<CSSStyleDeclaration>);
+  const root = host.attachShadow({ mode: 'open' });
+  const box = doc.createElement('div');
+  box.setAttribute('role', 'alert');
+  Object.assign(box.style, {
+    padding: '12px 16px',
+    border: `1px solid ${colors.border}`,
+    borderLeftWidth: '6px',
+    borderRadius: '6px',
+    background: colors.background,
+    color: colors.text,
+    font: '14px/1.6 "Noto Sans KR", "Apple SD Gothic Neo", sans-serif',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+  } satisfies Partial<CSSStyleDeclaration>);
+  const title = doc.createElement('strong');
+  title.textContent = '코딩테스트 in 백준';
+  title.style.display = 'block';
+  const message = doc.createElement('p');
+  message.className = 'cib-message';
+  message.style.margin = '4px 0 8px';
+  message.textContent =
+    `제출하려던 언어(${input.languageName})가 백준의 '사용할 언어' 목록에 없어서 언어 설정 페이지로 이동했습니다. ` +
+    `${input.languageName}을(를) 추가하고 저장한 뒤 아래 버튼을 누르면 다시 제출합니다.`;
+  const back = doc.createElement('a');
+  back.className = 'cib-back';
+  back.href = input.submitUrl;
+  back.textContent = '제출 페이지로 돌아가기';
+  Object.assign(back.style, {
+    display: 'inline-block',
+    padding: '6px 12px',
+    borderRadius: '4px',
+    background: colors.border,
+    color: '#ffffff',
+    textDecoration: 'none',
+    fontWeight: '600',
+  } satisfies Partial<CSSStyleDeclaration>);
+  box.append(title, message, back);
+  root.append(box);
+  doc.body.append(host);
+  return host;
+}

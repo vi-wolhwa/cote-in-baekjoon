@@ -140,6 +140,8 @@ test('fills the submit page, never submits, and reports the judge result', async
   await expect(submitPage.locator('#cib-submit-banner')).toHaveCount(0);
 
   // The user submitted on Baekjoon, which redirects to their status page.
+  // Start listening before judging can finish: the popup closes 0.3 s after the result.
+  const closed = submitPage.waitForEvent('close', { timeout: 15_000 });
   await submitPage.goto('https://acmicpc.net/status?from_mine=1&problem_id=1000&user_id=tester');
   await expect
     .poll(() => page.evaluate(() => chrome.storage.local.get('judge:1000')), { timeout: 10_000 })
@@ -155,7 +157,7 @@ test('fills the submit page, never submits, and reports the judge result', async
       },
     });
   // Judging finished in the submit popup: it closes and the IDE comes back.
-  await submitPage.waitForEvent('close', { timeout: 10_000 });
+  await closed;
 });
 
 test('falls back to the status request when live updates never arrive', async ({
@@ -215,4 +217,62 @@ test('auto-submit presses the submit button once the form is filled', async ({
       { timeout: 5000 },
     )
     .toEqual({ submitted: true, clicked: true });
+});
+
+test('goes to the language settings when the language is not in the list, then comes back', async ({
+  context,
+  page,
+  extensionId,
+}) => {
+  // The first submit page lacks node.js (17), as for a user who never added it on Baekjoon.
+  let submitLoads = 0;
+  await context.route(/^https:\/\/(www\.)?acmicpc\.net\//, (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/submit/1000') {
+      submitLoads++;
+      const body =
+        submitLoads === 1
+          ? submitHtml.replace('<option value="17">node.js</option>', '')
+          : submitHtml;
+      return route.fulfill({ contentType: 'text/html; charset=utf-8', body });
+    }
+    if (url.pathname === '/setting/language') {
+      return route.fulfill({
+        contentType: 'text/html; charset=utf-8',
+        body: '<!doctype html><html><body><h1>언어 설정 (테스트용)</h1></body></html>',
+      });
+    }
+    return route.abort();
+  });
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  const opened = context.waitForEvent('page');
+  await page.evaluate(() =>
+    chrome.runtime.sendMessage({
+      type: 'cib:submit-request',
+      problemId: 1000,
+      language: 'javascript',
+      code: 'console.log(1);',
+      autoSubmit: true,
+    }),
+  );
+  const popup = await opened;
+  await popup.goto('https://acmicpc.net/submit/1000');
+
+  await popup.waitForURL('https://acmicpc.net/setting/language');
+  await expect(
+    popup.getByText("제출하려던 언어(node.js)가 백준의 '사용할 언어' 목록에 없어서"),
+  ).toBeVisible();
+
+  await popup.getByRole('link', { name: '제출 페이지로 돌아가기' }).click();
+  await popup.waitForURL('https://acmicpc.net/submit/1000');
+  await expect
+    .poll(
+      () =>
+        popup.evaluate(
+          () => (window as unknown as { __cib: { submitted: boolean; clicked: boolean } }).__cib,
+        ),
+      { timeout: 8000 },
+    )
+    .toEqual({ submitted: true, clicked: true });
+  expect(await popup.locator('select#language').inputValue()).toBe('17');
 });

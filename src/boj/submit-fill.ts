@@ -235,3 +235,25 @@ export function hasInteractiveChallenge(doc: Document): boolean {
   // A visible v2 checkbox container (v3 never renders .g-recaptcha).
   return doc.querySelector('.g-recaptcha:not([data-size="invisible"])') !== null;
 }
+
+/** Fallback when the submit page has no link to the language settings (#59). */
+export const LANGUAGE_SETTINGS_URL = 'https://acmicpc.net/setting/language';
+
+/**
+ * Baekjoon's language settings page, where users pick the languages shown on the submit
+ * page. Prefers a link on the submit page itself so a URL change on Baekjoon's side is
+ * followed automatically.
+ */
+export function findLanguageSettingsUrl(doc: Document): string {
+  const link = doc.querySelector<HTMLAnchorElement>(
+    'a[href*="/setting/language"], a[href*="setting"][href*="language"]',
+  );
+  const href = link?.getAttribute('href');
+  if (!href) return LANGUAGE_SETTINGS_URL;
+  try {
+    const url = new URL(href, 'https://acmicpc.net');
+    return /^(www\.)?acmicpc\.net$/.test(url.host) ? url.href : LANGUAGE_SETTINGS_URL;
+  } catch {
+    return LANGUAGE_SETTINGS_URL;
+  }
+}

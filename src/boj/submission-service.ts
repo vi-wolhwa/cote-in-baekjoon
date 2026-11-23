@@ -7,11 +7,16 @@ import { BOJ_LANGUAGES } from '@/boj/languages';
 import { CLOCK_SKEW_MS, judgeStatusOf, type Watch } from '@/boj/status';
 import {
   isJudgeResult,
+  isLanguageMissingQueryResponse,
   isSubmitWindow,
   judgeKey,
+  languageMissingKey,
   pendingKey,
   submitWindowKey,
   watchKey,
+  type LanguageMissingInfo,
+  type LanguageMissingMessage,
+  type LanguageMissingQueryResponse,
   type SubmitWindow,
   type JudgeReportMessage,
   type JudgeResult,
@@ -118,8 +123,55 @@ export async function handlePendingQuery(
   if (stored.tabId !== undefined && stored.tabId !== sender.tab?.id) return { pending: null };
 
   await browser.storage.session.remove(key);
+  if (sender.tab?.id !== undefined) {
+    // Back on the submit page after fixing the language list: the detour is over.
+    await browser.storage.session.remove(languageMissingKey(sender.tab.id));
+  }
   const { problemId, languageId, languageName, code, autoSubmit } = stored;
   return { pending: { problemId, languageId, languageName, code, autoSubmit } };
+}
+
+/**
+ * The submit page has no option for the language (#59): keep the code for this tab again
+ * and remember why it is going to the language settings.
+ */
+export async function handleLanguageMissing(
+  message: LanguageMissingMessage,
+  sender: Sender,
+  now = Date.now(),
+): Promise<{ ok: boolean }> {
+  const { pending } = message;
+  const path = bojPath(sender);
+  const tabId = sender.tab?.id;
+  if (tabId === undefined || path === undefined) return { ok: false };
+  if (!new RegExp(`^/submit/${pending.problemId}/?$`).test(path)) return { ok: false };
+
+  const stored: StoredPending = { ...pending, createdAt: now, tabId };
+  const info: LanguageMissingInfo = {
+    problemId: pending.problemId,
+    languageName: pending.languageName,
+  };
+  await browser.storage.session.set({
+    [pendingKey(pending.problemId)]: stored,
+    [languageMissingKey(tabId)]: info,
+  });
+  return { ok: true };
+}
+
+/** The language settings page asks whether it was opened because of a missing language. */
+export async function handleLanguageMissingQuery(
+  sender: Sender,
+): Promise<LanguageMissingQueryResponse> {
+  const path = bojPath(sender);
+  const tabId = sender.tab?.id;
+  if (tabId === undefined || path === undefined || !path.startsWith('/setting')) {
+    return { info: null };
+  }
+  const key = languageMissingKey(tabId);
+  const info = (await browser.storage.session.get(key))[key];
+  return isLanguageMissingQueryResponse({ info })
+    ? { info: info as LanguageMissingInfo }
+    : { info: null };
 }
 
 export async function handleWatchQuery(
@@ -194,8 +246,8 @@ export async function handleJudgeReport(
 /** Size of the submit popup; it sits over the right side (editor) of the IDE window. */
 const POPUP_WIDTH = 760;
 const POPUP_HEIGHT = 860;
-/** How long the final result stays visible in the popup before it closes. */
-export const CLOSE_DELAY_MS = 1500;
+/** How long the final result stays visible in the popup before it closes (#59: faster). */
+export const CLOSE_DELAY_MS = 300;
 
 /**
  * Opens the official submit page in a small popup window over the IDE, so the user presses

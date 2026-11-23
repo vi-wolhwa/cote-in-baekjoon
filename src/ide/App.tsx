@@ -55,6 +55,8 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const [tab, setTab] = useState<Tab>('run');
   const [saveError, setSaveError] = useState<string>();
   const [language, setLanguage] = useState<LanguageId>(DEFAULT_LANGUAGE);
+  /** Saved state is loaded and the editor exists; until then the language cannot change. */
+  const [ready, setReady] = useState(false);
   /** Latest language for callbacks created once (autosave). */
   const languageRef = useRef<LanguageId>(DEFAULT_LANGUAGE);
   /** Engines that already loaded in this session; the first Python/C++ run takes seconds. */
@@ -107,6 +109,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
         },
       });
       editor.current.focus();
+      setReady(true);
     });
     return () => {
       disposed = true;
@@ -222,7 +225,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
             class="language"
             value={language}
             aria-label="언어"
-            disabled={running}
+            disabled={running || !ready}
             onChange={(e) => void changeLanguage(e.currentTarget.value as LanguageId)}
           >
             {LANGUAGES.map((l) => (

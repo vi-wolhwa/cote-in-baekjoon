@@ -6,15 +6,19 @@ import {
   JUDGED_MESSAGE,
   JUDGING_MESSAGE,
   JUDGING_NOTICE_ID,
+  LANGUAGE_NOTICE_ID,
   bannerContent,
+  showLanguageMissingNotice,
   showJudgingNotice,
   showAutoSubmitCountdown,
   showSubmitBanner,
 } from '@/boj/submit-banner';
 import {
   fillCode,
+  findLanguageSettingsUrl,
   findSubmitButton,
   hasInteractiveChallenge,
+  LANGUAGE_SETTINGS_URL,
   waitForSubmitButton,
   fillSubmitForm,
   findCodeMirror,
@@ -285,5 +289,33 @@ describe('auto-submit helpers (#41)', () => {
     notice.finish();
     expect(text()).toBe(JUDGED_MESSAGE);
     document.getElementById(JUDGING_NOTICE_ID)?.remove();
+  });
+
+  it('finds the language settings link on the submit page, or falls back', () => {
+    const doc = load();
+    expect(findLanguageSettingsUrl(doc)).toBe(LANGUAGE_SETTINGS_URL);
+    doc.body.insertAdjacentHTML('beforeend', '<a href="/setting/language?x=1">언어 설정</a>');
+    expect(findLanguageSettingsUrl(doc)).toBe('https://acmicpc.net/setting/language?x=1');
+    const foreign = load();
+    foreign.body.insertAdjacentHTML(
+      'beforeend',
+      '<a href="https://evil.example/setting/language">x</a>',
+    );
+    expect(findLanguageSettingsUrl(foreign)).toBe(LANGUAGE_SETTINGS_URL);
+  });
+
+  it('explains the detour to the language settings and links back', () => {
+    showLanguageMissingNotice(document, {
+      languageName: 'C++17',
+      submitUrl: 'https://acmicpc.net/submit/1000',
+    });
+    const root = document.getElementById(LANGUAGE_NOTICE_ID)?.shadowRoot;
+    expect(root?.querySelector('.cib-message')?.textContent).toContain(
+      "제출하려던 언어(C++17)가 백준의 '사용할 언어' 목록에 없어서",
+    );
+    expect(root?.querySelector<HTMLAnchorElement>('.cib-back')?.href).toBe(
+      'https://acmicpc.net/submit/1000',
+    );
+    document.getElementById(LANGUAGE_NOTICE_ID)?.remove();
   });
 });

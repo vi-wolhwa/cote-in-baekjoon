@@ -6,6 +6,8 @@ import {
   WATCH_TTL_MS,
   handleJudgeReport,
   handlePendingQuery,
+  handleLanguageMissing,
+  handleLanguageMissingQuery,
   handleSubmitRequest,
   handleWatchQuery,
   handleWindowRemoved,
@@ -332,5 +334,56 @@ describe('submit popup window', () => {
     await expect(handleWatchQuery(statusSender, NOW + 1000)).resolves.toMatchObject({
       inSubmitWindow: false,
     });
+  });
+});
+
+describe('language missing detour (#59)', () => {
+  const settingsSender = (tabId: number): Sender => ({
+    id: EXT,
+    url: 'https://acmicpc.net/setting/language',
+    tab: { id: tabId, index: 3 } as Browser.tabs.Tab,
+  });
+
+  it('keeps the code, tells the settings page why, and refills on return', async () => {
+    mockPopup();
+    await handleSubmitRequest(submitMessage, ideSender, NOW);
+    const query = { type: 'cib:pending-query', problemId: 1000 } as const;
+    const first = await handlePendingQuery(query, submitSender(POPUP_TAB), NOW + 1000);
+    if (!first.pending) throw new Error('expected pending code');
+
+    const missing = { type: 'cib:language-missing', pending: first.pending } as const;
+    await expect(
+      handleLanguageMissing(missing, submitSender(POPUP_TAB), NOW + 2000),
+    ).resolves.toEqual({ ok: true });
+
+    await expect(handleLanguageMissingQuery(settingsSender(POPUP_TAB))).resolves.toEqual({
+      info: { problemId: 1000, languageName: 'node.js' },
+    });
+    await expect(handleLanguageMissingQuery(settingsSender(999))).resolves.toEqual({
+      info: null,
+    });
+
+    // Back on the submit page: the code is handed out again and the detour is cleared.
+    const again = await handlePendingQuery(query, submitSender(POPUP_TAB), NOW + 60_000);
+    expect(again.pending?.code).toBe('console.log(1);');
+    await expect(handleLanguageMissingQuery(settingsSender(POPUP_TAB))).resolves.toEqual({
+      info: null,
+    });
+  });
+
+  it('only accepts the report from the submit page of that problem', async () => {
+    const pending = {
+      problemId: 1000,
+      languageId: 17,
+      languageName: 'node.js',
+      code: 'x',
+    };
+    const message = { type: 'cib:language-missing', pending } as const;
+    await expect(handleLanguageMissing(message, statusSender, NOW)).resolves.toEqual({
+      ok: false,
+    });
+    await expect(
+      handleLanguageMissing(message, submitSender(1, '/submit/2000'), NOW),
+    ).resolves.toEqual({ ok: false });
   });
 });
