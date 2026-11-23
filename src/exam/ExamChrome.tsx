@@ -1,7 +1,8 @@
 /**
  * Parts of the exam screen around the workspace (docs/design/ide-spec.md §8): the problem
- * number strip under the top bar and the right sidebar with the remaining time.
+ * rail on the left and the right sidebar with the remaining time.
  */
+import { useRef } from 'preact/hooks';
 import { CheckIcon, FlagIcon, HourglassIcon, MoonIcon, SunIcon } from '@/ide/icons';
 import type { Theme } from '@/shared/theme';
 import { formatClock, type Exam } from './model';
@@ -9,7 +10,27 @@ import { formatClock, type Exam } from './model';
 /** Under five minutes the remaining time turns red. */
 export const WARN_MS = 5 * 60_000;
 
-export function ProblemStrip({
+/** "1번 문제 · 제목 · 제출함 · 다시 볼 문제": the rail button's name and tooltip. */
+export function railLabel(exam: Exam, index: number): string {
+  const p = exam.problems[index];
+  if (!p) return '';
+  return [
+    `${index + 1}번 문제`,
+    p.title,
+    exam.submissions[p.id] ? '제출함' : '',
+    exam.flagged.includes(p.id) ? '다시 볼 문제' : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/**
+ * The problem rail left of the problem pane (product owner, 2026-11-24): one rounded square
+ * per problem, top to bottom. A green check sits on the bottom-right corner of a submitted
+ * problem (the result stays hidden), a yellow flag on the top-right corner of a
+ * '다시 볼 문제'. Up/Down move between problems.
+ */
+export function ProblemRail({
   exam,
   current,
   onSelect,
@@ -18,34 +39,53 @@ export function ProblemStrip({
   current: number;
   onSelect: (index: number) => void;
 }) {
+  const list = useRef<HTMLOListElement>(null);
+  const move = (to: number) => {
+    if (to < 0 || to >= exam.problems.length) return;
+    onSelect(to);
+    list.current?.querySelectorAll<HTMLButtonElement>('button')[to]?.focus();
+  };
   return (
-    <nav class="exam-strip" aria-label="문제 목록">
-      <ol>
+    <nav class="exam-rail" aria-label="문제 목록">
+      <ol
+        ref={list}
+        onKeyDown={(e) => {
+          if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+          e.preventDefault();
+          move(current + (e.key === 'ArrowDown' ? 1 : -1));
+        }}
+      >
         {exam.problems.map((p, i) => {
-          const submitted = exam.submissions[p.id] !== undefined;
-          const flagged = exam.flagged.includes(p.id);
-          const states = [submitted ? '제출함' : '', flagged ? '다시 볼 문제' : '']
-            .filter(Boolean)
-            .join(', ');
+          const label = railLabel(exam, i);
           return (
             <li key={p.id}>
               <button
                 type="button"
-                class={`strip-item${i === current ? ' is-current' : ''}`}
+                class={`rail-item${i === current ? ' is-current' : ''}`}
                 aria-current={i === current ? 'step' : undefined}
-                aria-label={`${i + 1}번 문제${states ? `, ${states}` : ''}`}
-                data-testid="strip-item"
+                aria-label={label}
+                title={label}
+                tabIndex={i === current ? 0 : -1}
+                data-testid="rail-item"
                 onClick={() => onSelect(i)}
               >
-                <span class="strip-number">{i + 1}</span>
-                {submitted && (
-                  <span class="strip-mark strip-submitted" data-testid="strip-submitted">
-                    <CheckIcon size={14} />
+                {i + 1}
+                {exam.flagged.includes(p.id) && (
+                  <span
+                    class="rail-badge rail-flagged"
+                    data-testid="rail-flagged"
+                    aria-hidden="true"
+                  >
+                    <FlagIcon size={10} />
                   </span>
                 )}
-                {flagged && (
-                  <span class="strip-mark strip-flagged" data-testid="strip-flagged">
-                    <FlagIcon size={14} />
+                {exam.submissions[p.id] && (
+                  <span
+                    class="rail-badge rail-submitted"
+                    data-testid="rail-submitted"
+                    aria-hidden="true"
+                  >
+                    <CheckIcon size={11} />
                   </span>
                 )}
               </button>
