@@ -5,10 +5,9 @@
  */
 import type { ComponentChildren } from 'preact';
 import { CheckIcon, CrossIcon, DashIcon } from '@/ide/icons';
-import { problemPageUrl } from './fetch-problem';
 import { examLabel, formatClock, formatDuration, isOver } from './model';
 import { summarizeExam, type Outcome, type ProblemRow } from './results';
-import { PRACTICE_HASH } from './routes';
+import { PRACTICE_HASH, problemPageUrl } from './routes';
 import { tierName } from './solvedac';
 import { useExamRecord, useNow } from './useExam';
 

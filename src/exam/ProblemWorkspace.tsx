@@ -5,7 +5,7 @@
  * under the practice keys `code:{id}:{group}`.
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { Problem, Sample } from '@/boj/problem';
+import type { Sample } from '@/boj/problem';
 import { TestCaseDialog, ResetDialog } from '@/ide/dialogs';
 import { createEditor, type EditorHandle } from '@/ide/editor';
 import { FlagIcon } from '@/ide/icons';
@@ -18,12 +18,14 @@ import { useSubmit, Warnings, type SubmitState } from '@/ide/submit';
 import type { SandboxRunner } from '@/runner/client';
 import { LANGUAGES, languageInfo, type LanguageId } from '@/shared/languages';
 import type { Theme } from '@/shared/theme';
-import { describeFetchError, fetchProblemBody } from './fetch-problem';
+import { CAPTURE_TIMEOUT_MS, describeCaptureError } from './capture-contract';
+import { cancelCapture, requestCapture, watchCapture } from './capture-client';
 import { formatClock, type ExamProblem, type ExamSubmission } from './model';
 
 export const HIDDEN_RESULT = '제출했습니다. 결과는 시험이 끝나면 공개됩니다.';
 
 interface Props {
+  examId: string;
   problem: ExamProblem;
   index: number;
   flagged: boolean;
@@ -38,7 +40,6 @@ interface Props {
   onLanguage: (language: LanguageId) => void;
   onFlag: () => void;
   onSubmitted: (language: LanguageId, at: number) => void;
-  onBody: (body: Problem) => void;
 }
 
 type Tab = 'run' | 'submit';
@@ -66,18 +67,32 @@ export function ProblemWorkspace(props: Props) {
   });
   const info = languageInfo(language);
 
-  // The statement: fetched the first time this problem is opened, then kept in the exam.
+  // The statement: read the first time this problem is opened (the user opened it), by a
+  // background tab the extension opens and closes (ADR-0005). It then stays in the exam.
   useEffect(() => {
     if (body) return;
     let live = true;
+    let stopWatch = () => {};
     setLoadError(undefined);
-    fetchProblemBody(problem.id).then(
-      // Kept even if the user moved on meanwhile, so it is never fetched twice.
-      (fetched) => props.onBody(fetched),
-      (error: unknown) => live && setLoadError(describeFetchError(error)),
+    void requestCapture(props.examId, problem.id).then((response) => {
+      if (!live) return;
+      if (!response.ok) {
+        setLoadError(response.reason);
+        return;
+      }
+      stopWatch = watchCapture(props.examId, problem.id, (record) => {
+        if (record?.state === 'error') setLoadError(describeCaptureError(record.error));
+      });
+    });
+    // The background gives up after the timeout too; this covers a stopped service worker.
+    const timer = setTimeout(
+      () => void cancelCapture(props.examId, problem.id),
+      CAPTURE_TIMEOUT_MS + 1000,
     );
     return () => {
       live = false;
+      stopWatch();
+      clearTimeout(timer);
     };
   }, [problem.id, attempt, body === undefined]);
 

@@ -51,11 +51,9 @@ const statusHtml = readFileSync('tests/fixtures/status-sample.html', 'utf8').rep
 );
 
 async function serveBaekjoon(context: BrowserContext) {
-  const problemLoads: string[] = [];
   await context.route(/^https:\/\/(www\.)?acmicpc\.net\//, (route) => {
     const url = new URL(route.request().url());
     if (/^\/problem\/\d+$/.test(url.pathname)) {
-      problemLoads.push(url.pathname);
       return route.fulfill({ contentType: 'text/html; charset=utf-8', body: problemHtml });
     }
     if (url.pathname === '/submit/1000') {
@@ -66,7 +64,17 @@ async function serveBaekjoon(context: BrowserContext) {
     }
     return route.abort();
   });
-  return problemLoads;
+}
+
+/**
+ * The exam reads a statement in an inactive tab the background opens (ADR-0005). Routes do
+ * not catch the first navigation of a tab the extension creates (see submit.spec.ts), so
+ * load it again; the tab closes by itself once the problem is read.
+ */
+async function readInBackgroundTab(tab: Page, problemId: number) {
+  if (tab.isClosed()) return;
+  await tab.goto(`https://acmicpc.net/problem/${problemId}`).catch(() => undefined);
+  await tab.waitForEvent('close', { timeout: 10_000 }).catch(() => undefined);
 }
 
 interface SeedOptions {
@@ -121,9 +129,12 @@ test('moves between problems, flags one, runs code and submits without showing t
   context,
   extensionId,
 }) => {
-  const problemLoads = await serveBaekjoon(context);
+  await serveBaekjoon(context);
   const id = await seedExam(page, extensionId, { startedAt: Date.now() - MIN });
   await page.setViewportSize({ width: 1280, height: 800 });
+  const tabs: Page[] = [];
+  context.on('page', (tab) => tabs.push(tab));
+  let opened = context.waitForEvent('page');
   await page.goto(`chrome-extension://${extensionId}/exam.html#${id}`);
 
   await expect(page.locator('.crumbs')).toHaveText(/모의 시험.*실버~골드 3문제/);
@@ -131,28 +142,41 @@ test('moves between problems, flags one, runs code and submits without showing t
   const strip = page.getByTestId('strip-item');
   await expect(strip).toHaveCount(3);
   await expect(strip.nth(0)).toHaveAttribute('aria-current', 'step');
-  // The statement is fetched when the problem is first opened, and kept in the exam.
+  // The statement is read in a background tab when the problem is first opened.
+  await expect(page.getByText('문제를 불러오는 중입니다…')).toBeVisible();
+  await readInBackgroundTab(await opened, 1000);
   await expect(page.locator('.problem')).toContainText('합을 출력한다.');
-  expect(problemLoads).toEqual(['/problem/1000']);
+  // The exam tab stays in front, and the background tab is gone.
+  expect(await page.evaluate(() => document.visibilityState)).toBe('visible');
+  expect(tabs.filter((t) => !t.isClosed())).toHaveLength(0);
   await expect(page.getByTestId('remaining')).toContainText(/1:5[89]:\d\d/);
 
+  opened = context.waitForEvent('page');
   await strip.nth(1).click();
   await expect(strip.nth(1)).toHaveAttribute('aria-current', 'step');
   await expect(page.locator('.title')).toContainText('2번테스트 문제 둘');
+  await readInBackgroundTab(await opened, 1001);
+  await expect(page.locator('.problem')).toContainText('합을 출력한다.');
   await page.getByRole('button', { name: '다시 볼 문제' }).click();
   await expect(strip.nth(1).getByTestId('strip-flagged')).toBeVisible();
   await expect(strip.nth(1)).toHaveAccessibleName('2번 문제, 다시 볼 문제');
 
-  // Back to 1: no second request for its statement.
+  // Back to 1: it was read already, so no new tab.
   await strip.nth(0).click();
   await expect(page.locator('.problem')).toContainText('합을 출력한다.');
-  expect(problemLoads).toEqual(['/problem/1000', '/problem/1001']);
+  expect(tabs).toHaveLength(2);
+  const stored = await page.evaluate((key) => chrome.storage.local.get(key), `exam:${id}`);
+  expect(
+    (stored[`exam:${id}`] as { problems: { body?: { title: string } }[] }).problems.map(
+      (p) => p.body?.title,
+    ),
+  ).toEqual(['테스트용 덧셈', '테스트용 덧셈', undefined]);
 
   await typeCode(page, A_PLUS_B);
   await page.getByRole('button', { name: '코드 실행' }).click();
   await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공');
 
-  const opened = context.waitForEvent('page');
+  opened = context.waitForEvent('page');
   await page.getByRole('button', { name: '제출하기' }).click();
   const popup = await opened;
   await expect(strip.nth(0).getByTestId('strip-submitted')).toBeVisible();
@@ -200,6 +224,28 @@ test('moves between problems, flags one, runs code and submits without showing t
   await expect(page.getByTestId('result-hardest')).toContainText('실버 4');
 });
 
+test('a problem that cannot be read in time shows an error and can be retried', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  await serveBaekjoon(context);
+  const id = await seedExam(page, extensionId, { startedAt: Date.now() - MIN });
+  await page.clock.install();
+  let opened = context.waitForEvent('page');
+  await page.goto(`chrome-extension://${extensionId}/exam.html#${id}`);
+  // The background tab never loads (its first navigation is not routed).
+  const stuck = await opened;
+  await page.clock.runFor(22_000);
+  await expect(page.getByRole('alert')).toContainText('20초 안에 읽지 못했습니다');
+  await expect.poll(() => stuck.isClosed()).toBe(true);
+
+  opened = context.waitForEvent('page');
+  await page.getByRole('button', { name: '다시 시도' }).click();
+  await readInBackgroundTab(await opened, 1000);
+  await expect(page.locator('.problem')).toContainText('합을 출력한다.');
+});
+
 test('ends by itself when the time runs out', async ({ page, context, extensionId }) => {
   await serveBaekjoon(context);
   const start = new Date('2026-11-24T10:00:00+09:00').getTime();
@@ -207,7 +253,8 @@ test('ends by itself when the time runs out', async ({ page, context, extensionI
   await page.clock.install({ time: start + 10 * MIN - 6_000 });
   await page.goto(`chrome-extension://${extensionId}/exam.html#${id}`);
   const remaining = page.getByTestId('remaining');
-  await expect(remaining).toContainText('0:00:06');
+  // The page clock keeps running while the page loads: a second or two may pass.
+  await expect(remaining).toContainText(/0:00:0[2-6]/);
   // Under five minutes the time is red.
   await expect(remaining).toHaveClass(/is-warning/);
   await expect(page.getByRole('button', { name: '제출하기' })).toBeEnabled();
