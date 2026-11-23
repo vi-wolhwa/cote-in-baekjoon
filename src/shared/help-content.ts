@@ -32,7 +32,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     id: 'no-button',
     title: '풀이 버튼이 안 보여요',
     items: [
-      '백준 **문제 페이지**(`acmicpc.net/problem/번호`)에서만 문제 제목 옆에 "코테 화면으로 풀기" 버튼이 나옵니다.',
+      '백준 **문제 페이지**(`acmicpc.net/problem/번호`)에서만 문제 위 메뉴의 "N번"과 "제출" 사이에 "코테 화면으로 풀기" 버튼이 나옵니다.',
       '확장을 설치하거나 업데이트한 직후에는 열려 있던 백준 탭을 새로고침해 주세요.',
       '`chrome://extensions`에서 확장이 켜져 있는지 확인해 주세요.',
     ],

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { loadTheme, saveTheme } from '@/ide/storage';
-import { sidebarReportUrl } from '@/ide/report-link';
+import { ideReportUrl } from '@/ide/report-link';
 import { isBackupKey, parseBackup } from '@/shared/backup';
 import { DEFAULT_THEME, isTheme, THEME_KEY, toTheme } from '@/shared/theme';
 
@@ -61,10 +61,10 @@ describe('theme in backups', () => {
   });
 });
 
-describe('sidebar "문제 신고" link', () => {
+describe('IDE "문제 신고" link', () => {
   it('fills in the problem number and the language label', () => {
     const url = new URL(
-      sidebarReportUrl({
+      ideReportUrl({
         version: '0.3.0',
         browser: 'Edge 131',
         problemId: 1000,
@@ -84,7 +84,7 @@ describe('sidebar "문제 신고" link', () => {
 
   it('leaves the demo problem out', () => {
     const url = new URL(
-      sidebarReportUrl({
+      ideReportUrl({
         version: '0.3.0',
         browser: 'Chrome 131',
         problemId: 0,

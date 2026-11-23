@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Problem, Sample } from '@/boj/problem';
 import { SandboxRunner } from '@/runner/client';
+import { describeBrowser } from '@/shared/report';
 import { isProblemMessage, type CloseMessage, type ReadyMessage } from '@/shared/messages';
 import { DEFAULT_LANGUAGE, LANGUAGES, languageInfo, type LanguageId } from '@/shared/languages';
 import { DEMO_PROBLEM } from './demo';
@@ -10,6 +11,7 @@ import { createEditor, type EditorHandle } from './editor';
 import { BackArrowIcon } from './icons';
 import { ProblemPane, runBlockReason, runNote } from './ProblemPane';
 import { buildCaseReport, runTimeLimit, summarize, type CaseReport } from './run-report';
+import { ideReportUrl } from './report-link';
 import { RunOutput } from './RunOutput';
 import { SettingsDialog } from './SettingsDialog';
 import { Sidebar } from './Sidebar';
@@ -17,10 +19,7 @@ import { SplitPane } from './SplitPane';
 import * as store from './storage';
 import { SubmitPanel, useSubmit } from './submit';
 
-/**
- * Files added by build hooks (language runtimes, license notices) are not in WXT's path
- * types.
- */
+/** Files added by build hooks (language runtimes) are not in WXT's path types. */
 const hookFileUrl = (path: string) => (browser.runtime.getURL as (path: string) => string)(path);
 const runtimeUrl = () => hookFileUrl('/runtime/');
 
@@ -81,6 +80,12 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const info = languageInfo(language);
   const blockReason = runBlockReason(problem.labels);
   const note = runNote(problem.labels);
+  const reportUrl = ideReportUrl({
+    version: browser.runtime.getManifest().version,
+    browser: describeBrowser(navigator),
+    problemId: problem.id,
+    language,
+  });
 
   /** Only real Baekjoon problems are listed in the popup, not the demo. */
   const saveMeta = (lang: LanguageId) => {
@@ -220,13 +225,6 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           <li aria-current="page">{problem.id ? `${problem.id}번` : '예시 문제'}</li>
         </ol>
         <div class="topbar-links">
-          <button
-            type="button"
-            class="link-button"
-            onClick={() => void browser.runtime.openOptionsPage()}
-          >
-            백업과 복원
-          </button>
           <a
             class="link-button"
             href={browser.runtime.getURL('/help.html')}
@@ -235,14 +233,16 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           >
             도움말
           </a>
-          <a
-            class="link-button"
-            href={hookFileUrl('/THIRD_PARTY_NOTICES.txt')}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            오픈소스 라이선스
+          <a class="link-button" href={reportUrl} target="_blank" rel="noopener noreferrer">
+            문제 신고
           </a>
+          <button
+            type="button"
+            class="link-button"
+            onClick={() => void browser.runtime.openOptionsPage()}
+          >
+            백업과 복원
+          </button>
           {embedded && (
             <button
               type="button"
@@ -406,11 +406,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
             </div>
           </footer>
         </div>
-        <Sidebar
-          problemId={problem.id}
-          language={language}
-          onOpenSettings={() => setDialog('settings')}
-        />
+        <Sidebar problemId={problem.id} onOpenSettings={() => setDialog('settings')} />
       </div>
 
       {dialog === 'settings' && (

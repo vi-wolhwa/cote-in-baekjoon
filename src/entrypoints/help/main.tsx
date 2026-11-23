@@ -25,6 +25,9 @@ function keepQueryInUrl(query: string) {
   history.replaceState(null, '', url);
 }
 
+/** Added by a build hook, so not in WXT's path types. */
+const noticesUrl = (browser.runtime.getURL as (path: string) => string)('/THIRD_PARTY_NOTICES.txt');
+
 const root = document.getElementById('app');
 if (root) {
   render(
@@ -34,6 +37,7 @@ if (root) {
         browser: describeBrowser(navigator),
       }}
       iconUrl={browser.runtime.getURL('/icon/128.png')}
+      noticesUrl={noticesUrl}
       initialQuery={(new URLSearchParams(location.search).get('q') ?? '').slice(0, MAX_QUERY)}
       initialSection={sectionFromHash(location.hash)}
       onQueryChange={keepQueryInUrl}

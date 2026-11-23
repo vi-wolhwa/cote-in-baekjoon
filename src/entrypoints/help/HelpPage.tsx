@@ -56,6 +56,8 @@ export interface HelpPageProps {
   /** Version and browser for the prefilled issue forms. */
   context: ReportContext;
   iconUrl: string;
+  /** THIRD_PARTY_NOTICES.txt, linked in the footer next to the version. */
+  noticesUrl?: string;
   /** From help.html?q=... */
   initialQuery?: string;
   /** From help.html#{id}: scrolled to and briefly highlighted. */
@@ -67,6 +69,7 @@ export interface HelpPageProps {
 export function HelpPage({
   context,
   iconUrl,
+  noticesUrl,
   initialQuery = '',
   initialSection = '',
   onQueryChange,
@@ -266,7 +269,17 @@ export function HelpPage({
           </section>
         )}
 
-        <footer class="help-footer">코딩테스트 in 백준 v{context.version}</footer>
+        <footer class="help-footer">
+          코딩테스트 in 백준 v{context.version}
+          {noticesUrl && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <a href={noticesUrl} target="_blank" rel="noopener noreferrer">
+                오픈소스 라이선스
+              </a>
+            </>
+          )}
+        </footer>
       </main>
     </div>
   );

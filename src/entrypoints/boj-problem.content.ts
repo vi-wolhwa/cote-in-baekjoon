@@ -1,4 +1,6 @@
 import { diagnoseProblemPage } from '@/boj/diagnosis';
+import { insertOpenButton } from '@/boj/open-button';
+import '@/boj/open-button.css';
 import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
 import { parseProblem, parseProblemId } from '@/boj/problem';
 import {
@@ -8,7 +10,6 @@ import {
   type ProblemMessage,
 } from '@/shared/messages';
 
-const BUTTON_ID = 'cib-open-ide';
 const OVERLAY_ID = 'cib-ide-overlay';
 
 export default defineContentScript({
@@ -17,11 +18,8 @@ export default defineContentScript({
   main() {
     // A problem page whose layout changed: say so instead of silently showing no button (#87).
     reportLayoutProblem();
-    const title = document.querySelector('#problem_title');
-    if (!title || document.getElementById(BUTTON_ID)) return;
-    // Place the button at the end of the title line, after Baekjoon's problem labels.
-    const heading = title.closest('h1, h2, h3') ?? title.parentElement ?? title;
-    heading.append(createButton());
+    // In the problem menu between "N번" and "제출", or after the title if the menu is gone.
+    if (!insertOpenButton(document, openIde)) return;
     // The toolbar popup's "코테 화면으로 풀기" (#79). Only the extension's own pages can send it.
     browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
       if (sender.id !== browser.runtime.id || !isOpenIdeMessage(message)) return;
@@ -30,27 +28,6 @@ export default defineContentScript({
     });
   },
 });
-
-function createButton(): HTMLButtonElement {
-  const button = document.createElement('button');
-  button.id = BUTTON_ID;
-  button.type = 'button';
-  button.textContent = '코테 화면으로 풀기';
-  Object.assign(button.style, {
-    marginLeft: '12px',
-    padding: '6px 14px',
-    border: 'none',
-    borderRadius: '4px',
-    background: '#0078ff',
-    color: '#ffffff',
-    fontSize: '14px',
-    fontWeight: '600',
-    verticalAlign: 'middle',
-    cursor: 'pointer',
-  } satisfies Partial<CSSStyleDeclaration>);
-  button.addEventListener('click', openIde);
-  return button;
-}
 
 function openIde() {
   if (document.getElementById(OVERLAY_ID)) return;

@@ -5,6 +5,7 @@ import type { Sample } from '@/boj/problem';
 import { DEFAULT_LANGUAGE, isLanguageId, type LanguageId } from '@/shared/languages';
 import { makeMeta, metaKey } from '@/shared/problem-meta';
 import { THEME_KEY, toTheme, type Theme } from '@/shared/theme';
+import { parseTimer, timerKey, type TimerState } from './timer';
 
 export type Keymap = 'sublime' | 'vim' | 'emacs';
 export const KEYMAPS: Keymap[] = ['sublime', 'vim', 'emacs'];
@@ -103,4 +104,18 @@ export function saveTheme(theme: Theme) {
 /** Title and language for the toolbar popup (#79). `openedAt` is when the IDE opened it. */
 export function saveMeta(problemId: number, title: string, language: LanguageId, openedAt: number) {
   return browser.storage.local.set({ [metaKey(problemId)]: makeMeta(title, language, openedAt) });
+}
+
+/**
+ * Stopwatch/timer per problem (`timer:{id}`). Transient, so backups leave it out
+ * (src/shared/backup.ts only takes allowlisted keys). The demo problem (id 0) is not stored.
+ */
+export async function loadTimer(problemId: number): Promise<TimerState | undefined> {
+  if (problemId <= 0) return undefined;
+  return parseTimer(await get(timerKey(problemId)));
+}
+
+export function saveTimer(problemId: number, state: TimerState) {
+  if (problemId <= 0) return Promise.resolve();
+  return browser.storage.local.set({ [timerKey(problemId)]: state });
 }
