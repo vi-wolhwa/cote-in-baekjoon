@@ -164,3 +164,33 @@ export function parseSubmitProblemId(url: string): number | undefined {
   const m = /^https:\/\/(?:www\.)?acmicpc\.net\/submit\/(\d+)\/?(?:[?#]|$)/.exec(url);
   return m ? Number(m[1]) : undefined;
 }
+
+/**
+ * Baekjoon's own submit button (#41). Clicking it runs the page's normal submit path, so
+ * CodeMirror copies the code into the form and Baekjoon's CSRF field goes along as usual.
+ */
+export function findSubmitButton(doc: Document): HTMLElement | null {
+  return doc.querySelector<HTMLElement>(
+    '#submit_button, #submit_form button[type="submit"], #submit_form input[type="submit"]',
+  );
+}
+
+/**
+ * True when the page shows a human check (reCAPTCHA, hCaptcha, Cloudflare Turnstile).
+ * Auto-submit then stops and leaves the check and the button to the user.
+ */
+export function hasBotCheck(doc: Document): boolean {
+  return (
+    doc.querySelector(
+      [
+        '.g-recaptcha',
+        '[data-sitekey]',
+        '.cf-turnstile',
+        '.h-captcha',
+        'iframe[src*="recaptcha"]',
+        'iframe[src*="hcaptcha"]',
+        'iframe[src*="challenges.cloudflare.com"]',
+      ].join(', '),
+    ) !== null
+  );
+}

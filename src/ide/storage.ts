@@ -75,3 +75,21 @@ export async function loadSplit(): Promise<SplitSizes> {
 export function saveSplit(sizes: SplitSizes) {
   return browser.storage.local.set({ [SPLIT_KEY]: sizes });
 }
+
+const AUTO_SUBMIT_KEY = 'ui:auto-submit';
+
+/**
+ * On by default (product owner decision, 2026-11-24): no prompt while the owner verifies the
+ * feature with their own account. Revisit before the Web Store release (#44).
+ */
+export const DEFAULT_AUTO_SUBMIT = true;
+
+/** The user's auto-submit setting (#41). */
+export async function loadAutoSubmit(): Promise<boolean> {
+  const v = await get(AUTO_SUBMIT_KEY);
+  return typeof v === 'boolean' ? v : DEFAULT_AUTO_SUBMIT;
+}
+
+export function saveAutoSubmit(on: boolean) {
+  return browser.storage.local.set({ [AUTO_SUBMIT_KEY]: on });
+}
