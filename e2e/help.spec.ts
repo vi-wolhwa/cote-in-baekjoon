@@ -5,7 +5,7 @@ test('help: search, keyword chips, empty state and ?q= links', async ({ page, ex
   await page.goto(helpUrl);
   const search = page.getByRole('searchbox', { name: '도움말 검색' });
   const sections = page.locator('section.faq');
-  await expect(sections).toHaveCount(6);
+  await expect(sections).toHaveCount(7);
 
   await search.fill('C++ 예외');
   await expect(page.getByTestId('result-count')).toHaveText('1개 찾음');
@@ -17,7 +17,7 @@ test('help: search, keyword chips, empty state and ?q= links', async ({ page, ex
   // Esc clears; "/" focuses the box again.
   await search.press('Escape');
   await expect(search).toHaveValue('');
-  await expect(sections).toHaveCount(6);
+  await expect(sections).toHaveCount(7);
   await page.locator('h1').click();
   await page.keyboard.press('/');
   await expect(search).toBeFocused();
