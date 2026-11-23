@@ -200,6 +200,13 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           <li aria-current="page">{problem.id ? `${problem.id}번` : '예시 문제'}</li>
         </ol>
         <div class="topbar-links">
+          <button
+            type="button"
+            class="link-button"
+            onClick={() => void browser.runtime.openOptionsPage()}
+          >
+            백업과 복원
+          </button>
           <a
             class="link-button"
             href={hookFileUrl('/THIRD_PARTY_NOTICES.txt')}
