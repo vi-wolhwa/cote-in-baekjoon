@@ -42,4 +42,8 @@ npm run e2e                                     # Playwright (빌드 후)
 
 - [기여 안내](.github/CONTRIBUTING.md)
 - [제품 요구사항 (PRD)](docs/PRD.md), [로드맵](docs/roadmap.md), [설계 결정 (ADR)](docs/adr/)
-- 함께 들어 있는 오픈소스와 라이선스: 확장 안의 "오픈소스 라이선스" 또는 `third_party/licenses/`
+- 함께 들어 있는 오픈소스와 라이선스: 도움말 페이지 아래 "오픈소스 라이선스" 또는 `third_party/licenses/`
+
+## 라이선스
+
+[MIT](LICENSE). 확장에 함께 들어 있는 오픈소스(Pyodide, LLVM, TeaVM, OpenJDK javac 등)는 각자의 라이선스를 따릅니다.
