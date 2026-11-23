@@ -1,7 +1,8 @@
 import preact from '@preact/preset-vite';
-import { readdirSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { defineConfig } from 'wxt';
+import { buildNotices } from './scripts/third-party-notices';
 
 const BOJ_MATCHES = ['https://acmicpc.net/*', 'https://www.acmicpc.net/*'];
 
@@ -57,7 +58,13 @@ export default defineConfig({
     ],
   },
   hooks: {
-    'build:publicAssets': (_wxt, files) => {
+    'build:publicAssets': (wxt, files) => {
+      // Open-source license notices, linked from the IDE (#65).
+      const notices = path.join(wxt.config.wxtDir, 'THIRD_PARTY_NOTICES.txt');
+      mkdirSync(wxt.config.wxtDir, { recursive: true });
+      // The BOM makes browsers read the plain-text file as UTF-8 (it has Korean text).
+      writeFileSync(notices, `\uFEFF${buildNotices()}`);
+      files.push({ absoluteSrc: notices, relativeDest: 'THIRD_PARTY_NOTICES.txt' });
       for (const runtime of RUNTIMES) {
         for (const name of readdirSync(runtime.from).filter(runtime.include)) {
           files.push({

@@ -8,5 +8,5 @@
     "jsxImportSource": "preact",
     "types": ["vite/client"]
   },
-  "include": ["src", "tests", "e2e", "*.config.ts", ".wxt/wxt.d.ts"]
+  "include": ["src", "tests", "e2e", "scripts", "*.config.ts", ".wxt/wxt.d.ts"]
 }

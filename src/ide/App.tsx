@@ -13,8 +13,12 @@ import { SplitPane } from './SplitPane';
 import * as store from './storage';
 import { SubmitPanel, useSubmit } from './submit';
 
-/** Bundled language runtimes are added by a build hook, so they are not in WXT's path types. */
-const runtimeUrl = () => (browser.runtime.getURL as (path: string) => string)('/runtime/');
+/**
+ * Files added by build hooks (language runtimes, license notices) are not in WXT's path
+ * types.
+ */
+const hookFileUrl = (path: string) => (browser.runtime.getURL as (path: string) => string)(path);
+const runtimeUrl = () => hookFileUrl('/runtime/');
 
 const BOJ_ORIGIN = /^https:\/\/(www\.)?acmicpc\.net$/;
 
@@ -196,6 +200,14 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           <li aria-current="page">{problem.id ? `${problem.id}번` : '예시 문제'}</li>
         </ol>
         <div class="topbar-links">
+          <a
+            class="link-button"
+            href={hookFileUrl('/THIRD_PARTY_NOTICES.txt')}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            오픈소스 라이선스
+          </a>
           {embedded && (
             <button type="button" class="link-button" onClick={close}>
               백준 문제로 돌아가기
