@@ -83,3 +83,24 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   await ide.getByRole('button', { name: '백준 문제로 돌아가기' }).click();
   await expect(page.locator('#cib-ide-overlay')).toHaveCount(0);
 });
+
+test('switches languages with their own file name, starter and saved code', async ({
+  page,
+  extensionId,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  await typeCode(page, page, 'console.log(42);');
+  const language = page.getByRole('combobox', { name: '언어' });
+
+  await language.selectOption('cpp17');
+  await expect(page.getByText('solution.cpp')).toBeVisible();
+  await expect(page.locator('.cm-content')).toContainText('#include <bits/stdc++.h>');
+
+  await language.selectOption('python3');
+  await expect(page.getByText('solution.py')).toBeVisible();
+  await expect(page.locator('.cm-content')).toContainText('input = sys.stdin.readline');
+
+  // Back to JavaScript: the code typed earlier is still there.
+  await language.selectOption('javascript');
+  await expect(page.locator('.cm-content')).toContainText('console.log(42);');
+});

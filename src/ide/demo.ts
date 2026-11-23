@@ -18,7 +18,3 @@ export const DEMO_PROBLEM: Problem = {
   ],
   labels: [],
 };
-
-export const STARTER_CODE = `const input = require('fs').readFileSync('/dev/stdin').toString().trim().split('\\n');
-
-`;

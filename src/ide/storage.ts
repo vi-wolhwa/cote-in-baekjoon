@@ -2,6 +2,7 @@
  * Per-user state kept in chrome.storage.local (PRD F9). Nothing leaves the browser.
  */
 import type { Sample } from '@/boj/problem';
+import { DEFAULT_LANGUAGE, isLanguageId, type LanguageId } from '@/shared/languages';
 
 export type Keymap = 'sublime' | 'vim' | 'emacs';
 export const KEYMAPS: Keymap[] = ['sublime', 'vim', 'emacs'];
@@ -15,7 +16,8 @@ export interface SplitSizes {
 
 export const DEFAULT_SPLIT: SplitSizes = { horizontal: 40, vertical: 60 };
 
-const codeKey = (problemId: number, language: string) => `code:${problemId}:${language}`;
+/** `group` is LanguageInfo.codeGroup (JavaScript keeps its M1 key `code:{id}:javascript`). */
+const codeKey = (problemId: number, group: string) => `code:${problemId}:${group}`;
 const casesKey = (problemId: number) => `cases:${problemId}`;
 const KEYMAP_KEY = 'ui:keymap';
 const SPLIT_KEY = 'ui:split';
@@ -92,4 +94,16 @@ export async function loadAutoSubmit(): Promise<boolean> {
 
 export function saveAutoSubmit(on: boolean) {
   return browser.storage.local.set({ [AUTO_SUBMIT_KEY]: on });
+}
+
+const LANGUAGE_KEY = 'ui:language';
+
+/** The language picked last; new problems open in it. */
+export async function loadLanguage(): Promise<LanguageId> {
+  const v = await get(LANGUAGE_KEY);
+  return isLanguageId(v) ? v : DEFAULT_LANGUAGE;
+}
+
+export function saveLanguage(language: LanguageId) {
+  return browser.storage.local.set({ [LANGUAGE_KEY]: language });
 }

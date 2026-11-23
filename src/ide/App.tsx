@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Problem, Sample } from '@/boj/problem';
 import { SandboxRunner } from '@/runner/client';
 import { isProblemMessage, type CloseMessage, type ReadyMessage } from '@/shared/messages';
-import { DEMO_PROBLEM, STARTER_CODE } from './demo';
+import { DEFAULT_LANGUAGE, LANGUAGES, languageInfo, type LanguageId } from '@/shared/languages';
+import { DEMO_PROBLEM } from './demo';
 import { ResetDialog, TestCaseDialog } from './dialogs';
 import { createEditor, type EditorHandle } from './editor';
 import { ProblemPane, runBlockReason, runNote } from './ProblemPane';
@@ -12,8 +13,10 @@ import { SplitPane } from './SplitPane';
 import * as store from './storage';
 import { SubmitPanel, useSubmit } from './submit';
 
+/** Bundled language runtimes are added by a build hook, so they are not in WXT's path types. */
+const runtimeUrl = () => (browser.runtime.getURL as (path: string) => string)('/runtime/');
+
 const BOJ_ORIGIN = /^https:\/\/(www\.)?acmicpc\.net$/;
-const LANGUAGE = 'javascript';
 
 type Output = Parameters<typeof RunOutput>[0];
 type Dialog = 'reset' | 'cases' | undefined;
@@ -51,11 +54,20 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const [autoSubmit, setAutoSubmit] = useState(store.DEFAULT_AUTO_SUBMIT);
   const [tab, setTab] = useState<Tab>('run');
   const [saveError, setSaveError] = useState<string>();
+  const [language, setLanguage] = useState<LanguageId>(DEFAULT_LANGUAGE);
+  /** Latest language for callbacks created once (autosave). */
+  const languageRef = useRef<LanguageId>(DEFAULT_LANGUAGE);
+  /** Engines that already loaded in this session; the first Python/C++ run takes seconds. */
+  const warmEngines = useRef(new Set<string>(['js']));
   const editorHost = useRef<HTMLDivElement>(null);
   const editor = useRef<EditorHandle | undefined>(undefined);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const runner = useMemo(() => new SandboxRunner(browser.runtime.getURL('/sandbox.html')), []);
-  const submit = useSubmit(problem.id, () => editor.current?.getCode() ?? '', LANGUAGE);
+  const runner = useMemo(
+    () => new SandboxRunner(browser.runtime.getURL('/sandbox.html'), runtimeUrl()),
+    [],
+  );
+  const submit = useSubmit(problem.id, () => editor.current?.getCode() ?? '', language);
+  const info = languageInfo(language);
   const blockReason = runBlockReason(problem.labels);
   const note = runNote(problem.labels);
 
@@ -70,19 +82,24 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       store.loadKeymap(),
       store.loadSplit(),
       store.loadCases(problem.id),
-      store.loadCode(problem.id, LANGUAGE),
-    ]).then(([km, sp, cs, code]) => {
+      store.loadLanguage(),
+    ]).then(async ([km, sp, cs, lang]) => {
+      const code = await store.loadCode(problem.id, languageInfo(lang).codeGroup);
       if (disposed || !editorHost.current) return;
       setKeymap(km);
       setSplit(sp);
       setCases(cs);
+      setLanguage(lang);
+      languageRef.current = lang;
       editor.current = createEditor(editorHost.current, {
-        doc: code ?? STARTER_CODE,
+        doc: code ?? languageInfo(lang).starter,
         keymap: km,
+        engine: languageInfo(lang).engine,
         onChange: (text) => {
           clearTimeout(saveTimer.current);
+          const group = languageInfo(languageRef.current).codeGroup;
           saveTimer.current = setTimeout(() => {
-            store.saveCode(problem.id, LANGUAGE, text).then(
+            store.saveCode(problem.id, group, text).then(
               () => setSaveError(undefined),
               (e: unknown) => setSaveError(e instanceof Error ? e.message : String(e)),
             );
@@ -97,6 +114,22 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       editor.current = undefined;
     };
   }, [problem.id]);
+
+  const changeLanguage = async (next: LanguageId) => {
+    if (next === language) return;
+    const current = editor.current?.getCode();
+    clearTimeout(saveTimer.current);
+    if (current !== undefined) await store.saveCode(problem.id, info.codeGroup, current);
+    const nextInfo = languageInfo(next);
+    const saved = await store.loadCode(problem.id, nextInfo.codeGroup);
+    languageRef.current = next;
+    setLanguage(next);
+    void store.saveLanguage(next);
+    editor.current?.setLanguage(nextInfo.engine);
+    // Python 3 and PyPy3 share code; switching between them keeps the editor as it is.
+    if (nextInfo.codeGroup !== info.codeGroup) editor.current?.setCode(saved ?? nextInfo.starter);
+    setOutput({ state: 'empty' });
+  };
 
   const changeKeymap = (km: store.Keymap) => {
     setKeymap(km);
@@ -120,21 +153,26 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       return;
     }
     const limit = runTimeLimit(problem.timeLimitMs);
+    const firstLoad = !warmEngines.current.has(info.engine);
     setRunning(true);
     const reports: CaseReport[] = [];
     for (const [i, sample] of all.entries()) {
-      setOutput({ state: 'running', done: i, total: all.length });
-      const response = await runner.run(code, sample.input, limit);
+      setOutput({ state: 'running', done: i, total: all.length, preparing: firstLoad && i === 0 });
+      const response = await runner.run(language, code, sample.input, limit);
       reports.push(buildCaseReport(i + 1, sample, response, limit, problem.timeLimitMs));
-      if (response.status === 'cancelled') break;
+      if (response.status !== 'cancelled' && response.status !== 'timeout') {
+        warmEngines.current.add(info.engine);
+      }
+      // A compile error is the same for every case: show it once.
+      if (response.status === 'cancelled' || response.status === 'compile-error') break;
     }
     setRunning(false);
     setOutput({ state: 'report', report: summarize(reports) });
   };
 
   const reset = () => {
-    editor.current?.setCode(STARTER_CODE);
-    void store.clearCode(problem.id, LANGUAGE);
+    editor.current?.setCode(info.starter);
+    void store.clearCode(problem.id, info.codeGroup);
     setDialog(undefined);
     setTab('run');
     setOutput({ state: 'message', text: '코드를 초기화하였습니다.' });
@@ -180,8 +218,18 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
               </button>
             ))}
           </div>
-          <select class="language" value={LANGUAGE} aria-label="언어">
-            <option value="javascript">JavaScript</option>
+          <select
+            class="language"
+            value={language}
+            aria-label="언어"
+            disabled={running}
+            onChange={(e) => void changeLanguage(e.currentTarget.value as LanguageId)}
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.label}
+              </option>
+            ))}
           </select>
         </div>
       </header>
@@ -203,7 +251,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
               first={
                 <section class="code-section" aria-label="코드 편집">
                   <div class="code-header">
-                    <div class="file-tab">solution.js</div>
+                    <div class="file-tab">{info.fileName}</div>
                     {saveError && (
                       <p class="save-error" role="alert">
                         코드를 자동 저장하지 못했습니다. 코드를 따로 복사해 두세요. ({saveError})
