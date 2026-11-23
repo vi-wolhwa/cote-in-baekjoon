@@ -1,7 +1,8 @@
 /**
  * "타이머" in the right sidebar (docs/design/ide-spec.md §10): a stopwatch by default, or a
- * countdown. The button shows the time under its icon once started; clicking it opens a
- * popover to the left. The time keeps counting while the popover is closed.
+ * countdown. The button keeps its 32×32 size; the time shows under it once started. Clicking
+ * opens a popover to the left. The time keeps counting while the popover is closed, and the
+ * popover opens by itself when a countdown ends, so a focused user notices.
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { TimerIcon } from './icons';
@@ -21,7 +22,10 @@ export function TimerTool({ problemId }: { problemId: number }) {
   const [announcement, setAnnouncement] = useState('');
   const wasFinished = useRef(finished);
   useEffect(() => {
-    if (finished && !wasFinished.current) setAnnouncement('시간 종료');
+    if (finished && !wasFinished.current) {
+      setAnnouncement('시간 종료');
+      setOpen(true);
+    }
     if (!finished) setAnnouncement('');
     wasFinished.current = finished;
   }, [finished]);
@@ -64,12 +68,12 @@ export function TimerTool({ problemId }: { problemId: number }) {
         onClick={() => setOpen((o) => !o)}
       >
         <TimerIcon />
-        {active && (
-          <span class="timer-badge" data-testid="timer-badge" aria-hidden="true">
-            {formatState(state, now)}
-          </span>
-        )}
       </button>
+      {active && (
+        <span class={`timer-badge is-${status}`} data-testid="timer-badge" aria-hidden="true">
+          {formatState(state, now)}
+        </span>
+      )}
       <p class="visually-hidden" role="status">
         {announcement}
       </p>

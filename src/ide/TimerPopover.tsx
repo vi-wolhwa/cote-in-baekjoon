@@ -77,24 +77,27 @@ export function TimerPopover({ state, now, update }: Props) {
         ))}
       </div>
 
-      {editing ? (
-        <DurationFields
-          durationMs={state.durationMs}
-          onDuration={(ms) => update((s) => setDuration(s, ms))}
-          onValidity={setDraftValid}
-        />
-      ) : (
-        <p class="timer-display" aria-live="off" data-testid="timer-display">
-          {formatState(state, now)}
-        </p>
-      )}
+      {/* Fixed height: the popover keeps its size in every mode and state. */}
+      <div class="timer-body">
+        {editing ? (
+          <DurationFields
+            durationMs={state.durationMs}
+            onDuration={(ms) => update((s) => setDuration(s, ms))}
+            onValidity={setDraftValid}
+          />
+        ) : (
+          <p class="timer-display" aria-live="off" data-testid="timer-display">
+            {formatState(state, now)}
+          </p>
+        )}
 
-      {state.mode === 'timer' && !idle && !finished && (
-        <p class="timer-note">{describeMinutes(minutes)} 타이머</p>
-      )}
-      {finished && (
-        <p class="timer-note timer-done">시간 종료 · {describeMinutes(minutes)}이 지났어요.</p>
-      )}
+        {state.mode === 'timer' && !idle && !finished && (
+          <p class="timer-note">{describeMinutes(minutes)} 타이머</p>
+        )}
+        {finished && (
+          <p class="timer-note timer-done">시간 종료 · {describeMinutes(minutes)}이 지났어요.</p>
+        )}
+      </div>
 
       <div class="timer-actions">
         <button

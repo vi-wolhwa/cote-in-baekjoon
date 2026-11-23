@@ -27,23 +27,15 @@
   --timer-done: #d32f2f;
 }
 
-/* The full sidebar width, so the popover can sit just left of the sidebar. */
+/* The full sidebar width, so the popover can sit just left of the sidebar. The button keeps
+   its 32×32 size; the time sits under it in the 64px column. */
 .timer-tool {
   position: relative;
   width: 100%;
   display: flex;
-  justify-content: center;
-}
-.timer-button {
   flex-direction: column;
+  align-items: center;
   gap: 2px;
-}
-.timer-button[class*='is-'] {
-  width: auto;
-  min-width: 32px;
-  height: auto;
-  min-height: 32px;
-  padding: 6px 4px 4px;
 }
 .timer-button.is-running {
   color: var(--timer-accent);
@@ -58,10 +50,14 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.2px;
 }
-.timer-button.is-paused .timer-badge {
+.timer-badge.is-running {
+  color: var(--timer-accent);
+}
+.timer-badge.is-paused {
   color: var(--timer-paused);
 }
-.timer-button.is-done .timer-badge {
+.timer-badge.is-done {
+  color: var(--timer-done);
   animation: timer-pulse 1.6s ease-in-out infinite;
 }
 @keyframes timer-pulse {
@@ -70,7 +66,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .timer-button.is-done .timer-badge {
+  .timer-badge.is-done {
     animation: none;
   }
 }
@@ -121,8 +117,16 @@
   opacity: 0.45;
 }
 
+/* Tall enough for the tallest state (editing: time, presets and a range note). */
+.timer-body {
+  height: 116px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
 .timer-display {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 36px;
   font-weight: 600;
   line-height: 44px;
@@ -196,7 +200,7 @@
 }
 
 .timer-note {
-  margin: -6px 0 0;
+  margin: 0;
   color: var(--timer-muted);
   font-size: 13px;
   text-align: center;

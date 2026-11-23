@@ -13,7 +13,6 @@ import { ProblemPane, runBlockReason, runNote } from './ProblemPane';
 import { buildCaseReport, runTimeLimit, summarize, type CaseReport } from './run-report';
 import { ideReportUrl } from './report-link';
 import { RunOutput } from './RunOutput';
-import { SettingsDialog } from './SettingsDialog';
 import { Sidebar } from './Sidebar';
 import { SplitPane } from './SplitPane';
 import * as store from './storage';
@@ -26,7 +25,7 @@ const runtimeUrl = () => hookFileUrl('/runtime/');
 const BOJ_ORIGIN = /^https:\/\/(www\.)?acmicpc\.net$/;
 
 type Output = Parameters<typeof RunOutput>[0];
-type Dialog = 'reset' | 'cases' | 'settings' | undefined;
+type Dialog = 'reset' | 'cases' | undefined;
 type Tab = 'run' | 'judge';
 
 export function App() {
@@ -406,12 +405,9 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
             </div>
           </footer>
         </div>
-        <Sidebar problemId={problem.id} onOpenSettings={() => setDialog('settings')} />
+        <Sidebar problemId={problem.id} theme={theme} onTheme={changeTheme} />
       </div>
 
-      {dialog === 'settings' && (
-        <SettingsDialog theme={theme} onTheme={changeTheme} onClose={() => setDialog(undefined)} />
-      )}
       {dialog === 'reset' && <ResetDialog onConfirm={reset} onClose={() => setDialog(undefined)} />}
       {dialog === 'cases' && (
         <TestCaseDialog
