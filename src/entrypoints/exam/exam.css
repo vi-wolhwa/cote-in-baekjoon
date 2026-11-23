@@ -7,7 +7,7 @@
   --exam-danger: #ff7b7b;
   --exam-flag: #ffc857;
   --exam-card: #202b3d;
-  --exam-current-bg: #16304f;
+  --rail-hover: #56697f;
   --ok-fg: #5dd39e;
   --ok-bg: #12372a;
   --bad-fg: #ff7a85;
@@ -33,7 +33,7 @@
   --exam-danger: #d32f2f;
   --exam-flag: #a15c00;
   --exam-card: #f7f7fb;
-  --exam-current-bg: #e8f1ff;
+  --rail-hover: #d7e2eb;
   --ok-fg: #137333;
   --ok-bg: #e6f4ea;
   --bad-fg: #c5221f;
@@ -93,54 +93,81 @@
   background: #b71c1c;
 }
 
-/* Problem number strip */
-.exam-strip {
+/*
+ * Problem rail (ide-spec.md §8): a 64px column left of the problem pane, mirroring the
+ * right sidebar. Rounded squares 1..N; a green check (submitted) on the bottom-right corner
+ * and a yellow flag ('다시 볼 문제') on the top-right corner.
+ */
+.exam-rail {
   flex: none;
-  padding: 8px 16px;
+  width: 64px;
+  overflow-y: auto;
   background: var(--bg-panel);
-  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
 }
-.exam-strip ol {
+.exam-rail ol {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   margin: 0;
-  padding: 0;
+  padding: 16px 0;
   list-style: none;
 }
-.strip-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 40px;
-  height: 32px;
-  padding: 0 10px;
-  justify-content: center;
-  border: 1px solid var(--chip-border);
-  border-radius: 16px;
-  background: var(--chip-bg);
-  color: var(--chip-text);
-  font-size: 14px;
+.rail-item {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  font-size: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
+  transition: background-color 80ms;
 }
-.strip-item:hover {
-  background: var(--icon-hover-bg);
+.rail-item:hover {
+  background: var(--rail-hover);
 }
-.strip-item.is-current {
-  border-color: var(--exam-accent);
-  background: var(--exam-current-bg);
-  color: var(--text-strong);
+.rail-item.is-current,
+.rail-item.is-current:hover {
+  background: #0078ff;
+  color: #ffffff;
 }
-.strip-mark {
-  display: inline-flex;
+.rail-item:focus-visible {
+  outline: 2px solid var(--exam-accent);
+  outline-offset: 2px;
 }
-.strip-submitted {
-  color: var(--exam-accent);
+.rail-badge {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  /* A ring in the rail colour separates the badge from the button. */
+  box-shadow: 0 0 0 2px var(--bg-panel);
 }
-.strip-flagged {
-  color: var(--exam-flag);
+.rail-submitted {
+  right: -5px;
+  bottom: -5px;
+  background: #1fab5a;
+  color: #ffffff;
+}
+.rail-submitted .icon {
+  stroke-width: 3;
+}
+.rail-flagged {
+  top: -5px;
+  right: -5px;
+  background: #ffc857;
+  color: #263747;
+}
+.rail-flagged .icon {
+  stroke-width: 2.4;
 }
 
 /* Title row */

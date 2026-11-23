@@ -123,7 +123,11 @@ export function ProblemWorkspace(props: Props) {
           }, 400);
         },
       });
-      editor.current.focus();
+      // Moving through the problem rail with the keyboard keeps focus there.
+      const active = document.activeElement;
+      if (!active?.closest('.exam-rail') || !active.matches(':focus-visible')) {
+        editor.current.focus();
+      }
       setReady(true);
     });
     return () => {

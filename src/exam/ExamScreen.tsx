@@ -1,6 +1,6 @@
 /**
  * The exam screen, exam.html#{id} (#101, docs/design/ide-spec.md §8): the top bar with
- * '시험 종료', the problem strip, one ProblemWorkspace and the sidebar with the remaining
+ * '시험 종료', the problem rail, one ProblemWorkspace and the sidebar with the remaining
  * time. When the time is up the exam ends by itself and the result screen opens.
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -9,7 +9,7 @@ import * as store from '@/ide/storage';
 import { SandboxRunner } from '@/runner/client';
 import { DEFAULT_LANGUAGE, type LanguageId } from '@/shared/languages';
 import type { Theme } from '@/shared/theme';
-import { ExamSidebar, ProblemStrip } from './ExamChrome';
+import { ExamSidebar, ProblemRail } from './ExamChrome';
 import {
   endExam,
   examLabel,
@@ -94,9 +94,8 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
           </button>
         </div>
       </nav>
-      <ProblemStrip exam={exam} current={index} onSelect={setIndex} />
-
       <div class="ide-body">
+        <ProblemRail exam={exam} current={index} onSelect={setIndex} />
         <ProblemWorkspace
           key={problem.id}
           examId={exam.id}

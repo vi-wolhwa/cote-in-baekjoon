@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { BrowserContext, Page } from '@playwright/test';
+import type { BrowserContext, Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
 /** The exam screen and the result screen (#101), with synthetic Baekjoon pages only. */
@@ -77,6 +77,12 @@ async function readInBackgroundTab(tab: Page, problemId: number) {
   await tab.waitForEvent('close', { timeout: 10_000 }).catch(() => undefined);
 }
 
+async function box(locator: Locator) {
+  const found = await locator.boundingBox();
+  if (!found) throw new Error('not visible');
+  return found;
+}
+
 interface SeedOptions {
   id?: string;
   startedAt: number;
@@ -139,9 +145,20 @@ test('moves between problems, flags one, runs code and submits without showing t
 
   await expect(page.locator('.crumbs')).toHaveText(/모의 시험.*실버~골드 3문제/);
   await expect(page.getByText('결과는 시험이 끝나면 공개')).toBeVisible();
-  const strip = page.getByTestId('strip-item');
-  await expect(strip).toHaveCount(3);
-  await expect(strip.nth(0)).toHaveAttribute('aria-current', 'step');
+  // The problem rail: a column of rounded squares left of the problem pane, 1 to 3.
+  const rail = page.getByTestId('rail-item');
+  await expect(rail).toHaveText(['1', '2', '3']);
+  await expect(rail.nth(0)).toHaveAttribute('aria-current', 'step');
+  await expect(rail.nth(0)).toHaveCSS('background-color', 'rgb(0, 120, 255)');
+  await expect(rail.nth(1)).toHaveCSS('border-radius', '8px');
+  const [first, second] = await Promise.all([box(rail.nth(0)), box(rail.nth(1))]);
+  expect([first.width, first.height]).toEqual([40, 40]);
+  expect(second.y - first.y).toBe(52);
+  expect(second.x).toBe(first.x);
+  const railBox = await box(page.getByRole('navigation', { name: '문제 목록' }));
+  const paneBox = await box(page.locator('.split').first());
+  expect(railBox.x + railBox.width).toBeLessThanOrEqual(paneBox.x);
+  expect(railBox.y).toBe(47);
   // The statement is read in a background tab when the problem is first opened.
   await expect(page.getByText('문제를 불러오는 중입니다…')).toBeVisible();
   await readInBackgroundTab(await opened, 1000);
@@ -152,17 +169,21 @@ test('moves between problems, flags one, runs code and submits without showing t
   await expect(page.getByTestId('remaining')).toContainText(/1:5[89]:\d\d/);
 
   opened = context.waitForEvent('page');
-  await strip.nth(1).click();
-  await expect(strip.nth(1)).toHaveAttribute('aria-current', 'step');
+  await rail.nth(1).click();
+  await expect(rail.nth(1)).toHaveAttribute('aria-current', 'step');
   await expect(page.locator('.title')).toContainText('2번테스트 문제 둘');
   await readInBackgroundTab(await opened, 1001);
   await expect(page.locator('.problem')).toContainText('합을 출력한다.');
   await page.getByRole('button', { name: '다시 볼 문제' }).click();
-  await expect(strip.nth(1).getByTestId('strip-flagged')).toBeVisible();
-  await expect(strip.nth(1)).toHaveAccessibleName('2번 문제, 다시 볼 문제');
+  await expect(rail.nth(1).getByTestId('rail-flagged')).toBeVisible();
+  await expect(rail.nth(1)).toHaveAccessibleName('2번 문제 · 테스트 문제 둘 · 다시 볼 문제');
+  await expect(rail.nth(1)).toHaveAttribute('title', '2번 문제 · 테스트 문제 둘 · 다시 볼 문제');
 
-  // Back to 1: it was read already, so no new tab.
-  await strip.nth(0).click();
+  // Back to 1 with the keyboard: it was read already, so no new tab.
+  await rail.nth(1).focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(rail.nth(0)).toHaveAttribute('aria-current', 'step');
+  await expect(rail.nth(0)).toBeFocused();
   await expect(page.locator('.problem')).toContainText('합을 출력한다.');
   expect(tabs).toHaveLength(2);
   const stored = await page.evaluate((key) => chrome.storage.local.get(key), `exam:${id}`);
@@ -179,7 +200,15 @@ test('moves between problems, flags one, runs code and submits without showing t
   opened = context.waitForEvent('page');
   await page.getByRole('button', { name: '제출하기' }).click();
   const popup = await opened;
-  await expect(strip.nth(0).getByTestId('strip-submitted')).toBeVisible();
+  // A green check on the bottom-right corner of the button: submitted, result hidden.
+  const check = rail.nth(0).getByTestId('rail-submitted');
+  await expect(check).toBeVisible();
+  await expect(check).toHaveCSS('background-color', 'rgb(31, 171, 90)');
+  const [button, badge] = await Promise.all([box(rail.nth(0)), box(check)]);
+  expect(badge.x + badge.width).toBeGreaterThan(button.x + button.width);
+  expect(badge.y + badge.height).toBeGreaterThan(button.y + button.height);
+  await expect(rail.nth(0)).toHaveAccessibleName('1번 문제 · 테스트용 덧셈 · 제출함');
+  await expect(rail.nth(2).getByTestId('rail-submitted')).toHaveCount(0);
   await expect(page.getByTestId('exam-submitted')).toContainText(
     '제출했습니다. 결과는 시험이 끝나면 공개됩니다.',
   );
@@ -193,9 +222,9 @@ test('moves between problems, flags one, runs code and submits without showing t
   const cover = popup.locator('#cib-exam-cover');
   await expect(cover).toBeVisible();
   await expect(cover).toContainText('제출했습니다. 결과는 시험이 끝나면 공개됩니다.');
-  const box = await cover.boundingBox();
+  const coverBox = await cover.boundingBox();
   const viewport = popup.viewportSize();
-  expect(box).toMatchObject({ x: 0, y: 0, width: viewport?.width, height: viewport?.height });
+  expect(coverBox).toMatchObject({ x: 0, y: 0, width: viewport?.width, height: viewport?.height });
   await expect(popup.locator('#cib-judging-notice')).toHaveCount(0);
   await closed;
 
