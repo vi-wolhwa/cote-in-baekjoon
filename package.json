@@ -1,0 +1,51 @@
+{
+  "name": "cote-in-baekjoon",
+  "description": "백준 문제를 기업 코딩테스트와 같은 풀이 화면에서 풀 수 있게 해 주는 크롬 확장 프로그램",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "dev:edge": "wxt -b edge",
+    "build": "wxt build",
+    "build:edge": "wxt build -b edge",
+    "zip": "wxt zip",
+    "zip:edge": "wxt zip -b edge",
+    "postinstall": "wxt prepare",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "6.20.4",
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/lang-javascript": "6.2.5",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/search": "6.7.2",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@lezer/highlight": "1.2.5",
+    "dompurify": "3.4.17",
+    "preact": "11.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.0",
+    "@preact/preset-vite": "2.10.6",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.14.0",
+    "happy-dom": "21.0.4",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.1.0",
+    "wxt": "0.21.5"
+  }
+}

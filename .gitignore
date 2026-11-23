@@ -33,3 +33,9 @@ build/
 .claude-flow/memory-package.json
 .claude/proven-config.json
 .claude/.proven-config-version
+
+# Build and test output
+.output/
+.wxt/
+playwright-report/
+test-results/
