@@ -174,3 +174,61 @@ function button(doc: Document, label: string, color: string): HTMLButtonElement 
   } satisfies Partial<CSSStyleDeclaration>);
   return b;
 }
+
+/**
+ * Countdown before auto-submit (#41): tells the user what is about to happen and lets them
+ * cancel. Resolves true to go ahead, false when the user cancelled.
+ */
+export function showAutoSubmitCountdown(doc: Document, delayMs: number): Promise<boolean> {
+  doc.getElementById(BANNER_HOST_ID)?.remove();
+  const colors = COLORS.info;
+  const host = doc.createElement('div');
+  host.id = BANNER_HOST_ID;
+  Object.assign(host.style, {
+    position: 'fixed',
+    top: '12px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: '2147483647',
+    width: 'min(720px, calc(100vw - 32px))',
+  } satisfies Partial<CSSStyleDeclaration>);
+  const root = host.attachShadow({ mode: 'open' });
+  const box = doc.createElement('div');
+  box.setAttribute('role', 'status');
+  Object.assign(box.style, {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'center',
+    padding: '12px 16px',
+    border: `1px solid ${colors.border}`,
+    borderLeftWidth: '6px',
+    borderRadius: '6px',
+    background: colors.background,
+    color: colors.text,
+    font: '14px/1.6 "Noto Sans KR", "Apple SD Gothic Neo", sans-serif',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+  } satisfies Partial<CSSStyleDeclaration>);
+  const message = doc.createElement('p');
+  message.className = 'cib-message';
+  message.style.margin = '0';
+  message.style.flex = '1';
+  message.textContent = '언어와 코드를 채웠습니다. 잠시 뒤 자동으로 제출합니다.';
+  const cancel = button(doc, '취소', colors.border);
+  cancel.className = 'cib-cancel';
+  box.append(message, cancel);
+  root.append(box);
+  doc.body.append(host);
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      message.textContent = '자동으로 제출합니다.';
+      cancel.remove();
+      resolve(true);
+    }, delayMs);
+    cancel.addEventListener('click', () => {
+      clearTimeout(timer);
+      host.remove();
+      resolve(false);
+    });
+  });
+}

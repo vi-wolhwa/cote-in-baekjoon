@@ -174,3 +174,34 @@ test('falls back to the status request when live updates never arrive', async ({
   // Asked again only while the result was still pending.
   expect(ajaxCalls.length).toBeLessThanOrEqual(2);
 });
+
+test('auto-submit presses the submit button once the form is filled', async ({
+  context,
+  page,
+  extensionId,
+}) => {
+  await routeBaekjoon(context);
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  const opened = context.waitForEvent('page');
+  await page.evaluate(() =>
+    chrome.runtime.sendMessage({
+      type: 'cib:submit-request',
+      problemId: 1000,
+      language: 'javascript',
+      code: 'console.log(1);',
+      autoSubmit: true,
+    }),
+  );
+  const submitPage = await opened;
+  await submitPage.goto('https://acmicpc.net/submit/1000');
+  await expect(submitPage.getByText('잠시 뒤 자동으로 제출합니다')).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        submitPage.evaluate(
+          () => (window as unknown as { __cib: { submitted: boolean; clicked: boolean } }).__cib,
+        ),
+      { timeout: 5000 },
+    )
+    .toEqual({ submitted: true, clicked: true });
+});

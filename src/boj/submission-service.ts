@@ -74,6 +74,7 @@ export async function handleSubmitRequest(
     languageId: language.id,
     languageName: language.name,
     code: message.code,
+    autoSubmit: message.autoSubmit === true,
     createdAt: now,
   };
   const watch: Watch = { problemId: message.problemId, since: now };
@@ -117,8 +118,8 @@ export async function handlePendingQuery(
   if (stored.tabId !== undefined && stored.tabId !== sender.tab?.id) return { pending: null };
 
   await browser.storage.session.remove(key);
-  const { problemId, languageId, languageName, code } = stored;
-  return { pending: { problemId, languageId, languageName, code } };
+  const { problemId, languageId, languageName, code, autoSubmit } = stored;
+  return { pending: { problemId, languageId, languageName, code, autoSubmit } };
 }
 
 export async function handleWatchQuery(
@@ -303,6 +304,7 @@ function isStoredPending(v: unknown): v is StoredPending {
     typeof p.languageName === 'string' &&
     typeof p.code === 'string' &&
     typeof p.createdAt === 'number' &&
+    (p.autoSubmit === undefined || typeof p.autoSubmit === 'boolean') &&
     (p.tabId === undefined || typeof p.tabId === 'number')
   );
 }

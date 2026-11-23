@@ -39,12 +39,12 @@ export function useSubmit(problemId: number, getCode: () => string, language: 'j
     };
   }, [problemId]);
 
-  const start = async () => {
+  const start = async (autoSubmit: boolean) => {
     const code = getCode();
     const warnings = findBlockedPatterns(code);
     startedAt.current = Date.now();
     setState({ phase: 'opening', warnings });
-    const res = await requestSubmit({ problemId, language, code });
+    const res = await requestSubmit({ problemId, language, code, autoSubmit });
     setState(res.ok ? { phase: 'waiting', warnings } : { phase: 'error', reason: res.reason });
   };
 

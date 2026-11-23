@@ -1,9 +1,16 @@
 // @vitest-environment happy-dom
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { BANNER_HOST_ID, bannerContent, showSubmitBanner } from '@/boj/submit-banner';
+import {
+  BANNER_HOST_ID,
+  bannerContent,
+  showAutoSubmitCountdown,
+  showSubmitBanner,
+} from '@/boj/submit-banner';
 import {
   fillCode,
+  findSubmitButton,
+  hasBotCheck,
   fillSubmitForm,
   findCodeMirror,
   isEditorReady,
@@ -201,5 +208,35 @@ describe('submit banner', () => {
     expect(root?.querySelector('.cib-copy')).not.toBeNull();
     (root?.querySelector('.cib-close') as HTMLButtonElement).click();
     expect(doc.getElementById(BANNER_HOST_ID)).toBeNull();
+  });
+});
+
+describe('auto-submit helpers (#41)', () => {
+  it('finds the submit button', () => {
+    expect(findSubmitButton(load())?.id).toBe('submit_button');
+  });
+
+  it('detects human checks it must not get past', () => {
+    const doc = load();
+    expect(hasBotCheck(doc)).toBe(false);
+    doc.body.insertAdjacentHTML('beforeend', '<div class="g-recaptcha" data-sitekey="x"></div>');
+    expect(hasBotCheck(doc)).toBe(true);
+    const turnstile = load();
+    turnstile.body.insertAdjacentHTML('beforeend', '<div class="cf-turnstile"></div>');
+    expect(hasBotCheck(turnstile)).toBe(true);
+  });
+
+  it('lets the user cancel the countdown', async () => {
+    const pending = showAutoSubmitCountdown(document, 10_000);
+    const host = document.getElementById(BANNER_HOST_ID);
+    const cancel = host?.shadowRoot?.querySelector<HTMLButtonElement>('.cib-cancel');
+    cancel?.click();
+    await expect(pending).resolves.toBe(false);
+    expect(document.getElementById(BANNER_HOST_ID)).toBeNull();
+  });
+
+  it('goes ahead when the countdown ends', async () => {
+    await expect(showAutoSubmitCountdown(document, 10)).resolves.toBe(true);
+    document.getElementById(BANNER_HOST_ID)?.remove();
   });
 });

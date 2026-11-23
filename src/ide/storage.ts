@@ -75,3 +75,15 @@ export async function loadSplit(): Promise<SplitSizes> {
 export function saveSplit(sizes: SplitSizes) {
   return browser.storage.local.set({ [SPLIT_KEY]: sizes });
 }
+
+const AUTO_SUBMIT_KEY = 'ui:auto-submit';
+
+/** The user's auto-submit choice (#41); undefined until they have been asked. */
+export async function loadAutoSubmit(): Promise<boolean | undefined> {
+  const v = await get(AUTO_SUBMIT_KEY);
+  return typeof v === 'boolean' ? v : undefined;
+}
+
+export function saveAutoSubmit(on: boolean) {
+  return browser.storage.local.set({ [AUTO_SUBMIT_KEY]: on });
+}

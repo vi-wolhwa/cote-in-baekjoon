@@ -1,13 +1,16 @@
 /**
- * Submit page (`/submit/{id}`): fills the language and code the user sent from the IDE and
- * shows a banner asking them to press Baekjoon's submit button themselves (PRD 8.1).
- * Sends nothing to Baekjoon. Filling itself happens in boj-submit-main.content.ts.
+ * Submit page (`/submit/{id}`): fills the language and code the user sent from the IDE.
+ * By default it shows a banner asking the user to press Baekjoon's submit button. When the
+ * user opted in to auto-submit (#41) it presses that button for them after a short,
+ * cancellable countdown. Filling itself happens in boj-submit-main.content.ts.
  */
-import { copyText, showSubmitBanner } from '@/boj/submit-banner';
+import { copyText, showAutoSubmitCountdown, showSubmitBanner } from '@/boj/submit-banner';
 import {
   FILL_REQUEST_EVENT,
   FILL_RESULT_EVENT,
   MAIN_READY_EVENT,
+  findSubmitButton,
+  hasBotCheck,
   isFillResult,
   parseDetail,
   parseSubmitProblemId,
@@ -37,16 +40,46 @@ export default defineContentScript({
     const pending = response.pending;
 
     const result = await requestFill(pending);
+    const blockedPatterns = findBlockedPatterns(pending.code);
+    if (pending.autoSubmit && (await tryAutoSubmit(result, blockedPatterns))) return;
+
     const copied = result?.code === 'ok' ? false : await copyText(pending.code);
     showSubmitBanner(document, {
       result,
       languageName: pending.languageName,
-      blockedPatterns: findBlockedPatterns(pending.code),
+      blockedPatterns,
       code: pending.code,
       copied,
     });
   },
 });
+
+/** Time the user has to cancel before the submit button is pressed. */
+const AUTO_SUBMIT_DELAY_MS = 1200;
+
+/**
+ * Auto-submit (#41, opted in by the user in the IDE): presses Baekjoon's own submit button
+ * once the form is fully filled. Falls back to the manual banner when anything is off:
+ * the fill was incomplete, the code has strings the firewall rejects, the page shows a
+ * human check, the button is missing, or the user cancels.
+ */
+async function tryAutoSubmit(
+  result: FillResult | undefined,
+  blockedPatterns: string[],
+): Promise<boolean> {
+  if (result?.code !== 'ok' || result.language !== 'ok' || blockedPatterns.length > 0) {
+    return false;
+  }
+  if (hasBotCheck(document)) {
+    console.info('[코딩테스트 in 백준] 보안 확인이 있어 자동 제출하지 않습니다.');
+    return false;
+  }
+  const submit = findSubmitButton(document);
+  if (!submit) return false;
+  if (!(await showAutoSubmitCountdown(document, AUTO_SUBMIT_DELAY_MS))) return false;
+  submit.click();
+  return true;
+}
 
 /** Asks the MAIN-world script to fill the form; resolves undefined if it never answers. */
 function requestFill(pending: PendingSubmission): Promise<FillResult | undefined> {

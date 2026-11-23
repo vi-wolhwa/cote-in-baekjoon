@@ -36,6 +36,8 @@ export interface SubmitInput {
   problemId: number;
   language: SubmitLanguage;
   code: string;
+  /** Press Baekjoon's submit button after filling (#41, the user opted in). */
+  autoSubmit?: boolean;
 }
 
 export type SubmitResponse = { ok: true } | { ok: false; reason: string };
@@ -62,6 +64,7 @@ export interface PendingSubmission {
   languageId: number;
   languageName: string;
   code: string;
+  autoSubmit?: boolean;
 }
 
 export interface PendingQueryResponse {
@@ -91,7 +94,8 @@ export function isSubmitRequestMessage(v: unknown): v is SubmitRequestMessage {
     isSubmitLanguage(v.language) &&
     typeof v.code === 'string' &&
     v.code.length > 0 &&
-    v.code.length <= MAX_CODE_LENGTH
+    v.code.length <= MAX_CODE_LENGTH &&
+    (v.autoSubmit === undefined || typeof v.autoSubmit === 'boolean')
   );
 }
 
@@ -111,7 +115,8 @@ export function isPendingSubmission(v: unknown): v is PendingSubmission {
     Number.isInteger(v.languageId) &&
     typeof v.languageName === 'string' &&
     typeof v.code === 'string' &&
-    v.code.length <= MAX_CODE_LENGTH
+    v.code.length <= MAX_CODE_LENGTH &&
+    (v.autoSubmit === undefined || typeof v.autoSubmit === 'boolean')
   );
 }
 

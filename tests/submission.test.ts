@@ -93,6 +93,8 @@ describe('message guards', () => {
     expect(isSubmitRequestMessage({ ...submitMessage, problemId: -1 })).toBe(false);
     expect(isSubmitRequestMessage({ ...submitMessage, problemId: 1.5 })).toBe(false);
     expect(isSubmitRequestMessage({ ...submitMessage, code: 'x'.repeat(600_000) })).toBe(false);
+    expect(isSubmitRequestMessage({ ...submitMessage, autoSubmit: true })).toBe(true);
+    expect(isSubmitRequestMessage({ ...submitMessage, autoSubmit: 'yes' })).toBe(false);
   });
 
   it('validates the other messages', () => {
@@ -160,6 +162,7 @@ describe('handlePendingQuery', () => {
         languageId: 17,
         languageName: 'node.js',
         code: 'console.log(1);',
+        autoSubmit: false,
       },
     });
     await expect(handlePendingQuery(query, submitSender(tabId), NOW + 2000)).resolves.toEqual({
