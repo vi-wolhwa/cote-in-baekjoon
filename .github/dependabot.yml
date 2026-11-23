@@ -9,6 +9,13 @@ updates:
     labels: ['type:chore']
     commit-message:
       prefix: chore(deps)
+    # Only take releases that are at least two weeks old.
+    cooldown:
+      default-days: 14
+    ignore:
+      # typescript-eslint supports TypeScript < 6.1. Lift this once it supports 7.x.
+      - dependency-name: typescript
+        versions: ['>=6.1.0']
     groups:
       codemirror:
         patterns: ['@codemirror/*', '@lezer/*']
@@ -29,3 +36,5 @@ updates:
     labels: ['type:ci']
     commit-message:
       prefix: ci
+    cooldown:
+      default-days: 14

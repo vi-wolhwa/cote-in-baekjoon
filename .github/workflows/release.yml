@@ -18,7 +18,8 @@ jobs:
       - id: release
         uses: googleapis/release-please-action@v5
         with:
-          release-type: node
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
   package:
     name: 확장 zip 첨부
