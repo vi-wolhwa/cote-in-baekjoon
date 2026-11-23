@@ -1,1 +1,8 @@
 blank_issues_enabled: false
+contact_links:
+  - name: 자주 묻는 질문과 해결 방법
+    url: https://github.com/vi-wolhwa/cote-in-baekjoon/blob/main/docs/help.md
+    about: 신고하기 전에 확인해 보세요. 확장 팝업의 '도움말'에도 같은 내용이 있습니다.
+  - name: 보안 문제 신고 (비공개)
+    url: https://github.com/vi-wolhwa/cote-in-baekjoon/security/advisories/new
+    about: 보안 문제는 공개 이슈 대신 여기로 알려 주세요.

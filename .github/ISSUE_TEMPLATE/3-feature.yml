@@ -1,0 +1,16 @@
+name: 기능 제안
+description: 있으면 좋겠는 기능을 알려 주세요.
+title: "[제안] "
+labels: ["type:feat", "status:needs-decision"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: 어떤 기능이 있으면 좋을까요?
+      placeholder: 예) 풀이 화면에서 지난 제출 기록을 보고 싶어요.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: 왜 필요한가요? (선택)

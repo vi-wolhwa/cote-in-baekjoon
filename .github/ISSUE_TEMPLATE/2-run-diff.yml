@@ -1,0 +1,46 @@
+name: 실행 결과가 백준과 달라요
+description: 브라우저 실행 결과와 백준 채점 결과가 다를 때
+title: "[실행 차이] "
+labels: ["type:fix", "area:runner", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        브라우저 실행은 백준과 속도·메모리가 다를 수 있습니다. 확장의 **도움말 → 백준과 실행 결과가 달라요**에 알려진 차이가 있으니 먼저 확인해 주세요.
+  - type: input
+    id: problem
+    attributes:
+      label: 백준 문제 번호
+      placeholder: "1000"
+    validations:
+      required: true
+  - type: input
+    id: language
+    attributes:
+      label: 언어
+      placeholder: Java 11
+    validations:
+      required: true
+  - type: dropdown
+    id: diff
+    attributes:
+      label: 어떻게 다른가요?
+      options:
+        - 브라우저에서는 통과, 백준에서는 틀림
+        - 브라우저에서는 틀림, 백준에서는 맞음
+        - 브라우저에서만 시간 초과
+        - 브라우저에서만 런타임 에러 / 컴파일 에러
+        - 기타
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: 코드 (선택)
+      description: 붙여 주시면 원인을 훨씬 빨리 찾습니다. 공개 저장소이니 공개해도 괜찮은 코드만 올려 주세요.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: 확장 버전과 브라우저
+      placeholder: "0.3.0 / Chrome 131"
