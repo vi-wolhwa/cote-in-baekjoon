@@ -1,3 +1,4 @@
+import type { LanguageId } from '@/shared/languages';
 import {
   isRunResponse,
   type CancelRequest,
@@ -15,7 +16,14 @@ export class SandboxRunner {
   private nextId = 1;
   private pending = new Map<number, (r: RunResponse) => void>();
 
-  constructor(sandboxUrl: string) {
+  /**
+   * @param sandboxUrl the extension's sandbox page
+   * @param runtimeBase extension URL of the bundled runtimes, ending in `/`
+   */
+  constructor(
+    sandboxUrl: string,
+    private readonly runtimeBase: string,
+  ) {
     this.frame = document.createElement('iframe');
     this.frame.src = sandboxUrl;
     this.frame.hidden = true;
@@ -29,16 +37,22 @@ export class SandboxRunner {
     });
   }
 
-  async run(code: string, stdin: string, timeLimitMs: number): Promise<RunResponse> {
+  async run(
+    language: LanguageId,
+    code: string,
+    stdin: string,
+    timeLimitMs: number,
+  ): Promise<RunResponse> {
     await this.ready;
     const id = this.nextId++;
     const request: RunRequest = {
       type: 'cib:run',
       id,
-      language: 'javascript',
+      language,
       code,
       stdin,
       timeLimitMs,
+      runtimeBase: this.runtimeBase,
     };
     return new Promise((resolve) => {
       this.pending.set(id, resolve);

@@ -1,7 +1,38 @@
 import preact from '@preact/preset-vite';
+import { readdirSync } from 'node:fs';
+import path from 'node:path';
 import { defineConfig } from 'wxt';
 
 const BOJ_MATCHES = ['https://acmicpc.net/*', 'https://www.acmicpc.net/*'];
+
+/**
+ * Language runtimes copied into the extension at `runtime/` (M2). The Web Store forbids
+ * remotely hosted code, so everything the sandbox runs is bundled (ADR-0004).
+ */
+const RUNTIMES: { dest: string; from: string; include: (name: string) => boolean }[] = [
+  {
+    dest: 'pyodide',
+    from: 'node_modules/pyodide',
+    include: (n) =>
+      [
+        'pyodide.mjs',
+        'pyodide.asm.mjs',
+        'pyodide.asm.wasm',
+        'python_stdlib.zip',
+        'pyodide-lock.json',
+      ].includes(n),
+  },
+  {
+    dest: 'clang',
+    from: 'node_modules/@yowasp/clang/gen',
+    include: (n) => n === 'bundle.js' || n.endsWith('.wasm') || n.endsWith('.tar'),
+  },
+  {
+    dest: 'wasi',
+    from: 'node_modules/@bjorn3/browser_wasi_shim/dist',
+    include: (n) => n.endsWith('.js'),
+  },
+];
 
 export default defineConfig({
   srcDir: 'src',
@@ -18,11 +49,24 @@ export default defineConfig({
     },
     web_accessible_resources: [
       {
-        resources: ['ide.html', 'sandbox.html'],
+        // runtime/* is loaded by the sandbox, which sits inside the overlay on Baekjoon pages.
+        resources: ['ide.html', 'sandbox.html', 'runtime/*'],
         matches: BOJ_MATCHES,
         use_dynamic_url: true,
       },
     ],
+  },
+  hooks: {
+    'build:publicAssets': (_wxt, files) => {
+      for (const runtime of RUNTIMES) {
+        for (const name of readdirSync(runtime.from).filter(runtime.include)) {
+          files.push({
+            absoluteSrc: path.resolve(runtime.from, name),
+            relativeDest: `runtime/${runtime.dest}/${name}`,
+          });
+        }
+      }
+    },
   },
   vite: () => ({
     plugins: [preact()],

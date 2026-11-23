@@ -5,7 +5,8 @@
 import { outputsMatch } from '@/runner/compare';
 import type { RunResponse } from '@/shared/messages';
 
-export type CaseStatus = 'pass' | 'fail' | 'error' | 'timeout' | 'output-limit' | 'cancelled';
+export type CaseStatus =
+  'pass' | 'fail' | 'error' | 'timeout' | 'output-limit' | 'cancelled' | 'compile-error';
 
 export interface CaseReport {
   index: number;
@@ -62,6 +63,13 @@ export function buildCaseReport(
       return { ...base, status: 'output-limit', message: '출력 크기 초과' };
     case 'cancelled':
       return { ...base, status: 'cancelled', message: '실행 중단' };
+    case 'compile-error':
+      return {
+        ...base,
+        status: 'compile-error',
+        message: '컴파일 에러',
+        error: response.result?.compileError || undefined,
+      };
     case 'error':
       return {
         ...base,

@@ -7,7 +7,9 @@ import {
   indentMore,
   insertTab,
 } from '@codemirror/commands';
+import { cpp } from '@codemirror/lang-cpp';
 import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
 import {
   bracketMatching,
   HighlightStyle,
@@ -27,6 +29,7 @@ import {
 import { emacs } from '@replit/codemirror-emacs';
 import { vim } from '@replit/codemirror-vim';
 import { tags as t } from '@lezer/highlight';
+import type { EngineId } from '@/shared/languages';
 import type { Keymap } from './storage';
 
 /** Colors from docs/design/ide-spec.md §2. */
@@ -87,19 +90,27 @@ function keymapExtension(name: Keymap): Extension {
   return sublimeTab;
 }
 
+function languageExtension(engine: EngineId): Extension {
+  if (engine === 'python') return python();
+  if (engine === 'cpp') return cpp();
+  return javascript();
+}
+
 export interface EditorHandle {
   getCode(): string;
   setCode(code: string): void;
   setKeymap(name: Keymap): void;
+  setLanguage(engine: EngineId): void;
   focus(): void;
   destroy(): void;
 }
 
 export function createEditor(
   parent: HTMLElement,
-  options: { doc: string; keymap: Keymap; onChange: (code: string) => void },
+  options: { doc: string; keymap: Keymap; engine: EngineId; onChange: (code: string) => void },
 ): EditorHandle {
   const keymapSlot = new Compartment();
+  const languageSlot = new Compartment();
   const view = new EditorView({
     parent,
     state: EditorState.create({
@@ -118,7 +129,7 @@ export function createEditor(
         EditorState.tabSize.of(4),
         EditorView.lineWrapping,
         keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
-        javascript(),
+        languageSlot.of(languageExtension(options.engine)),
         syntaxHighlighting(highlight),
         theme,
         EditorView.updateListener.of((u) => {
@@ -133,6 +144,8 @@ export function createEditor(
     setCode: (code) =>
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: code } }),
     setKeymap: (name) => view.dispatch({ effects: keymapSlot.reconfigure(keymapExtension(name)) }),
+    setLanguage: (engine) =>
+      view.dispatch({ effects: languageSlot.reconfigure(languageExtension(engine)) }),
     focus: () => view.focus(),
     destroy: () => view.destroy(),
   };

@@ -5,6 +5,7 @@ import {
   watchJudgeResult,
   watchSubmitWindow,
   type JudgeResult,
+  type SubmitLanguage,
 } from '@/shared/submission';
 
 export type SubmitState =
@@ -16,7 +17,7 @@ export type SubmitState =
   | { phase: 'error'; reason: string };
 
 /** Submission flow on the IDE side (ADR-0002): open the official page, then show its result. */
-export function useSubmit(problemId: number, getCode: () => string, language: 'javascript') {
+export function useSubmit(problemId: number, getCode: () => string, language: SubmitLanguage) {
   const [state, setState] = useState<SubmitState>({ phase: 'idle' });
   /** Results older than the latest 제출하기 click belong to an earlier submission. */
   const startedAt = useRef(0);

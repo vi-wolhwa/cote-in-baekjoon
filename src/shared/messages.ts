@@ -1,5 +1,6 @@
 import type { Problem } from '@/boj/problem';
-import type { JsRunResult } from '@/runner/js/execute';
+import type { EngineResult } from '@/runner/engine';
+import { isLanguageId, type LanguageId } from '@/shared/languages';
 
 /** Content script (BOJ page) → IDE iframe. */
 export interface ProblemMessage {
@@ -21,13 +22,15 @@ export interface ReadyMessage {
 export interface RunRequest {
   type: 'cib:run';
   id: number;
-  language: 'javascript';
+  language: LanguageId;
   code: string;
   stdin: string;
   timeLimitMs: number;
+  /** Extension URL of the bundled runtimes (`.../runtime/`), see EngineInput. */
+  runtimeBase: string;
 }
 
-export type RunStatus = 'ok' | 'error' | 'timeout' | 'output-limit' | 'cancelled';
+export type RunStatus = 'ok' | 'error' | 'timeout' | 'output-limit' | 'cancelled' | 'compile-error';
 
 /** IDE → sandbox iframe: stop every running program. */
 export interface CancelRequest {
@@ -39,7 +42,7 @@ export interface RunResponse {
   type: 'cib:run-result';
   id: number;
   status: RunStatus;
-  result?: JsRunResult;
+  result?: EngineResult;
   elapsedMs: number;
 }
 
@@ -70,10 +73,11 @@ export function isRunRequest(v: unknown): v is RunRequest {
     isObject(v) &&
     v.type === 'cib:run' &&
     typeof v.id === 'number' &&
-    v.language === 'javascript' &&
+    isLanguageId(v.language) &&
     typeof v.code === 'string' &&
     typeof v.stdin === 'string' &&
-    typeof v.timeLimitMs === 'number'
+    typeof v.timeLimitMs === 'number' &&
+    typeof v.runtimeBase === 'string'
   );
 }
 

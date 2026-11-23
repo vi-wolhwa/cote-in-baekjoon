@@ -2,7 +2,7 @@ import { formatElapsed, type CaseReport, type RunReport } from './run-report';
 
 type Props =
   | { state: 'empty' }
-  | { state: 'running'; done: number; total: number }
+  | { state: 'running'; done: number; total: number; preparing?: boolean }
   | { state: 'message'; text: string }
   | { state: 'report'; report: RunReport };
 
@@ -12,9 +12,16 @@ export function RunOutput(props: Props) {
   if (props.state === 'message') return <p class="out-muted">{props.text}</p>;
   if (props.state === 'running') {
     return (
-      <p class="out-muted" aria-live="polite">
-        실행 중입니다… ({props.done}/{props.total})
-      </p>
+      <div aria-live="polite">
+        <p class="out-muted">
+          실행 중입니다… ({props.done}/{props.total})
+        </p>
+        {props.preparing && (
+          <p class="out-note">
+            처음 실행할 때는 실행 환경을 준비하느라 몇 초 걸립니다. 다음부터는 빨라집니다.
+          </p>
+        )}
+      </div>
     );
   }
 
@@ -53,7 +60,7 @@ function CaseTable({ c }: { c: CaseReport }) {
             실행 결과 <span class="out-sep">〉</span>
           </th>
           <td class={tone}>
-            {c.status === 'error' ? (
+            {c.status === 'error' || c.status === 'compile-error' ? (
               <strong class="out-error-title">{c.message}</strong>
             ) : (
               c.message
@@ -64,7 +71,7 @@ function CaseTable({ c }: { c: CaseReport }) {
           <Row label="출력" value={c.output.trimEnd()} />
         )}
         {c.error && <Row label="에러" value={c.error} tone="out-fail" />}
-        {c.status !== 'timeout' && c.status !== 'cancelled' && (
+        {c.status !== 'timeout' && c.status !== 'cancelled' && c.status !== 'compile-error' && (
           <Row label="실행 시간" value={formatElapsed(c.elapsedMs)} />
         )}
         {c.warning && <Row label="주의" value={c.warning} tone="out-warn" />}
