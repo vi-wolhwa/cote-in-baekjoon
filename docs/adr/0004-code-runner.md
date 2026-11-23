@@ -1,6 +1,6 @@
 # ADR-0004: 코드 실행 엔진
 
-- 상태: 승인 (JavaScript, Python, C++), 제안 (Java)
+- 상태: 승인 (JavaScript, Python, C++, Java)
 - 날짜: 2026-11-23
 - 관련: PRD R3·R4, 이슈 #4
 
@@ -59,7 +59,6 @@ ide.html ──postMessage──▶ sandbox.html (manifest sandbox, iframe)
 |---|---|---|---|
 | Python 3, PyPy3 | Pyodide 314.0.7 (MPL-2.0) | 로드 약 1.5초, 실행은 즉시 | 실행은 CPython 기준. PyPy3 제출은 백준에서 PyPy로 채점된다 |
 | C++17 | @yowasp/clang 21.1.4-3 (LLVM Apache-2.0 with LLVM exception, 패키지 ISC) + browser_wasi_shim 0.4.2 (MIT/Apache-2.0) | 첫 실행(로드+컴파일) 3.5~7.7초, 이후 컴파일 약 2.4~2.9초(`bits/stdc++.h`), 실행 0~25ms | 아래 'C++ 세부'를 본다 |
-| Java (M3) | TeaVM 0.13 (Apache-2.0) 후보 | 미측정 | 표준 라이브러리 일부만 지원 |
 
 **C++ 세부 (#51)**
 - 플래그는 `-std=gnu++17 -O2 -fno-exceptions -DONLINE_JUDGE -DBOJ`이고, 링크 스택은 64MiB다.
@@ -74,8 +73,6 @@ ide.html ──postMessage──▶ sandbox.html (manifest sandbox, iframe)
 - 미리 컴파일한 헤더(PCH)를 쓰면 컴파일이 약 0.5초로 줄지만 최초 생성에 약 10초가 든다. 후속 과제로 둔다.
 - 0이 아닌 종료 코드는 백준처럼 런타임 에러로 표시한다.
 
-**제외: CheerpJ** — 무료 등급은 CDN 제공(원격 코드)이다. 패키지에 포함하려면 유료 라이선스가 필요하다.
-
 **용량**
 - C++ 컴파일러를 넣으면 확장이 크게 커진다.
 
@@ -86,6 +83,48 @@ ide.html ──postMessage──▶ sandbox.html (manifest sandbox, iframe)
 
 - 웹스토어 정책상 나중에 내려받을 수 없어 확장에 포함해야 한다.
 - 제품 책임자가 포함하기로 결정했다(2026-11-24).
+
+## 결정: Java (M3, 2026-11-24 기술 검증, #63)
+
+**TeaVM javac**(konsoletyper/teavm-javac, TeaVM 0.17)를 쓴다. OpenJDK javac와 TeaVM 컴파일러를 Wasm GC로 묶은 `compiler.wasm`이 `Main.java`를 컴파일해 작은 `app.wasm`(40~300KB)을 만들고, 이것을 실행한다. 제품과 같은 CSP의 샌드박스에서 오프라인으로 동작함을 Edge로 확인했다.
+
+**구조**
+- 컴파일 워커는 계속 살려 둔다(컴파일러를 데워 둠). 실행 워커는 실행마다 새로 만든다. 시간 초과 때는 실행 워커만 끝내므로 다음 컴파일이 빠르다.
+- 같은 코드는 컴파일을 건너뛴다(예제 여러 개).
+- 컴파일 워커가 오류를 내거나 응답이 없으면 버리고 새로 만들어 한 번 다시 시도한다. Node에서 컴파일러 재사용 시 충돌이 한 번 재현됐기 때문이다(Edge에서는 재현되지 않음).
+
+**TeaVM 클래스 라이브러리의 빈 곳**
+- `java.util.Scanner`가 없다 → 직접 구현해 클래스 라이브러리에 넣는다(빌드 때 한 번).
+- `System.in`이 항상 비어 있다 → 사용자 코드의 `System.in`을 표준 입력 스트림으로 바꾼다(문자열·주석 제외, 줄 번호 유지).
+- 스레드가 없다 → 코드에 `new Thread(`가 있으면 바로 실행하는 대체 클래스를 넣는다. 백준에서 흔한 '큰 스택 스레드' 관용구가 동작한다.
+
+| 측정 (Edge, 샌드박스) | 결과 |
+|---|---|
+| 용량 | 7.5MB (zip 약 4.5MB) |
+| 첫 실행 (로드+컴파일+실행) | 1.3~1.7초 |
+| 이후 컴파일+실행 | 0.17~0.35초, 큰 프로그램 약 1.1초 |
+| 같은 코드 재실행 | 약 14ms |
+| 재귀 깊이 | JSPI로 약 1.5만 (없으면 약 7,800) |
+| 입력 100만 정수 (BufferedReader+StringTokenizer) | 약 0.1초 |
+
+**알려진 차이**
+- `String.format("%.2f", 1.005)` 반올림이 JDK와 다르다(TeaVM `1.00`, JDK `1.01`).
+- 잡히지 않은 예외에 메시지와 줄 번호가 없다. 예외 이름만 보인다.
+- 스레드는 순차로 실행된다. 클래스 라이브러리에 없는 API(리플렉션 대부분, 일부 `java.util.concurrent`)는 컴파일 에러가 난다.
+- javac가 최신이라 백준(Java 11)에서 안 되는 문법이 여기서는 될 수 있다.
+
+**바이너리 출처**
+- teavm-javac는 npm·Maven·GitHub 릴리스로 배포되지 않는다. 커밋을 고정해 GitHub Actions에서 JDK 21로 빌드하고, 결과와 SHA-256을 저장소에 둔다. 검증은 teavm.org 플레이그라운드 빌드로 했다.
+
+**라이선스**
+- TeaVM, teavm-javac, 클래스 라이브러리: Apache-2.0. LICENSE·NOTICE를 동봉하고 Scanner 추가 등 수정 사실을 적는다.
+- `compiler.wasm` 안의 javac: GPLv2 + Classpath Exception. 전문을 동봉하고 **대응 소스를 공개 위치에 두어 고지에서 링크**해야 한다. 저장소가 비공개인 동안에는 이 조건을 채울 공개 위치가 없으므로, 웹스토어 배포 전(#44)에 정한다. 우리 코드에는 GPL이 번지지 않는다(컴파일러를 별도 프로그램으로 호출).
+
+**제외한 후보**
+- CheerpJ: 무료 등급은 CDN 제공(원격 코드)이고 자체 호스팅은 유료다.
+- GraalVM Web Image javac: 컴파일만 되고 실행할 JVM이 따로 필요하다.
+- DoppioJVM: Java 8, 방치됨, 느리다.
+- JWebAssembly, Bytecoder: 브라우저 안에서 돌릴 빌드와 javac가 없다.
 
 ## 결과
 
