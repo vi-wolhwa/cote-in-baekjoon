@@ -18,6 +18,11 @@ export interface HelpSection {
   outro?: string;
   /** Issue form for "해결되지 않았나요? 신고하기". */
   report: IssueKind;
+  /**
+   * Other words people search with (help page search, help-search.ts). Not shown on the
+   * page and not written to docs/help.md.
+   */
+  keywords?: readonly string[];
 }
 
 export const HELP_TITLE = '자주 묻는 질문과 해결 방법';
@@ -32,6 +37,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       '`chrome://extensions`에서 확장이 켜져 있는지 확인해 주세요.',
     ],
     report: 'bug',
+    keywords: ['버튼 없음', '풀기 버튼', '코테 화면', '안 나와요', '새로고침', '설치', '업데이트'],
   },
   {
     id: 'auto-submit',
@@ -43,6 +49,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       '제출 창이 열리자마자 닫았다면 다시 "제출하기"를 눌러 주세요.',
     ],
     report: 'bug',
+    keywords: ['제출 안됨', '제출 버튼', '캡차', '보안 확인', '언어 설정', '방화벽', '제출 창'],
   },
   {
     id: 'judge-result',
@@ -52,6 +59,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       '백준 로그인이 풀려 있으면 결과를 읽을 수 없습니다.',
     ],
     report: 'bug',
+    keywords: ['채점 현황', '결과 안 나옴', '채점 중', '맞았습니다', '틀렸습니다', '로그인'],
   },
   {
     id: 'run-diff',
@@ -67,6 +75,18 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     ],
     outro: `차이가 이상하면 [실행 결과가 백준과 달라요](${REPO_URL}/issues/new?template=${ISSUE_FORMS['run-diff']})로 알려 주세요.`,
     report: 'run-diff',
+    keywords: [
+      '시간 초과',
+      '메모리 초과',
+      '런타임 에러',
+      '스택 오버플로',
+      'stack overflow',
+      '반올림',
+      'printf',
+      'numpy',
+      '라이브러리',
+      '결과가 달라요',
+    ],
   },
   {
     id: 'code-lost',
@@ -76,6 +96,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       '**확장을 삭제하면 저장된 코드도 지워집니다.** 팝업의 **백업** 탭에서 파일로 내보내 두세요.',
     ],
     report: 'bug',
+    keywords: ['코드 사라짐', '삭제', '내보내기', '가져오기', '복구', '저장 안 됨', '자동 저장'],
   },
   {
     id: 'slow-start',
@@ -84,7 +105,21 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       'Python, C++, Java는 처음 실행할 때 실행 환경을 불러오느라 1~7초 걸립니다. 그다음부터는 빠릅니다.',
     items: [],
     report: 'bug',
+    keywords: ['로딩', '느림', '오래 걸려요', '처음 실행', '실행 환경'],
   },
+];
+
+/** Suggested keywords under the help page's search box; each finds at least one section. */
+export const HELP_SUGGESTIONS: readonly string[] = [
+  '자동 제출',
+  '버튼이 안 보여요',
+  '시간 초과',
+  '언어 추가',
+  '채점 결과',
+  '코드 백업',
+  'Java',
+  'C++ 예외',
+  '재귀',
 ];
 
 export type InlinePart =

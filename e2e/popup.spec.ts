@@ -236,7 +236,7 @@ test('help: report link, questions and the help page', async ({ page, context, e
   await page.getByRole('link', { name: '백준과 실행 결과가 달라요' }).click();
   const help = await opened;
   await expect(help).toHaveURL(`chrome-extension://${extensionId}/help.html#run-diff`);
-  await expect(help.getByRole('heading', { level: 1 })).toHaveText('자주 묻는 질문과 해결 방법');
+  await expect(help.getByRole('heading', { level: 1 })).toHaveText('도움말');
   const section = help.locator('#run-diff');
   await expect(section.getByRole('heading')).toHaveText('백준과 실행 결과가 달라요');
   await expect(section.locator('code').first()).toHaveText('throw');
