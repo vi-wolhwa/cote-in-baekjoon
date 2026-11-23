@@ -114,7 +114,9 @@ test('popup: builds the solved.ac query and opens the new exam', async ({
   );
 
   const search = queries.find((q) => q.pathname === '/api/v3/search/problem');
-  expect(search?.searchParams.get('query')).toBe('*g5..g1 (#dp|#bfs|#dfs) !s@tester lang:ko');
+  expect(search?.searchParams.get('query')).toBe(
+    '*g5..g1 (#dp|#bfs|#dfs) !s@tester s#200.. lang:ko',
+  );
   expect(search?.searchParams.get('sort')).toBe('random');
   expect(search?.searchParams.get('page')).toBe('1');
 

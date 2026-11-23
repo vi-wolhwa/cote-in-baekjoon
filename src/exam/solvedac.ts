@@ -74,6 +74,9 @@ export function sortTiers(tiers: readonly TierGroup[]): TierGroup[] {
  * The solved.ac query: `*s5..g1 (#dp|#greedy) !s@handle lang:ko`. Tiers must be a range;
  * the lowest and highest selected groups bound it.
  */
+/** Minimum number of solvers for a problem to be picked. */
+export const MIN_SOLVED = 200;
+
 export function buildQuery(c: SearchConditions): string {
   const tiers = sortTiers(c.tiers);
   const low = TIER_GROUPS.find((g) => g.id === tiers[0]) ?? TIER_GROUPS[1];
@@ -86,6 +89,9 @@ export function buildQuery(c: SearchConditions): string {
   if (isHandle(c.excludeSolvedBy)) {
     parts.push(`!s@${c.excludeSolvedBy}`);
   }
+  // Well-known problems only: at least 200 people solved them (checked 2026-11-24: 3,237
+  // problems remain in silver–gold), so a set has no obscure or broken problems.
+  parts.push(`s#${MIN_SOLVED}..`);
   parts.push('lang:ko');
   return parts.join(' ');
 }

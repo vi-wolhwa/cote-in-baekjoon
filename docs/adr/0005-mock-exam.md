@@ -16,7 +16,7 @@
 
 **문제 고르기: solved.ac 검색 API**
 - `GET https://solved.ac/api/v3/search/problem?query=…&sort=random&page=1`
-  - 티어 `*s5..g1`, 알고리즘 `(#dp|#greedy)`, 이미 푼 문제 빼기 `!s@아이디`, 한국어 문제 `lang:ko`
+  - 티어 `*s5..g1`, 알고리즘 `(#dp|#greedy)`, 이미 푼 문제 빼기 `!s@아이디`, 200명 이상 푼 문제만 `s#200..`, 한국어 문제 `lang:ko` (응답 형태와 태그 키는 2026-11-24 실제 API로 확인)
   - 결과에서 앞의 N개를 쓴다. 모자라면 사용자에게 조건을 넓히라고 안내한다.
 - 권한: `optional_host_permissions`에 `https://solved.ac/*`를 두고, 처음 시험을 만들 때 `permissions.request`로 묻는다. 설치할 때 경고가 늘지 않는다.
 - 요청은 사용자가 '시험 시작'을 누를 때만 보낸다. 자동 갱신이나 미리 받아 두기는 하지 않는다.

@@ -66,7 +66,7 @@ describe('startExam', () => {
     expect(result.exam.problems.map((p) => p.id)).toEqual([11, 12, 13]);
     expect(result.exam.excludedSolvedBy).toBe('tester');
     const query = new URL(fetcher.mock.calls[0]?.[0] as string).searchParams.get('query');
-    expect(query).toBe('*s5..g1 !s@tester lang:ko');
+    expect(query).toBe('*s5..g1 !s@tester s#200.. lang:ko');
     const stored = readExams(await fakeBrowser.storage.local.get(null));
     expect(stored).toEqual([result.exam]);
     expect(isExam(stored[0])).toBe(true);
@@ -78,7 +78,7 @@ describe('startExam', () => {
       fetcher: off,
     });
     expect(new URL(off.mock.calls[0]?.[0] as string).searchParams.get('query')).toBe(
-      '*s5..g1 lang:ko',
+      '*s5..g1 s#200.. lang:ko',
     );
   });
 

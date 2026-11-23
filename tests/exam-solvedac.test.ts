@@ -31,28 +31,30 @@ const json = (body: unknown, status = 200) =>
 
 describe('solved.ac query', () => {
   it('turns the tier groups into a level range', () => {
-    expect(buildQuery({ tiers: ['silver', 'gold'], tags: [] })).toBe('*s5..g1 lang:ko');
-    expect(buildQuery({ tiers: ['gold'], tags: [] })).toBe('*g5..g1 lang:ko');
+    expect(buildQuery({ tiers: ['silver', 'gold'], tags: [] })).toBe('*s5..g1 s#200.. lang:ko');
+    expect(buildQuery({ tiers: ['gold'], tags: [] })).toBe('*g5..g1 s#200.. lang:ko');
     expect(buildQuery({ tiers: ['platinum', 'bronze', 'silver', 'gold'], tags: [] })).toBe(
-      '*b5..p1 lang:ko',
+      '*b5..p1 s#200.. lang:ko',
     );
   });
 
   it('joins algorithms with OR, a chip can stand for two tags', () => {
-    expect(buildQuery({ tiers: ['silver'], tags: ['dp'] })).toBe('*s5..s1 #dp lang:ko');
+    expect(buildQuery({ tiers: ['silver'], tags: ['dp'] })).toBe('*s5..s1 #dp s#200.. lang:ko');
     expect(buildQuery({ tiers: ['silver'], tags: ['greedy', 'bfs-dfs'] })).toBe(
-      '*s5..s1 (#greedy|#bfs|#dfs) lang:ko',
+      '*s5..s1 (#greedy|#bfs|#dfs) s#200.. lang:ko',
     );
     // Unknown chips are dropped, not passed into the query.
-    expect(buildQuery({ tiers: ['silver'], tags: ['dp', 'x) | *r1'] })).toBe('*s5..s1 #dp lang:ko');
+    expect(buildQuery({ tiers: ['silver'], tags: ['dp', 'x) | *r1'] })).toBe(
+      '*s5..s1 #dp s#200.. lang:ko',
+    );
   });
 
   it('leaves out problems the user solved, only for a valid Baekjoon id', () => {
     expect(buildQuery({ tiers: ['gold'], tags: [], excludeSolvedBy: 'tester_1' })).toBe(
-      '*g5..g1 !s@tester_1 lang:ko',
+      '*g5..g1 !s@tester_1 s#200.. lang:ko',
     );
     expect(buildQuery({ tiers: ['gold'], tags: [], excludeSolvedBy: 'a b' })).toBe(
-      '*g5..g1 lang:ko',
+      '*g5..g1 s#200.. lang:ko',
     );
   });
 
@@ -135,7 +137,7 @@ describe('solved.ac requests', () => {
     );
     expect(result.items).toEqual([{ id: 1000, title: '문제 1000', level: 8 }]);
     const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
-    expect(new URL(url).searchParams.get('query')).toBe('*s5..s1 #dp !s@tester lang:ko');
+    expect(new URL(url).searchParams.get('query')).toBe('*s5..s1 #dp !s@tester s#200.. lang:ko');
     expect(init.credentials).toBe('omit');
   });
 
