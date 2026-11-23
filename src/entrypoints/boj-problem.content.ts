@@ -1,5 +1,10 @@
 import { parseProblem } from '@/boj/problem';
-import { isCloseMessage, isReadyMessage, type ProblemMessage } from '@/shared/messages';
+import {
+  isCloseMessage,
+  isOpenIdeMessage,
+  isReadyMessage,
+  type ProblemMessage,
+} from '@/shared/messages';
 
 const BUTTON_ID = 'cib-open-ide';
 const OVERLAY_ID = 'cib-ide-overlay';
@@ -13,6 +18,12 @@ export default defineContentScript({
     // Place the button at the end of the title line, after Baekjoon's problem labels.
     const heading = title.closest('h1, h2, h3') ?? title.parentElement ?? title;
     heading.append(createButton());
+    // The toolbar popup's "코테 화면으로 풀기" (#79). Only the extension's own pages can send it.
+    browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
+      if (sender.id !== browser.runtime.id || !isOpenIdeMessage(message)) return;
+      openIde();
+      sendResponse({ ok: true });
+    });
   },
 });
 

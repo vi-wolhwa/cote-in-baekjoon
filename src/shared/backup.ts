@@ -1,11 +1,12 @@
 /**
- * Backup and restore of the data in `storage.local` (#42): code, test cases, judge results
- * and settings. Uninstalling the extension deletes that data, so users can keep a JSON file.
+ * Backup and restore of the data in `storage.local` (#42): code, test cases, judge results,
+ * problem meta (#79) and settings. Uninstalling the extension deletes that data, so users can keep a JSON file.
  *
  * Kept free of extension APIs so the parsing and the restore plan can be unit tested. The
  * backup file is untrusted input: every key and value is checked before it is stored.
  */
 import { MAX_CODE_LENGTH } from '@/boj/submit-fill';
+import { isProblemMeta } from '@/shared/problem-meta';
 import { isJudgeResult } from '@/shared/submission';
 
 export const BACKUP_FORMAT = 'cote-in-baekjoon-backup';
@@ -44,6 +45,7 @@ const PROBLEM_ID = '[1-9]\\d{0,6}';
 const CODE_KEY = new RegExp(`^code:${PROBLEM_ID}:[a-z0-9]{1,20}$`);
 const CASES_KEY = new RegExp(`^cases:${PROBLEM_ID}$`);
 const JUDGE_KEY = new RegExp(`^judge:(${PROBLEM_ID})$`);
+const META_KEY = new RegExp(`^meta:${PROBLEM_ID}$`);
 const MAX_CASES = 1000;
 const MAX_CASE_LENGTH = 4 * 1024 * 1024;
 
@@ -59,7 +61,13 @@ const RETIRED_KEYS = new Set(['ui:auto-submit']);
 
 /** True for keys that belong in a backup. Session-only and internal keys are left out. */
 export function isBackupKey(key: string): boolean {
-  return CODE_KEY.test(key) || CASES_KEY.test(key) || JUDGE_KEY.test(key) || key in SETTINGS;
+  return (
+    CODE_KEY.test(key) ||
+    CASES_KEY.test(key) ||
+    JUDGE_KEY.test(key) ||
+    META_KEY.test(key) ||
+    key in SETTINGS
+  );
 }
 
 /** True when `value` is a valid value for `key`. */
@@ -68,6 +76,7 @@ export function isValidEntry(key: string, value: unknown): boolean {
   if (CASES_KEY.test(key)) return isCases(value);
   const judge = JUDGE_KEY.exec(key);
   if (judge) return isJudgeResult(value) && value.problemId === Number(judge[1]);
+  if (META_KEY.test(key)) return isProblemMeta(value);
   const setting = SETTINGS[key];
   return setting ? setting(value) : false;
 }
@@ -115,6 +124,11 @@ export function parseBackup(text: string): ParseResult {
   return { ok: true, items, skipped, exportedAt };
 }
 
+/** "문제 2개 (코드 3개, 테스트 케이스 1개, 채점 결과 1개), 설정 3개" */
+export function describeSummary(s: BackupSummary): string {
+  return `문제 ${s.problems}개 (코드 ${s.codes}개, 테스트 케이스 ${s.cases}개, 채점 결과 ${s.results}개), 설정 ${s.settings}개`;
+}
+
 export function summarizeBackup(items: Record<string, unknown>): BackupSummary {
   const problems = new Set<string>();
   const summary: BackupSummary = { problems: 0, codes: 0, cases: 0, results: 0, settings: 0 };
@@ -123,7 +137,7 @@ export function summarizeBackup(items: Record<string, unknown>): BackupSummary {
     if (kind === 'code') summary.codes++;
     else if (kind === 'cases') summary.cases++;
     else if (kind === 'judge') summary.results++;
-    else summary.settings++;
+    else if (kind === 'ui') summary.settings++;
     if (kind !== 'ui' && problem) problems.add(problem);
   }
   summary.problems = problems.size;

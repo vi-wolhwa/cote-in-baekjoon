@@ -6,21 +6,18 @@ import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import {
   MAX_BACKUP_BYTES,
-  backupFileName,
   createBackup,
+  describeSummary as describe,
   parseBackup,
   planRestore,
   summarizeBackup,
   type BackupSummary,
   type RestoreMode,
 } from '@/shared/backup';
+import { downloadBackup } from '@/shared/backup-download';
 import './style.css';
 
 type Pending = { items: Record<string, unknown>; skipped: number; exportedAt?: string };
-
-function describe(s: BackupSummary): string {
-  return `문제 ${s.problems}개 (코드 ${s.codes}개, 테스트 케이스 ${s.cases}개, 채점 결과 ${s.results}개), 설정 ${s.settings}개`;
-}
 
 function Options() {
   const [current, setCurrent] = useState<BackupSummary | undefined>();
@@ -36,16 +33,7 @@ function Options() {
   useEffect(() => void refresh(), []);
 
   const exportBackup = async () => {
-    const backup = createBackup(await browser.storage.local.get(null));
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(backup)], { type: 'application/json' }),
-    );
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = backupFileName();
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    setMessage({ text: `내보냈습니다: ${describe(summarizeBackup(backup.items))}` });
+    setMessage({ text: `내보냈습니다: ${describe(await downloadBackup())}` });
   };
 
   const pickFile = async (file: File | undefined) => {
