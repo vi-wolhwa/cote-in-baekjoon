@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { findBlockedPatterns } from '@/boj/waf';
-import { requestSubmit, watchJudgeResult, type JudgeResult } from '@/shared/submission';
+import {
+  requestSubmit,
+  watchJudgeResult,
+  watchSubmitWindow,
+  type JudgeResult,
+} from '@/shared/submission';
 
 export type SubmitState =
   | { phase: 'idle'; last?: JudgeResult }
   | { phase: 'opening'; warnings: string[] }
   | { phase: 'waiting'; warnings: string[] }
+  | { phase: 'closed' }
   | { phase: 'result'; result: JudgeResult }
   | { phase: 'error'; reason: string };
 
@@ -17,10 +23,20 @@ export function useSubmit(problemId: number, getCode: () => string, language: 'j
 
   useEffect(() => {
     if (!problemId) return;
-    return watchJudgeResult(problemId, (result) => {
+    const stopResults = watchJudgeResult(problemId, (result) => {
       if (startedAt.current === 0) setState({ phase: 'idle', last: result });
       else if (result.updatedAt >= startedAt.current) setState({ phase: 'result', result });
     });
+    // The user closed the submit window without a result: say so instead of waiting forever.
+    const stopWindow = watchSubmitWindow(problemId, (windowState) => {
+      if (windowState === 'closed') {
+        setState((s) => (s.phase === 'waiting' || s.phase === 'opening' ? { phase: 'closed' } : s));
+      }
+    });
+    return () => {
+      stopResults();
+      stopWindow();
+    };
   }, [problemId]);
 
   const start = async () => {
@@ -41,8 +57,8 @@ export function SubmitPanel({ state }: { state: SubmitState }) {
       return (
         <>
           <p class="out-muted">
-            제출하기를 누르면 백준 제출 페이지가 열리고 언어와 코드가 채워집니다. 백준의 제출 버튼은
-            직접 눌러 주세요.
+            제출하기를 누르면 백준 제출 창이 열리고 언어와 코드가 채워집니다. 백준의 제출 버튼을
+            직접 누르면, 채점이 끝난 뒤 창이 닫히고 결과가 여기에 표시됩니다.
           </p>
           {state.last && (
             <>
@@ -64,10 +80,16 @@ export function SubmitPanel({ state }: { state: SubmitState }) {
         <>
           <Warnings items={state.warnings} />
           <p class="out-muted">
-            새 탭의 백준 제출 페이지에서 코드를 확인하고 제출 버튼을 직접 눌러 주세요. 채점이 끝나면
-            결과가 여기에 표시됩니다.
+            열린 백준 제출 창에서 코드를 확인하고 제출 버튼을 직접 눌러 주세요. 채점이 끝나면 창이
+            닫히고 결과가 여기에 표시됩니다.
           </p>
         </>
+      );
+    case 'closed':
+      return (
+        <p class="out-muted">
+          제출 창이 닫혔습니다. 제출하지 않았다면 제출하기를 다시 눌러 주세요.
+        </p>
       );
     case 'error':
       return <p class="out-fail">{state.reason}</p>;

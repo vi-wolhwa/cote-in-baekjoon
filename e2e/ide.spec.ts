@@ -7,9 +7,16 @@ const A_PLUS_B =
 
 /** Replaces the editor content by typing, like a user would. */
 async function typeCode(page: Page, root: Page | FrameLocator, code: string) {
-  await root.locator('.cm-content').click();
-  await page.keyboard.press('ControlOrMeta+A');
-  await page.keyboard.type(code);
+  const content = root.locator('.cm-content');
+  // Inside the overlay iframe, automated input can arrive before the frame holds focus,
+  // so type and verify as one step and retry it.
+  await expect(async () => {
+    await content.click();
+    await expect(root.locator('.cm-editor')).toHaveClass(/cm-focused/, { timeout: 500 });
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.type(code);
+    await expect(content).toContainText(code.slice(-20), { timeout: 500 });
+  }).toPass({ timeout: 10_000 });
 }
 
 test('starts with a template that does not contain a solution', async ({ page, extensionId }) => {

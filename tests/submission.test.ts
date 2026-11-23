@@ -8,6 +8,8 @@ import {
   handlePendingQuery,
   handleSubmitRequest,
   handleWatchQuery,
+  handleWindowRemoved,
+  finishSubmitWindow,
 } from '@/boj/submission-service';
 import {
   isJudgeReportMessage,
@@ -19,6 +21,7 @@ import {
   judgeKey,
   pendingKey,
   requestSubmit,
+  submitWindowKey,
   watchJudgeResult,
   type JudgeResult,
   type SubmitRequestMessage,
@@ -32,8 +35,24 @@ const NOW = 1_800_000_000_000;
 const ideSender: Sender = {
   id: EXT,
   url: `chrome-extension://${EXT}/ide.html`,
-  tab: { id: 7, index: 2 } as Browser.tabs.Tab,
+  tab: { id: 7, index: 2, windowId: 1 } as Browser.tabs.Tab,
 };
+const POPUP_WINDOW = 50;
+const POPUP_TAB = 77;
+/** The popup window the background opens for the submit page. */
+function mockPopup() {
+  vi.spyOn(fakeBrowser.windows, 'get').mockResolvedValue({
+    id: 1,
+    left: 0,
+    top: 0,
+    width: 1600,
+    height: 1000,
+  } as never);
+  return vi.spyOn(fakeBrowser.windows, 'create').mockResolvedValue({
+    id: POPUP_WINDOW,
+    tabs: [{ id: POPUP_TAB } as Browser.tabs.Tab],
+  } as never);
+}
 const submitSender = (tabId: number, path = '/submit/1000'): Sender => ({
   id: EXT,
   url: `https://www.acmicpc.net${path}`,
@@ -94,19 +113,29 @@ describe('message guards', () => {
 });
 
 describe('handleSubmitRequest', () => {
-  it('stores the pending code and opens the submit page next to the IDE tab', async () => {
-    const create = vi.spyOn(fakeBrowser.tabs, 'create');
+  it('stores the pending code and opens the submit page in a popup over the IDE', async () => {
+    const create = mockPopup();
     await expect(handleSubmitRequest(submitMessage, ideSender, NOW)).resolves.toEqual({
       ok: true,
     });
-    expect(create).toHaveBeenCalledWith({
-      url: 'https://acmicpc.net/submit/1000',
-      active: true,
-      index: 3,
-      openerTabId: 7,
-    });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'https://acmicpc.net/submit/1000',
+        type: 'popup',
+        focused: true,
+      }),
+    );
     const stored = (await fakeBrowser.storage.session.get(pendingKey(1000)))[pendingKey(1000)];
-    expect(stored).toMatchObject({ problemId: 1000, languageId: 17, code: 'console.log(1);' });
+    expect(stored).toMatchObject({ problemId: 1000, languageId: 17, tabId: POPUP_TAB });
+    const win = (await fakeBrowser.storage.session.get(submitWindowKey(1000)))[
+      submitWindowKey(1000)
+    ];
+    expect(win).toMatchObject({
+      windowId: POPUP_WINDOW,
+      returnTabId: 7,
+      returnWindowId: 1,
+      state: 'open',
+    });
   });
 
   it('rejects requests from content scripts', async () => {
@@ -117,10 +146,9 @@ describe('handleSubmitRequest', () => {
 
 describe('handlePendingQuery', () => {
   async function openedTabId(): Promise<number> {
-    const create = vi.spyOn(fakeBrowser.tabs, 'create');
+    mockPopup();
     await handleSubmitRequest(submitMessage, ideSender, NOW);
-    const tab = await create.mock.results[0]?.value;
-    return (tab as Browser.tabs.Tab).id ?? -1;
+    return POPUP_TAB;
   }
 
   it('hands the code to the opened tab once', async () => {
@@ -248,5 +276,43 @@ describe('watchJudgeResult', () => {
     stop();
     await fakeBrowser.storage.local.set({ [judgeKey(1000)]: result({ updatedAt: NOW + 2 }) });
     expect(seen).toHaveLength(2);
+  });
+});
+
+describe('submit popup window', () => {
+  const popupSender: Sender = {
+    ...statusSender,
+    tab: { id: POPUP_TAB, index: 0, windowId: POPUP_WINDOW } as Browser.tabs.Tab,
+  };
+
+  it('closes the popup and returns to the IDE when judging finishes there', async () => {
+    mockPopup();
+    await handleSubmitRequest(submitMessage, ideSender, NOW);
+    const remove = vi.spyOn(fakeBrowser.windows, 'remove').mockResolvedValue();
+    const focus = vi.spyOn(fakeBrowser.windows, 'update').mockResolvedValue({} as never);
+    const activate = vi.spyOn(fakeBrowser.tabs, 'update').mockResolvedValue({} as never);
+
+    await finishSubmitWindow(1000, popupSender, NOW + 60_000, 0);
+    expect(remove).toHaveBeenCalledWith(POPUP_WINDOW);
+    expect(focus).toHaveBeenCalledWith(1, { focused: true });
+    expect(activate).toHaveBeenCalledWith(7, { active: true });
+  });
+
+  it('leaves other windows alone', async () => {
+    mockPopup();
+    await handleSubmitRequest(submitMessage, ideSender, NOW);
+    const remove = vi.spyOn(fakeBrowser.windows, 'remove').mockResolvedValue();
+    await finishSubmitWindow(1000, statusSender, NOW + 60_000, 0);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('marks the window closed when the user closes it first', async () => {
+    mockPopup();
+    await handleSubmitRequest(submitMessage, ideSender, NOW);
+    await handleWindowRemoved(POPUP_WINDOW, NOW + 5000);
+    const win = (await fakeBrowser.storage.session.get(submitWindowKey(1000)))[
+      submitWindowKey(1000)
+    ];
+    expect(win).toMatchObject({ state: 'closed' });
   });
 });
