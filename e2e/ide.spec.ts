@@ -87,8 +87,8 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   await typeCode(page, ide, A_PLUS_B);
   await ide.getByRole('button', { name: '코드 실행' }).click();
   await expect(ide.getByTestId('summary')).toHaveText('2개 중 2개 성공');
-  // Auto-submit is on by default, without a prompt (#41).
-  await expect(ide.getByRole('checkbox', { name: '자동 제출' })).toBeChecked();
+  // Auto-submit is always on, with no setting to turn it off (#76).
+  await expect(ide.getByRole('checkbox', { name: '자동 제출' })).toHaveCount(0);
   await ide.getByRole('button', { name: '백준 문제로 돌아가기' }).click();
   await expect(page.locator('#cib-ide-overlay')).toHaveCount(0);
 });

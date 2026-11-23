@@ -40,12 +40,13 @@ export function useSubmit(problemId: number, getCode: () => string, language: Su
     };
   }, [problemId]);
 
-  const start = async (autoSubmit: boolean) => {
+  /** Always auto-submits: Baekjoon's submit button is pressed for the user (#76). */
+  const start = async () => {
     const code = getCode();
     const warnings = findBlockedPatterns(code);
     startedAt.current = Date.now();
     setState({ phase: 'opening', warnings });
-    const res = await requestSubmit({ problemId, language, code, autoSubmit });
+    const res = await requestSubmit({ problemId, language, code, autoSubmit: true });
     setState(res.ok ? { phase: 'waiting', warnings } : { phase: 'error', reason: res.reason });
   };
 

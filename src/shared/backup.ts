@@ -51,9 +51,11 @@ const SETTINGS: Record<string, (v: unknown) => boolean> = {
   'ui:keymap': (v) => v === 'sublime' || v === 'vim' || v === 'emacs',
   'ui:split': (v) =>
     isObject(v) && isPercent(v.horizontal) && isPercent(v.vertical) && Object.keys(v).length === 2,
-  'ui:auto-submit': (v) => typeof v === 'boolean',
   'ui:language': (v) => typeof v === 'string' && /^[a-z0-9]{1,20}$/.test(v),
 };
+
+/** Keys older versions wrote; a backup that has them restores without them, silently. */
+const RETIRED_KEYS = new Set(['ui:auto-submit']);
 
 /** True for keys that belong in a backup. Session-only and internal keys are left out. */
 export function isBackupKey(key: string): boolean {
@@ -105,6 +107,7 @@ export function parseBackup(text: string): ParseResult {
   const items: Record<string, unknown> = {};
   let skipped = 0;
   for (const [key, value] of Object.entries(data.items)) {
+    if (RETIRED_KEYS.has(key)) continue;
     if (isValidEntry(key, value)) items[key] = value;
     else skipped++;
   }
