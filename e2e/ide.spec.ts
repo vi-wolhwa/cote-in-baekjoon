@@ -84,7 +84,7 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   );
   await page.goto('https://acmicpc.net/problem/1000');
   // In Baekjoon's problem menu, between "1000번" and "제출", as tall as the other pills.
-  const open = page.getByRole('button', { name: '코테 화면으로 풀기' });
+  const open = page.getByRole('button', { name: '코딩테스트' });
   const items = page.locator('ul.problem-menu > li');
   await expect(items.nth(1)).toHaveId('cib-open-ide-item');
   await expect(items.nth(0)).toHaveText('1000번');

@@ -16,7 +16,7 @@ function page(remove: string[] = []): Document {
 const menuTexts = (doc: Document) =>
   [...doc.querySelectorAll('ul.problem-menu > li')].map((li) => li.textContent?.trim());
 
-describe('"코테 화면으로 풀기" button', () => {
+describe('"코딩테스트" button', () => {
   it('goes into the problem menu between "N번" and "제출"', () => {
     const doc = page();
     expect(insertOpenButton(doc, () => undefined)).toBe('menu');

@@ -132,7 +132,7 @@ test('home: opens the IDE in the problem tab, which saves the problem meta', asy
 }) => {
   await serveBaekjoon(context);
   await page.goto('https://acmicpc.net/problem/1000');
-  await expect(page.getByRole('button', { name: '코테 화면으로 풀기' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '코딩테스트' })).toBeVisible();
   // Leave only the problem tab, so the popup's stand-in active tab below is that one.
   for (const other of context.pages()) if (other !== page) await other.close();
 
