@@ -192,7 +192,7 @@ Extension that lets users solve Baekjoon (acmicpc.net) problems in a
 coding-test style IDE screen. Product scope and decisions: `docs/PRD.md`;
 milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
 
-- Never use the Programmers name, logo, colors or other brand assets (PRD §8)
+- Never use the Programmers or Baekjoon logo or other brand assets, and never use the Programmers name (PRD §8). Their colors appear only where the product owner decided: the IDE theme and the extension icon
 - Docs, issues and PRs are written in Korean
 - Only send requests to acmicpc.net on a direct user action; no background crawling.
   The one exception is ADR-0002's judge-result fallback: `/status/ajax` for the user's

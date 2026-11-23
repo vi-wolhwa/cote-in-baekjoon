@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Extension icon (product owner choice, 2026-11-24): problem side white with blue,
+       editor side navy with white. No third-party logo. -->
+  <clipPath id="shape"><rect x="4" y="4" width="120" height="120" rx="26"/></clipPath>
+  <g clip-path="url(#shape)">
+    <rect width="64" height="128" fill="#FFFFFF"/>
+    <rect x="64" width="64" height="128" fill="#263747"/>
+  </g>
+  <rect x="4.5" y="4.5" width="119" height="119" rx="25.5" fill="none" stroke="#B4B2A9" stroke-width="1.5"/>
+  <path d="M24 42 L46 64 L24 86" fill="none" stroke="#0076C0" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="76" y="80" width="34" height="12" rx="6" fill="#FFFFFF"/>
+</svg>
