@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.3.0...v0.4.0) (2026-11-23)
+
+
+### 기능
+
+* **boj:** 백준 메뉴 버튼 이름을 '코딩테스트'로 ([#98](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/98)) ([4034777](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/403477710686ee62c655c82afa7020f6a58bf8bf))
+* **boj:** 백준 페이지 구조 변경 자가 진단과 신고 유도 ([#91](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/91)) ([e16d1bf](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/e16d1bf83e07a26666588b08a8c5ff7bb7999117)), closes [#87](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/87)
+* **help:** 도움말 페이지 새 디자인과 검색·추천 키워드 ([#92](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/92)) ([65f897e](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/65f897e1a7333addd23a36d9e10fd758040a60d8)), closes [#80](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/80)
+* **ide:** 오른쪽 사이드바, 설정 대화상자와 라이트 테마 ([#93](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/93)) ([c02852f](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/c02852f0b0257fe07a05a527ceab219cc57025c5))
+* **ide:** 자동 제출 항상 켜기, 체크박스 제거 ([#83](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/83)) ([60e6731](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/60e6731aa1349f0528a44d4857e9ca878fa6edaf)), closes [#76](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/76)
+* **ide:** 타이머 창 높이 고정, 테마 전환을 사이드바로, 시간 종료 시 창 자동 열기 ([#95](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/95)) ([d610535](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/d6105358874da947ff64816aed51470be56cc3fd))
+* 사용자 신고용 이슈 폼과 미리 채운 신고 링크 ([#86](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/86)) ([d83c2d4](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/d83c2d4c1cd76ddaa8b693873c464ebfb8c2dc7d)), closes [#78](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/78)
+* 툴바 팝업과 확장 안 도움말 페이지 ([#90](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/90)) ([e8740c1](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/e8740c1b7cf110c14fea828a4af83bc4a9b320c1))
+* 풀기 버튼을 백준 문제 메뉴로, 상단·사이드바 정리와 스톱워치·타이머 ([#94](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/94)) ([d81804b](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/d81804b5b9ed44c657c9c4859357c0d05def9328))
+
 ## [0.3.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.2.0...v0.3.0) (2026-11-23)
 
 
