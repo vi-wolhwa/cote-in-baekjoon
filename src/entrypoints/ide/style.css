@@ -527,12 +527,6 @@ textarea {
   color: var(--text);
   cursor: pointer;
 }
-.modal-warning {
-  padding: 10px 12px;
-  border-radius: 4px;
-  background: #fdecea;
-  color: #8a1c14;
-}
 .btn-badge {
   min-width: 20px;
   padding: 0 6px;

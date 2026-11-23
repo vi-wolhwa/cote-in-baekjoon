@@ -3,7 +3,7 @@ import type { Problem, Sample } from '@/boj/problem';
 import { SandboxRunner } from '@/runner/client';
 import { isProblemMessage, type CloseMessage, type ReadyMessage } from '@/shared/messages';
 import { DEMO_PROBLEM, STARTER_CODE } from './demo';
-import { AutoSubmitDialog, ResetDialog, TestCaseDialog } from './dialogs';
+import { ResetDialog, TestCaseDialog } from './dialogs';
 import { createEditor, type EditorHandle } from './editor';
 import { ProblemPane, runBlockReason, runNote } from './ProblemPane';
 import { buildCaseReport, runTimeLimit, summarize, type CaseReport } from './run-report';
@@ -16,7 +16,7 @@ const BOJ_ORIGIN = /^https:\/\/(www\.)?acmicpc\.net$/;
 const LANGUAGE = 'javascript';
 
 type Output = Parameters<typeof RunOutput>[0];
-type Dialog = 'reset' | 'cases' | 'auto-submit' | undefined;
+type Dialog = 'reset' | 'cases' | undefined;
 type Tab = 'run' | 'judge';
 
 export function App() {
@@ -47,8 +47,8 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const [output, setOutput] = useState<Output>({ state: 'empty' });
   const [running, setRunning] = useState(false);
   const [dialog, setDialog] = useState<Dialog>();
-  /** undefined until the user has answered the auto-submit notice (#41). */
-  const [autoSubmit, setAutoSubmit] = useState<boolean | undefined>(undefined);
+  /** Auto-submit is on by default during development (product owner decision, #41). */
+  const [autoSubmit, setAutoSubmit] = useState(store.DEFAULT_AUTO_SUBMIT);
   const [tab, setTab] = useState<Tab>('run');
   const [saveError, setSaveError] = useState<string>();
   const editorHost = useRef<HTMLDivElement>(null);
@@ -288,14 +288,9 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           <label class="auto-submit" title="제출 창에서 제출 버튼까지 자동으로 누릅니다">
             <input
               type="checkbox"
-              checked={autoSubmit === true}
+              checked={autoSubmit}
               onChange={(e) => {
                 const on = e.currentTarget.checked;
-                if (on && autoSubmit === undefined) {
-                  setDialog('auto-submit');
-                  e.currentTarget.checked = false;
-                  return;
-                }
                 setAutoSubmit(on);
                 void store.saveAutoSubmit(on);
               }}
@@ -307,10 +302,6 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
             class="btn btn-primary"
             disabled={running || !problem.id}
             onClick={() => {
-              if (autoSubmit === undefined) {
-                setDialog('auto-submit');
-                return;
-              }
               setTab('judge');
               void submit.start(autoSubmit);
             }}
@@ -321,18 +312,6 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       </footer>
 
       {dialog === 'reset' && <ResetDialog onConfirm={reset} onClose={() => setDialog(undefined)} />}
-      {dialog === 'auto-submit' && (
-        <AutoSubmitDialog
-          onClose={() => setDialog(undefined)}
-          onChoose={(on) => {
-            setAutoSubmit(on);
-            void store.saveAutoSubmit(on);
-            setDialog(undefined);
-            setTab('judge');
-            void submit.start(on);
-          }}
-        />
-      )}
       {dialog === 'cases' && (
         <TestCaseDialog
           samples={problem.samples}
