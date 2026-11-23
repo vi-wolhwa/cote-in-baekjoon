@@ -9,8 +9,9 @@ import {
   FILL_REQUEST_EVENT,
   FILL_RESULT_EVENT,
   MAIN_READY_EVENT,
-  findSubmitButton,
-  hasBotCheck,
+  hasInteractiveChallenge,
+  isClickable,
+  waitForSubmitButton,
   isFillResult,
   parseDetail,
   parseSubmitProblemId,
@@ -41,7 +42,8 @@ export default defineContentScript({
 
     const result = await requestFill(pending);
     const blockedPatterns = findBlockedPatterns(pending.code);
-    if (pending.autoSubmit && (await tryAutoSubmit(result, blockedPatterns))) return;
+    if (!pending.autoSubmit) log('자동 제출이 꺼져 있어 직접 제출을 안내합니다.');
+    else if (await tryAutoSubmit(result, blockedPatterns)) return;
 
     const copied = result?.code === 'ok' ? false : await copyText(pending.code);
     showSubmitBanner(document, {
@@ -56,6 +58,8 @@ export default defineContentScript({
 
 /** Time the user has to cancel before the submit button is pressed. */
 const AUTO_SUBMIT_DELAY_MS = 1200;
+/** How long to wait for Baekjoon to show its submit button (reCAPTCHA v3 token). */
+const SUBMIT_BUTTON_WAIT_MS = 10_000;
 
 /**
  * Auto-submit (#41, opted in by the user in the IDE): presses Baekjoon's own submit button
@@ -67,18 +71,41 @@ async function tryAutoSubmit(
   result: FillResult | undefined,
   blockedPatterns: string[],
 ): Promise<boolean> {
-  if (result?.code !== 'ok' || result.language !== 'ok' || blockedPatterns.length > 0) {
+  if (result?.code !== 'ok' || result.language !== 'ok') {
+    log('언어나 코드를 다 채우지 못해 자동 제출하지 않습니다.');
     return false;
   }
-  if (hasBotCheck(document)) {
-    console.info('[코딩테스트 in 백준] 보안 확인이 있어 자동 제출하지 않습니다.');
+  if (blockedPatterns.length > 0) {
+    log(
+      `방화벽에 막힐 수 있는 문자열이 있어 자동 제출하지 않습니다: ${blockedPatterns.join(', ')}`,
+    );
     return false;
   }
-  const submit = findSubmitButton(document);
-  if (!submit) return false;
-  if (!(await showAutoSubmitCountdown(document, AUTO_SUBMIT_DELAY_MS))) return false;
+  if (hasInteractiveChallenge(document)) {
+    log('사람이 직접 풀어야 하는 보안 확인이 있어 자동 제출하지 않습니다.');
+    return false;
+  }
+  // Baekjoon shows the real button only once its reCAPTCHA v3 token is ready (#45).
+  const submit = await waitForSubmitButton(document, SUBMIT_BUTTON_WAIT_MS);
+  if (!submit) {
+    log('제출 버튼이 준비되지 않아 자동 제출하지 않습니다.');
+    return false;
+  }
+  if (!(await showAutoSubmitCountdown(document, AUTO_SUBMIT_DELAY_MS))) {
+    log('사용자가 자동 제출을 취소했습니다.');
+    return false;
+  }
+  if (!isClickable(submit) || hasInteractiveChallenge(document)) {
+    log('카운트다운 중 페이지가 바뀌어 자동 제출하지 않습니다.');
+    return false;
+  }
+  log('제출 버튼을 누릅니다.');
   submit.click();
   return true;
+}
+
+function log(message: string) {
+  console.info(`[코딩테스트 in 백준] ${message}`);
 }
 
 /** Asks the MAIN-world script to fill the form; resolves undefined if it never answers. */
