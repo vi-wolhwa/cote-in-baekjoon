@@ -10,7 +10,8 @@ import {
 import {
   fillCode,
   findSubmitButton,
-  hasBotCheck,
+  hasInteractiveChallenge,
+  waitForSubmitButton,
   fillSubmitForm,
   findCodeMirror,
   isEditorReady,
@@ -216,14 +217,45 @@ describe('auto-submit helpers (#41)', () => {
     expect(findSubmitButton(load())?.id).toBe('submit_button');
   });
 
-  it('detects human checks it must not get past', () => {
+  it('treats reCAPTCHA v3 as the normal submit path, not a check to stop at', () => {
     const doc = load();
-    expect(hasBotCheck(doc)).toBe(false);
-    doc.body.insertAdjacentHTML('beforeend', '<div class="g-recaptcha" data-sitekey="x"></div>');
-    expect(hasBotCheck(doc)).toBe(true);
-    const turnstile = load();
-    turnstile.body.insertAdjacentHTML('beforeend', '<div class="cf-turnstile"></div>');
-    expect(hasBotCheck(turnstile)).toBe(true);
+    expect(hasInteractiveChallenge(doc)).toBe(false);
+    doc.body.insertAdjacentHTML(
+      'beforeend',
+      '<div class="grecaptcha-badge"><iframe title="reCAPTCHA" src="https://www.google.com/recaptcha/api2/anchor?ar=1&k=key&size=invisible"></iframe></div>',
+    );
+    expect(hasInteractiveChallenge(doc)).toBe(false);
+  });
+
+  it('stops at checks a person has to solve', () => {
+    const cases = [
+      '<div class="g-recaptcha" data-sitekey="x"></div>',
+      '<iframe src="https://www.google.com/recaptcha/api2/anchor?ar=1&k=key&size=normal"></iframe>',
+      '<iframe src="https://www.google.com/recaptcha/api2/bframe?k=key"></iframe>',
+      '<div class="cf-turnstile"></div>',
+      '<div class="h-captcha"></div>',
+    ];
+    for (const html of cases) {
+      const doc = load();
+      doc.body.insertAdjacentHTML('beforeend', html);
+      expect(hasInteractiveChallenge(doc), html).toBe(true);
+    }
+  });
+
+  it('waits until Baekjoon shows the submit button', async () => {
+    const doc = load();
+    const button = findSubmitButton(doc);
+    if (!button) throw new Error('fixture has no submit button');
+    button.style.display = 'none';
+    setTimeout(() => (button.style.display = ''), 50);
+    await expect(waitForSubmitButton(doc, 1000, 10)).resolves.toBe(button);
+  });
+
+  it('gives up when the button never appears', async () => {
+    const doc = load();
+    const button = findSubmitButton(doc);
+    if (button) button.style.display = 'none';
+    await expect(waitForSubmitButton(doc, 50, 10)).resolves.toBeNull();
   });
 
   it('lets the user cancel the countdown', async () => {

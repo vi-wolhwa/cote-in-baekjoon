@@ -167,7 +167,9 @@ export function parseSubmitProblemId(url: string): number | undefined {
 
 /**
  * Baekjoon's own submit button (#41). Clicking it runs the page's normal submit path, so
- * CodeMirror copies the code into the form and Baekjoon's CSRF field goes along as usual.
+ * CodeMirror copies the code into the form and Baekjoon's CSRF and reCAPTCHA v3 fields go
+ * along as usual. While Baekjoon is still getting its reCAPTCHA v3 token the page shows a
+ * placeholder (`#submit_preview`) and keeps `#submit_button` hidden (#45).
  */
 export function findSubmitButton(doc: Document): HTMLElement | null {
   return doc.querySelector<HTMLElement>(
@@ -175,22 +177,61 @@ export function findSubmitButton(doc: Document): HTMLElement | null {
   );
 }
 
+/** True when the element is shown and not disabled. */
+export function isClickable(el: HTMLElement): boolean {
+  if ((el as HTMLButtonElement).disabled) return false;
+  for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+    const style = node.ownerDocument.defaultView?.getComputedStyle(node);
+    if (node.hidden || style?.display === 'none' || style?.visibility === 'hidden') return false;
+  }
+  return true;
+}
+
 /**
- * True when the page shows a human check (reCAPTCHA, hCaptcha, Cloudflare Turnstile).
- * Auto-submit then stops and leaves the check and the button to the user.
+ * Waits (reading the DOM only) until the submit button is shown and enabled, which is when
+ * Baekjoon has its reCAPTCHA v3 token. Resolves null after `timeoutMs`.
  */
-export function hasBotCheck(doc: Document): boolean {
-  return (
-    doc.querySelector(
-      [
-        '.g-recaptcha',
-        '[data-sitekey]',
-        '.cf-turnstile',
-        '.h-captcha',
-        'iframe[src*="recaptcha"]',
-        'iframe[src*="hcaptcha"]',
-        'iframe[src*="challenges.cloudflare.com"]',
-      ].join(', '),
-    ) !== null
+export function waitForSubmitButton(
+  doc: Document,
+  timeoutMs: number,
+  intervalMs = 200,
+): Promise<HTMLElement | null> {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const check = () => {
+      const button = findSubmitButton(doc);
+      if (button && isClickable(button)) return resolve(button);
+      if (Date.now() - started >= timeoutMs) return resolve(null);
+      setTimeout(check, intervalMs);
+    };
+    check();
+  });
+}
+
+/**
+ * True when the page asks a person to solve a check: a reCAPTCHA v2 checkbox or image
+ * challenge, hCaptcha, or Cloudflare Turnstile. Auto-submit then stops and leaves it to the
+ * user; it never solves or skips a check.
+ *
+ * reCAPTCHA v3 does not count: it has nothing to solve (only the corner badge, whose frame
+ * URL carries `size=invisible`) and the page attaches its token on the normal submit path.
+ */
+export function hasInteractiveChallenge(doc: Document): boolean {
+  const interactive = doc.querySelector(
+    [
+      '.cf-turnstile',
+      '.h-captcha',
+      'iframe[src*="hcaptcha"]',
+      'iframe[src*="challenges.cloudflare.com"]',
+      'iframe[src*="recaptcha/api2/bframe"]',
+      'iframe[src*="recaptcha/enterprise/bframe"]',
+    ].join(', '),
   );
+  if (interactive) return true;
+  for (const frame of doc.querySelectorAll<HTMLIFrameElement>('iframe[src*="recaptcha"]')) {
+    const src = frame.getAttribute('src') ?? '';
+    if (/\/anchor\b/.test(src) && !/[?&]size=invisible\b/.test(src)) return true;
+  }
+  // A visible v2 checkbox container (v3 never renders .g-recaptcha).
+  return doc.querySelector('.g-recaptcha:not([data-size="invisible"])') !== null;
 }

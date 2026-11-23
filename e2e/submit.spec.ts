@@ -20,6 +20,15 @@ const submitHtml = readFileSync('tests/fixtures/submit-sample.html', 'utf8').rep
     document.getElementById('submit_button').addEventListener('click', () => {
       window.__cib.clicked = true;
     });
+    // Like Baekjoon: reCAPTCHA v3 badge, and the real button only once the token is ready (#45).
+    document.body.insertAdjacentHTML('beforeend',
+      '<div class="grecaptcha-badge"><iframe title="reCAPTCHA" src="data:text/html,recaptcha/api2/anchor?ar=1&size=invisible"></iframe></div>');
+    const realButton = document.getElementById('submit_button');
+    realButton.style.display = 'none';
+    setTimeout(() => {
+      document.getElementById('submit_form').insertAdjacentHTML('afterbegin', '<input type="hidden" name="g-recaptcha-response" value="token">');
+      realButton.style.display = '';
+    }, 1500);
     // Stand-in for CodeMirror 5, created late like a page script would.
     setTimeout(() => {
       let value = '';
