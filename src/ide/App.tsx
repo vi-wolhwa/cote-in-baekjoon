@@ -54,8 +54,6 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const [output, setOutput] = useState<Output>({ state: 'empty' });
   const [running, setRunning] = useState(false);
   const [dialog, setDialog] = useState<Dialog>();
-  /** Auto-submit is on by default during development (product owner decision, #41). */
-  const [autoSubmit, setAutoSubmit] = useState(store.DEFAULT_AUTO_SUBMIT);
   const [tab, setTab] = useState<Tab>('run');
   const [saveError, setSaveError] = useState<string>();
   const [language, setLanguage] = useState<LanguageId>(DEFAULT_LANGUAGE);
@@ -77,9 +75,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const blockReason = runBlockReason(problem.labels);
   const note = runNote(problem.labels);
 
-  useEffect(() => {
-    void store.loadAutoSubmit().then(setAutoSubmit);
-  }, []);
+  useEffect(() => {}, []);
 
   // Load saved state, then create the editor once per problem.
   useEffect(() => {
@@ -355,25 +351,13 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
               코드 실행
             </button>
           )}
-          <label class="auto-submit" title="제출 창에서 제출 버튼까지 자동으로 누릅니다">
-            <input
-              type="checkbox"
-              checked={autoSubmit}
-              onChange={(e) => {
-                const on = e.currentTarget.checked;
-                setAutoSubmit(on);
-                void store.saveAutoSubmit(on);
-              }}
-            />
-            자동 제출
-          </label>
           <button
             type="button"
             class="btn btn-primary"
             disabled={running || !problem.id}
             onClick={() => {
               setTab('judge');
-              void submit.start(autoSubmit);
+              void submit.start();
             }}
           >
             제출하기

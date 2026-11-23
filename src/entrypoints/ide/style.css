@@ -518,15 +518,6 @@ textarea {
   border-color: var(--label);
   color: #fff;
 }
-.auto-submit {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 4px;
-  font-size: 14px;
-  color: var(--text);
-  cursor: pointer;
-}
 .btn-badge {
   min-width: 20px;
   padding: 0 6px;

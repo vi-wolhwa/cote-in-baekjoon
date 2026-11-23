@@ -27,7 +27,6 @@ const stored: Record<string, unknown> = {
   'code:2557:cpp': 'int main(){}',
   'ui:keymap': 'vim',
   'ui:split': { horizontal: 40, vertical: 60 },
-  'ui:auto-submit': true,
   'ui:language': 'python3',
   // Not backed up: internal or invalid.
   'cib:pending:1000': { code: 'x' },
@@ -46,7 +45,6 @@ describe('createBackup', () => {
       'code:1000:python',
       'code:2557:cpp',
       'judge:1000',
-      'ui:auto-submit',
       'ui:keymap',
       'ui:language',
       'ui:split',
@@ -59,7 +57,7 @@ describe('createBackup', () => {
       codes: 3,
       cases: 1,
       results: 1,
-      settings: 4,
+      settings: 3,
     });
   });
 });
@@ -142,5 +140,18 @@ describe('helpers', () => {
 
   it('names the file with the local date', () => {
     expect(backupFileName(new Date(2026, 0, 5))).toBe('코딩테스트-in-백준-백업-2026-01-05.json');
+  });
+});
+
+describe('retired keys', () => {
+  it('drops the old auto-submit setting without counting it as unreadable (#76)', () => {
+    const result = parseBackup(
+      JSON.stringify({
+        format: 'cote-in-baekjoon-backup',
+        version: 1,
+        items: { 'ui:auto-submit': false, 'ui:keymap': 'vim' },
+      }),
+    );
+    expect(result).toEqual({ ok: true, items: { 'ui:keymap': 'vim' }, skipped: 0 });
   });
 });
