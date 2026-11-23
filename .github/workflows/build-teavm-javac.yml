@@ -1,0 +1,50 @@
+name: teavm-javac 빌드
+
+# Builds the in-browser Java compiler (teavm-javac) from a pinned commit (ADR-0004, #63).
+# The output files go into vendor/teavm-javac/ by hand after checking the SHA-256 sums.
+# The source archive is the corresponding source for the GPLv2 javac inside compiler.wasm.
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: konsoletyper/teavm-javac 커밋
+        required: true
+        default: b89345ad7448692ca06fc5e77dfef96eccdbea88
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: compiler.wasm 빌드
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: konsoletyper/teavm-javac
+          ref: ${{ inputs.commit }}
+          path: teavm-javac
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: 빌드
+        working-directory: teavm-javac
+        run: ./gradlew --no-daemon :compiler:createDist
+      - name: 결과 정리
+        run: |
+          mkdir -p out/dist
+          unzip -q teavm-javac/compiler/build/distributions/dist.zip -d out/dist
+          git -C teavm-javac archive --format=tar.gz --prefix=teavm-javac-${{ inputs.commit }}/ \
+            -o "$PWD/out/teavm-javac-${{ inputs.commit }}-source.tar.gz" HEAD
+          (cd out/dist && sha256sum * > ../SHA256SUMS-dist.txt)
+          (cd out && sha256sum *.tar.gz > SHA256SUMS-source.txt)
+          ls -la out out/dist
+          cat out/SHA256SUMS-dist.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: teavm-javac-${{ inputs.commit }}
+          path: out/
+          retention-days: 30
