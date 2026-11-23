@@ -76,7 +76,7 @@ export function buildCaseReport(
         status: 'error',
         message: '런타임 에러',
         output: stdout || undefined,
-        error: [response.result?.error, stderr].filter(Boolean).join('\n') || undefined,
+        error: errorDetails(response.result?.error, stderr),
       };
     case 'ok':
       break;
@@ -132,4 +132,14 @@ export function summarize(cases: CaseReport[]): RunReport {
 /** Time limit for a browser run: 3x the problem limit, at most 10 seconds (ADR-0004). */
 export function runTimeLimit(problemLimitMs: number | undefined): number {
   return Math.min((problemLimitMs ?? 2000) * 3, 10_000);
+}
+
+/**
+ * The error summary plus stderr, without repeating the summary when stderr already ends
+ * with it (a Python traceback's last line is the summary).
+ */
+export function errorDetails(summary: string | undefined, stderr: string): string | undefined {
+  const trace = stderr.trimEnd();
+  if (summary && trace.includes(summary)) return trace;
+  return [summary, trace].filter(Boolean).join('\n') || undefined;
 }
