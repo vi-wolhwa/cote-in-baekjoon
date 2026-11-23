@@ -24,6 +24,27 @@ test('says so when the problem page layout changed (#87)', async ({ context, pag
   await expect(page.getByRole('button', { name: '코테 화면으로 풀기' })).toHaveCount(0);
 });
 
+test('puts the button after the title when the problem menu is missing', async ({
+  context,
+  page,
+}) => {
+  const noMenu = problemHtml.replace(/<ul class="nav nav-pills[^]*?<\/ul>/, '');
+  expect(noMenu).not.toContain('problem-menu');
+  await context.route('https://acmicpc.net/**', (route) =>
+    route.request().url() === 'https://acmicpc.net/problem/1000'
+      ? route.fulfill({ contentType: 'text/html; charset=utf-8', body: noMenu })
+      : route.abort(),
+  );
+  await page.goto('https://acmicpc.net/problem/1000');
+  const open = page.locator('h1').getByRole('button', { name: '코테 화면으로 풀기' });
+  await expect(open).toBeVisible();
+  await expect(open).toHaveCSS('background-color', 'rgb(38, 55, 71)');
+  // The fallback works, so a missing menu alone is not reported.
+  await expect(page.locator('#cib-diagnosis-notice')).toHaveCount(0);
+  await open.click();
+  await expect(page.locator('#cib-ide-overlay')).toBeVisible();
+});
+
 test('stays quiet on a normal problem page', async ({ context, page }) => {
   await context.route('https://acmicpc.net/**', (route) =>
     route.request().url() === 'https://acmicpc.net/problem/1000'

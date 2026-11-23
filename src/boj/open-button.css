@@ -1,0 +1,45 @@
+/*
+ * "코테 화면으로 풀기" on Baekjoon problem pages (open-button.ts). Approved design "C":
+ * a navy pill inside Baekjoon's Bootstrap 3 problem menu (13px, padding 10px 15px), so it
+ * has the same height as "N번" and "제출". The id selector outranks `.nav-pills > li > a`.
+ */
+#cib-open-ide {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  background: #263747;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#cib-open-ide:hover,
+#cib-open-ide:focus {
+  background: #2f4457;
+  color: #ffffff;
+  text-decoration: none;
+}
+#cib-open-ide:focus {
+  outline: none;
+}
+#cib-open-ide:focus-visible {
+  outline: 2px solid #5aa2ff;
+  outline-offset: 2px;
+}
+#cib-open-ide svg {
+  flex: none;
+}
+/* Fallback when the menu is missing: at the end of the title line. */
+#cib-open-ide[data-place='title'] {
+  display: inline-flex;
+  margin: 0 0 0 12px;
+  padding: 7px 13px;
+  line-height: 18px;
+  vertical-align: middle;
+}
