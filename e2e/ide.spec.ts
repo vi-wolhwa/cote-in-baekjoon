@@ -89,7 +89,20 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   await expect(ide.getByTestId('summary')).toHaveText('2개 중 2개 성공');
   // Auto-submit is always on, with no setting to turn it off (#76).
   await expect(ide.getByRole('checkbox', { name: '자동 제출' })).toHaveCount(0);
-  await ide.getByRole('button', { name: '백준 문제로 돌아가기' }).click();
+  // 질문하기 uses the same button style as the test case button.
+  const ask = await ide.getByRole('link', { name: '질문하기' }).getAttribute('class');
+  expect(ask).toBe(
+    await ide.getByRole('button', { name: '테스트 케이스 추가하기' }).getAttribute('class'),
+  );
+  // 돌아가기 is the main link of the top bar: bold white text on a filled pill.
+  const back = ide.getByRole('button', { name: '돌아가기', exact: true });
+  await expect(back).toHaveCSS('font-weight', '600');
+  await expect(back).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(back).toHaveCSS('background-color', 'rgb(38, 55, 71)');
+  await expect(
+    ide.getByRole('navigation', { name: '경로' }).getByRole('link', { name: '도움말' }),
+  ).toHaveCSS('font-weight', '400');
+  await back.click();
   await expect(page.locator('#cib-ide-overlay')).toHaveCount(0);
 });
 

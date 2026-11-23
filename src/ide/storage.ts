@@ -4,6 +4,7 @@
 import type { Sample } from '@/boj/problem';
 import { DEFAULT_LANGUAGE, isLanguageId, type LanguageId } from '@/shared/languages';
 import { makeMeta, metaKey } from '@/shared/problem-meta';
+import { THEME_KEY, toTheme, type Theme } from '@/shared/theme';
 
 export type Keymap = 'sublime' | 'vim' | 'emacs';
 export const KEYMAPS: Keymap[] = ['sublime', 'vim', 'emacs'];
@@ -89,6 +90,14 @@ export async function loadLanguage(): Promise<LanguageId> {
 
 export function saveLanguage(language: LanguageId) {
   return browser.storage.local.set({ [LANGUAGE_KEY]: language });
+}
+
+export async function loadTheme(): Promise<Theme> {
+  return toTheme(await get(THEME_KEY));
+}
+
+export function saveTheme(theme: Theme) {
+  return browser.storage.local.set({ [THEME_KEY]: theme });
 }
 
 /** Title and language for the toolbar popup (#79). `openedAt` is when the IDE opened it. */

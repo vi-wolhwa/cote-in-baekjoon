@@ -1,24 +1,122 @@
-/* Values from docs/design/ide-spec.md (dark theme). */
+/*
+ * Values from docs/design/ide-spec.md. Dark theme is the default; the light theme
+ * (§9) overrides the tokens under [data-theme='light'] on <html>. The top bar and the
+ * dialogs look the same in both themes.
+ */
 :root {
+  /* Top bar: dark in both themes. */
   --bg-top: #0c151c;
+  --top-text: #b2c0cc;
+  --top-strong: #ffffff;
+  --top-pill-bg: #263747;
+  --top-pill-border: #44576c;
+  --top-pill-hover-bg: #34495d;
+  --top-pill-hover-border: #6a8199;
+
   --bg-panel: #263747;
-  --bg-code: #202b3d;
   --line: #172334;
   --text: #b2c0cc;
   --text-strong: #ffffff;
-  --text-code: #cdd7e0;
-  --muted: #78909c;
-  --label: #44576c;
+  --link: #0078ff;
+
+  --chip-text: #b2c0cc;
+  --chip-bg: transparent;
+  --chip-border: #44576c;
+  --chip-active-text: #ffffff;
+  --chip-active-bg: #44576c;
+  --chip-active-border: #44576c;
+  --select-text: #b2c0cc;
+  --select-bg: #202b3d;
+  --select-border: #44576c;
+
+  --handle: #44576c;
+  --handle-hover: #b2c0cc;
+
+  --inline-code-text: #cdd7e0;
+  --inline-code-bg: #202b3d;
+  --inline-code-border: #172334;
+  --cell-bg: #202b3d;
+  --pre-text: #cdd7e0;
+  --pre-bg: #202b3d;
+  --pre-border: transparent;
+
+  --tab-text: #4f6b81;
+  --out-bg: transparent;
+  --out-text: #78909c;
+  --out-hint: #5f7f90;
+  --out-heading: #98a8b9;
+  --out-label: #44576c;
+  --pass: #0078ff;
+  --fail: #d32f2f;
+  --fail-summary: #b71c1c;
+  --warn: #f0a63a;
+  --error-title: #d13134;
+
+  --footer-line: #172334;
+  --btn-text: #ffffff;
+  --btn-bg: #44576c;
+  --btn-border: transparent;
+  --btn-hover-bg: #37485d;
+
+  --icon: #98a8b9;
+  --icon-hover-bg: #172334;
+
   --blue: #0078ff;
   --blue-hover: #0053f4;
   --red: #d32f2f;
-  --red-dark: #b71c1c;
-  --dark: #44576c;
-  --dark-hover: #37485d;
   --font-ui:
     Inter, 'Noto Sans KR', NotoSansKR, 'Helvetica Neue', Helvetica, Arial, '맑은 고딕', sans-serif;
   --font-mono: Hack, Menlo, Monaco, Consolas, monospace;
   color-scheme: dark;
+}
+
+/* Light theme, measured 2026-11-24 at 1024×768 (ide-spec.md §9). */
+:root[data-theme='light'] {
+  --bg-panel: #ffffff;
+  --line: #d7e2eb;
+  --text: #263747;
+  --text-strong: #263747;
+  --link: #0053f4;
+
+  --chip-text: #263747;
+  --chip-bg: #ffffff;
+  --chip-border: #d7e2eb;
+  --chip-active-text: #263747;
+  --chip-active-bg: #e9ecf3;
+  --chip-active-border: #e9ecf3;
+  --select-text: #263747;
+  --select-bg: #e9ecf3;
+  --select-border: #e9ecf3;
+
+  --handle: #d7e2eb;
+  --handle-hover: #98a8b9;
+
+  --inline-code-text: #44576c;
+  --inline-code-bg: #e9ecf3;
+  --inline-code-border: #d7e2eb;
+  --cell-bg: rgba(50, 50, 144, 0.02);
+  --pre-text: #263747;
+  --pre-bg: #f7f7fb;
+  --pre-border: #d7e2eb;
+
+  --tab-text: #98a8b9;
+  --out-bg: #fbfbfd;
+  --out-text: #44576c;
+  --out-hint: #5f7f90;
+  --out-heading: #263747;
+  --out-label: #5f7f90;
+  /* Darker than the dark theme's so they keep 4.5:1 on #FBFBFD. */
+  --pass: #0053f4;
+  --warn: #a15c00;
+
+  --footer-line: #cdd8dd;
+  --btn-text: #263747;
+  --btn-bg: #e9ecf3;
+  --btn-border: #e9ecf3;
+  --btn-hover-bg: #d7e2eb;
+
+  --icon-hover-bg: #e9ecf3;
+  color-scheme: light;
 }
 
 * {
@@ -62,6 +160,18 @@ textarea {
   flex-direction: column;
   height: 100%;
 }
+/* Below the top bar: the main column and the right sidebar side by side. */
+.ide-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.ide-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
 
 /* Top bar */
 .topbar {
@@ -80,7 +190,7 @@ textarea {
   margin: 0;
   padding: 0;
   list-style: none;
-  color: var(--text);
+  color: var(--top-text);
 }
 .crumbs li + li::before {
   content: '〉';
@@ -88,7 +198,7 @@ textarea {
   opacity: 0.32;
 }
 .crumbs [aria-current] {
-  color: var(--text-strong);
+  color: var(--top-strong);
   font-weight: 700;
 }
 .topbar-links {
@@ -98,7 +208,7 @@ textarea {
 }
 .topbar-links a,
 .link-button {
-  color: var(--text);
+  color: var(--top-text);
   font-size: 16px;
   text-decoration: none;
   background: none;
@@ -108,7 +218,29 @@ textarea {
 }
 .topbar-links a:hover,
 .link-button:hover {
-  color: var(--text-strong);
+  color: var(--top-strong);
+}
+/* "돌아가기": the main action of the row, so a filled pill instead of plain text. */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--top-pill-border);
+  border-radius: 4px;
+  background: var(--top-pill-bg);
+  color: var(--top-strong);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  cursor: pointer;
+  transition:
+    background-color 80ms,
+    border-color 80ms;
+}
+.back-button:hover {
+  background: var(--top-pill-hover-bg);
+  border-color: var(--top-pill-hover-border);
 }
 
 /* Title row */
@@ -145,9 +277,9 @@ textarea {
   height: 24px;
   padding: 0 8px;
   font-size: 12px;
-  color: var(--text);
-  background: transparent;
-  border: 1px solid var(--label);
+  color: var(--chip-text);
+  background: var(--chip-bg);
+  border: 1px solid var(--chip-border);
   cursor: pointer;
 }
 .keymaps button + button {
@@ -160,12 +292,15 @@ textarea {
   border-radius: 0 4px 4px 0;
 }
 .keymaps button.active {
-  background: var(--label);
-  color: var(--text-strong);
+  background: var(--chip-active-bg);
+  border-color: var(--chip-active-border);
+  color: var(--chip-active-text);
 }
 .language {
   border-radius: 4px;
-  background: var(--bg-code);
+  color: var(--select-text);
+  background: var(--select-bg);
+  border-color: var(--select-border);
 }
 
 /* Split panes */
@@ -203,12 +338,12 @@ textarea {
   position: absolute;
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
-  background: var(--label);
+  background: var(--handle);
   border-radius: 2px;
 }
 .split-gutter:hover::after,
 .split-gutter:focus-visible::after {
-  background: var(--text);
+  background: var(--handle-hover);
 }
 .split-gutter-horizontal {
   width: 24px;
@@ -276,12 +411,12 @@ textarea {
   height: auto;
 }
 .problem-html a {
-  color: var(--blue);
+  color: var(--link);
 }
 .problem-html code {
-  color: var(--text-code);
-  background: var(--bg-code);
-  border: 1px solid var(--line);
+  color: var(--inline-code-text);
+  background: var(--inline-code-bg);
+  border: 1px solid var(--inline-code-border);
   border-radius: 4px;
   padding: 0 4px;
   font-family: var(--font-mono);
@@ -294,7 +429,7 @@ textarea {
 .problem-html th,
 .problem-html td {
   padding: 4px 12px;
-  background: var(--bg-code);
+  background: var(--cell-bg);
   border: 1px solid var(--line);
   text-align: left;
 }
@@ -304,9 +439,10 @@ textarea {
 .problem pre {
   margin: 0;
   padding: 20px 24px;
-  background: var(--bg-code);
+  background: var(--pre-bg);
+  box-shadow: inset 0 0 0 1px var(--pre-border);
   border-radius: 4px;
-  color: var(--text-code);
+  color: var(--pre-text);
   font-family: var(--font-mono);
   font-size: 14px;
   line-height: 1.5;
@@ -321,295 +457,4 @@ textarea {
 .problem mjx-container[display='true'] {
   overflow-x: auto;
   overflow-y: hidden;
-}
-
-/* Code section */
-.code-section,
-.output-section {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-.code-header {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  border-bottom: 1px solid var(--line);
-}
-.save-error {
-  margin: 0;
-  color: var(--red);
-  font-size: 13px;
-}
-.file-tab {
-  flex: none;
-  align-self: flex-start;
-  padding: 16px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-strong);
-}
-.editor {
-  flex: 1;
-  min-height: 0;
-}
-.editor .cm-editor {
-  height: 100%;
-}
-
-/* Output section */
-.output-tabs {
-  flex: none;
-  display: flex;
-  gap: 20px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--line);
-}
-.output-tabs button {
-  padding: 12px 0;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: #4f6b81;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.output-tabs button[aria-selected='true'] {
-  color: var(--text-strong);
-  border-bottom-color: var(--blue);
-}
-.output {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 12px 16px;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-.out-muted {
-  margin: 0;
-  color: #5f7f90;
-}
-.out-heading {
-  margin: 16px 0 4px;
-  font-size: 14px;
-  color: #98a8b9;
-}
-.out-case {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 12px;
-  border: 1px solid var(--line);
-}
-.out-case caption {
-  text-align: left;
-  padding: 6px 0;
-  color: #98a8b9;
-  font-weight: 700;
-}
-.out-case th {
-  width: 10rem;
-  padding: 4px 8px;
-  text-align: right;
-  vertical-align: top;
-  color: var(--label);
-  font-weight: 400;
-  white-space: nowrap;
-}
-.out-case td {
-  padding: 4px 8px;
-  color: var(--muted);
-}
-.out-case pre {
-  margin: 0;
-  font: inherit;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-.out-sep {
-  opacity: 0.32;
-}
-.out-pass {
-  color: var(--blue) !important;
-}
-.out-fail {
-  color: var(--red) !important;
-}
-.out-warn {
-  color: #f0a63a !important;
-}
-.out-fail-summary {
-  color: var(--red-dark);
-}
-.out-error-title {
-  color: #d13134;
-}
-.out-note {
-  margin: 4px 0;
-  color: #5f7f90;
-  font-family: var(--font-ui);
-  font-size: 13px;
-}
-[data-testid='summary'] {
-  margin: 0;
-}
-
-/* Buttons */
-.button-section {
-  flex: none;
-  height: 57px;
-  padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid var(--line);
-  background: var(--bg-panel);
-}
-.buttons-left,
-.buttons-right {
-  display: flex;
-  gap: 8px;
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 40px;
-  padding: 7px 13px;
-  border-radius: 4px;
-  border: 1px solid transparent;
-  font-size: 16px;
-  font-weight: 500;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color 80ms,
-    color 80ms;
-}
-.btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.btn-primary {
-  background: var(--blue);
-  color: #fff;
-}
-.btn-primary:hover:not(:disabled) {
-  background: var(--blue-hover);
-}
-.btn-dark {
-  background: var(--dark);
-  color: #fff;
-}
-.btn-dark:hover:not(:disabled) {
-  background: var(--dark-hover);
-}
-.btn-outline {
-  background: transparent;
-  border-color: var(--text);
-  color: var(--text);
-}
-.btn-outline:hover {
-  background: var(--label);
-  border-color: var(--label);
-  color: #fff;
-}
-.btn-badge {
-  min-width: 20px;
-  padding: 0 6px;
-  border-radius: 10px;
-  background: var(--blue);
-  color: #fff;
-  font-size: 12px;
-  line-height: 20px;
-  text-align: center;
-}
-.btn-light {
-  background: #e9ecf3;
-  color: #263747;
-}
-.btn-icon {
-  height: 32px;
-  width: 32px;
-  padding: 0;
-  background: transparent;
-  color: var(--text);
-}
-
-/* Dialogs */
-.modal {
-  color-scheme: light;
-  width: min(480px, calc(100vw - 32px));
-  padding: 24px;
-  border: none;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #263747;
-  font-family: var(--font-ui);
-}
-.modal-wide {
-  width: min(820px, calc(100vw - 32px));
-}
-.modal::backdrop {
-  background: rgba(12, 21, 28, 0.6);
-}
-.modal-title {
-  margin: 0 0 16px;
-  font-size: 20px;
-}
-.modal-body p {
-  margin: 0 0 12px;
-  line-height: 1.6;
-}
-.modal-help {
-  font-size: 14px;
-  color: #5f7f90;
-}
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-.case-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-.case-table th,
-.case-table td {
-  padding: 6px;
-  border-bottom: 1px solid #e3e7ed;
-  vertical-align: top;
-  text-align: left;
-}
-.case-table textarea {
-  width: 100%;
-  min-height: 56px;
-  resize: vertical;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  border: 1px solid #c9d1db;
-  border-radius: 4px;
-  padding: 6px;
-  background: #ffffff;
-  color: #263747;
-}
-.case-table pre {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  white-space: pre-wrap;
-}
-.case-fixed td {
-  color: #5f7f90;
-}
-.modal .btn-outline {
-  border-color: #c9d1db;
-  color: #263747;
 }

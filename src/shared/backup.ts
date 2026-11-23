@@ -8,6 +8,7 @@
 import { MAX_CODE_LENGTH } from '@/boj/submit-fill';
 import { isProblemMeta } from '@/shared/problem-meta';
 import { isJudgeResult } from '@/shared/submission';
+import { isTheme, THEME_KEY } from '@/shared/theme';
 
 export const BACKUP_FORMAT = 'cote-in-baekjoon-backup';
 export const BACKUP_VERSION = 1;
@@ -54,6 +55,7 @@ const SETTINGS: Record<string, (v: unknown) => boolean> = {
   'ui:split': (v) =>
     isObject(v) && isPercent(v.horizontal) && isPercent(v.vertical) && Object.keys(v).length === 2,
   'ui:language': (v) => typeof v === 'string' && /^[a-z0-9]{1,20}$/.test(v),
+  [THEME_KEY]: isTheme,
 };
 
 /** Keys older versions wrote; a backup that has them restores without them, silently. */

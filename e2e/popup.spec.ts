@@ -159,10 +159,9 @@ test('home: opens the IDE in the problem tab, which saves the problem meta', asy
     .toMatchObject({ 'meta:1000': { title: '테스트용 덧셈', language: 'javascript' } });
 
   // The IDE's top bar links to the help page.
-  await expect(ide.getByRole('link', { name: '도움말' })).toHaveAttribute(
-    'href',
-    `chrome-extension://${extensionId}/help.html`,
-  );
+  await expect(
+    ide.getByRole('navigation', { name: '경로' }).getByRole('link', { name: '도움말' }),
+  ).toHaveAttribute('href', `chrome-extension://${extensionId}/help.html`);
 });
 
 /** storage.local read from a fresh extension page. */
