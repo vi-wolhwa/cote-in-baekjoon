@@ -21,6 +21,8 @@ export interface PollerDeps {
   report(row: StatusRow): void;
   /** Shows a polled state in the page's table. */
   showInPage?(row: StatusRow): void;
+  /** Called once when every watched submission has a final result. */
+  onDone?(): void;
   log?(message: string): void;
   now?(): number;
   setTimer?(fn: () => void, ms: number): unknown;
@@ -84,6 +86,7 @@ export class StatusPoller {
   }
 
   stop() {
+    if (!this.stopped && this.done) this.deps.onDone?.();
     this.stopped = true;
     this.clearTimer(this.timer);
   }

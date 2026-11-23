@@ -80,8 +80,8 @@ export function SubmitPanel({ state }: { state: SubmitState }) {
         <>
           <Warnings items={state.warnings} />
           <p class="out-muted">
-            열린 백준 제출 창에서 코드를 확인하고 제출 버튼을 직접 눌러 주세요. 채점이 끝나면 창이
-            닫히고 결과가 여기에 표시됩니다.
+            백준 제출 창에서 제출이 진행됩니다. 채점이 끝나면 창이 자동으로 닫히고 결과가 여기에
+            표시됩니다. 그 전에 제출 창을 닫지 말아 주세요.
           </p>
         </>
       );

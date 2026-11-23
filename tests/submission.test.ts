@@ -192,9 +192,12 @@ describe('judge results', () => {
   it('lists active watches to status pages only', async () => {
     expect(await handleWatchQuery(statusSender, NOW + 1000)).toEqual({
       watches: [{ problemId: 1000, since: NOW }],
+      inSubmitWindow: false,
     });
     expect(await handleWatchQuery(submitSender(1), NOW + 1000)).toEqual({ watches: [] });
-    expect(await handleWatchQuery(statusSender, NOW + WATCH_TTL_MS + 1)).toEqual({ watches: [] });
+    expect(await handleWatchQuery(statusSender, NOW + WATCH_TTL_MS + 1)).toMatchObject({
+      watches: [],
+    });
   });
 
   it('stores reports from the status page', async () => {
@@ -317,5 +320,16 @@ describe('submit popup window', () => {
       submitWindowKey(1000)
     ];
     expect(win).toMatchObject({ state: 'closed' });
+  });
+
+  it('tells the status page whether it runs inside the open submit popup', async () => {
+    mockPopup();
+    await handleSubmitRequest(submitMessage, ideSender, NOW);
+    await expect(handleWatchQuery(popupSender, NOW + 1000)).resolves.toMatchObject({
+      inSubmitWindow: true,
+    });
+    await expect(handleWatchQuery(statusSender, NOW + 1000)).resolves.toMatchObject({
+      inSubmitWindow: false,
+    });
   });
 });

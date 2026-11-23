@@ -128,7 +128,23 @@ export async function handleWatchQuery(
 ): Promise<WatchQueryResponse> {
   if (!isStatusPath(bojPath(sender))) return { watches: [] };
   await removeExpired(now);
-  return { watches: await activeWatches(now) };
+  return {
+    watches: await activeWatches(now),
+    inSubmitWindow: await isOpenSubmitWindow(sender.tab?.windowId),
+  };
+}
+
+/** True when `windowId` is a submit popup this extension opened and is still waiting on. */
+async function isOpenSubmitWindow(windowId: number | undefined): Promise<boolean> {
+  if (windowId === undefined) return false;
+  const all = await browser.storage.session.get(null);
+  return Object.entries(all).some(
+    ([key, value]) =>
+      key.startsWith('cib:submit-window:') &&
+      isSubmitWindow(value) &&
+      value.windowId === windowId &&
+      value.state === 'open',
+  );
 }
 
 export async function handleJudgeReport(

@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import {
   BANNER_HOST_ID,
+  JUDGED_MESSAGE,
+  JUDGING_MESSAGE,
+  JUDGING_NOTICE_ID,
   bannerContent,
+  showJudgingNotice,
   showAutoSubmitCountdown,
   showSubmitBanner,
 } from '@/boj/submit-banner';
@@ -270,5 +274,16 @@ describe('auto-submit helpers (#41)', () => {
   it('goes ahead when the countdown ends', async () => {
     await expect(showAutoSubmitCountdown(document, 10)).resolves.toBe(true);
     document.getElementById(BANNER_HOST_ID)?.remove();
+  });
+
+  it('asks to keep the popup open while judging, then says it will close', () => {
+    const notice = showJudgingNotice(document);
+    const text = () =>
+      document.getElementById(JUDGING_NOTICE_ID)?.shadowRoot?.querySelector('.cib-message')
+        ?.textContent;
+    expect(text()).toBe(JUDGING_MESSAGE);
+    notice.finish();
+    expect(text()).toBe(JUDGED_MESSAGE);
+    document.getElementById(JUDGING_NOTICE_ID)?.remove();
   });
 });
