@@ -111,7 +111,7 @@ function SetupPage({ include, onStarted }: { include?: number; onStarted: (id: s
           <SetupForm
             initial={loaded.draft}
             {...(loaded.handle ? { handle: loaded.handle } : {})}
-            {...(include ? { include } : {})}
+            initialIncluded={include ? [include] : []}
             onDraft={(draft) => void saveDraft(draft).catch(() => undefined)}
             onStarted={(exam) => onStarted(exam.id)}
           />

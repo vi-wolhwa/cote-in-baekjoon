@@ -4,6 +4,8 @@
  * the `--xf-*` variables each page defines.
  */
 import { useState } from 'preact/hooks';
+import { IncludeCard } from './IncludeCard';
+import { BELOW_INCLUDED_MESSAGE, includeProblem, minCount } from './includes';
 import {
   isMinutes,
   MAX_COUNT,
@@ -22,8 +24,11 @@ export interface SetupFormProps {
   initial: ExamDraft;
   /** The logged-in Baekjoon id, if a Baekjoon page told us. */
   handle?: string;
-  /** Problem number that must be in the exam. */
-  include?: number;
+  /**
+   * Problems the form starts with in '포함할 문제' (the Baekjoon menu's problem). The user can
+   * remove them; the list is not saved with the draft.
+   */
+  initialIncluded?: readonly number[];
   onDraft: (draft: ExamDraft) => void;
   onStarted: (exam: Exam) => void;
   /** Replaced in tests. */
@@ -31,8 +36,13 @@ export interface SetupFormProps {
 }
 
 export function SetupForm(props: SetupFormProps) {
-  const { handle, include } = props;
-  const [draft, setDraft] = useState<ExamDraft>(props.initial);
+  const { handle } = props;
+  const [included, setIncluded] = useState<number[]>(() => [...(props.initialIncluded ?? [])]);
+  // 문제 수 starts at least as large as the list it was given.
+  const [draft, setDraft] = useState<ExamDraft>(() => ({
+    ...props.initial,
+    count: Math.min(MAX_COUNT, Math.max(props.initial.count, included.length)),
+  }));
   const [showMore, setShowMore] = useState(() =>
     props.initial.tags.some((id) => TAG_CHIPS.find((t) => t.id === id)?.more),
   );
@@ -52,13 +62,18 @@ export function SetupForm(props: SetupFormProps) {
   // permissions.request() needs the click: start() is called before any await.
   const onStart = () => {
     if (busy || !customValid) return;
+    const invalid = includeProblem(included, draft.count);
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
     setBusy(true);
     setError(undefined);
     const start = props.start ?? startExam;
     void start({
       draft: { ...draft, excludeSolved: excludeOn },
       ...(handle ? { handle } : {}),
-      ...(include ? { include } : {}),
+      ...(included.length ? { included } : {}),
     }).then(
       (result) => {
         setBusy(false);
@@ -75,12 +90,6 @@ export function SetupForm(props: SetupFormProps) {
   const tags = TAG_CHIPS.filter((t) => showMore || !t.more || draft.tags.includes(t.id));
   return (
     <div class="xf">
-      {include && (
-        <p class="xf-include" data-testid="include">
-          <strong>{include}번</strong> 문제를 넣고 나머지를 골라요.
-        </p>
-      )}
-
       <section class="xf-card" aria-labelledby="xf-tier-title">
         <h2 id="xf-tier-title" class="xf-title">
           난이도
@@ -144,7 +153,12 @@ export function SetupForm(props: SetupFormProps) {
             <button
               type="button"
               aria-label="문제 수 줄이기"
-              disabled={draft.count <= MIN_COUNT}
+              disabled={draft.count <= minCount(included)}
+              title={
+                draft.count <= minCount(included) && included.length >= MIN_COUNT
+                  ? BELOW_INCLUDED_MESSAGE
+                  : undefined
+              }
               onClick={() => update({ ...draft, count: draft.count - 1 })}
             >
               −
@@ -249,6 +263,15 @@ export function SetupForm(props: SetupFormProps) {
           </p>
         )}
       </section>
+
+      <IncludeCard
+        included={included}
+        count={draft.count}
+        onChange={(next) => {
+          setIncluded(next);
+          setError(undefined);
+        }}
+      />
 
       <button
         type="button"

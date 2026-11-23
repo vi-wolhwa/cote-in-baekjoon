@@ -129,16 +129,23 @@ describe('new exam', () => {
     expect(newExamId(NOW + 1, () => 0) > newExamId(NOW, () => 0.99)).toBe(true);
   });
 
-  it('puts the included problem in and orders problems easiest first', () => {
+  it('puts the included problems in and orders problems easiest first', () => {
     const include = { id: 1000, title: '포함', level: 10 };
+    const other = { id: 1001, title: '또', level: 1 };
     expect(pickProblems(picked, 3)?.map((p) => p.id)).toEqual([2002, 2003, 2001]);
-    expect(pickProblems(picked, 2, include)?.map((p) => p.id)).toEqual([1000, 2001]);
-    // The included problem is not counted twice when solved.ac returns it too.
-    expect(pickProblems([include, ...picked], 4, include)?.map((p) => p.id)).toEqual([
+    expect(pickProblems(picked, 2, [include])?.map((p) => p.id)).toEqual([1000, 2001]);
+    // Included problems are not counted twice when solved.ac returns them too.
+    expect(pickProblems([include, ...picked], 4, [include])?.map((p) => p.id)).toEqual([
       2002, 2003, 1000, 2001,
     ]);
+    // Only included problems: no random pick needed.
+    expect(pickProblems([], 2, [include, other])?.map((p) => p.id)).toEqual([1001, 1000]);
     expect(pickProblems(picked, 4)).toBeUndefined();
-    expect(pickProblems(picked, 5, include)).toBeUndefined();
+    expect(pickProblems(picked, 5, [include])).toBeUndefined();
+    // Never more than the count, never the same problem twice.
+    expect(pickProblems(picked, 1, [include, other])).toBeUndefined();
+    expect(pickProblems(picked, 3, [include, include])).toBeUndefined();
+    expect(pickProblems([...picked, ...picked], 3)?.map((p) => p.id)).toEqual([2002, 2003, 2001]);
   });
 
   it('records the conditions, start and duration', () => {
@@ -148,7 +155,7 @@ describe('new exam', () => {
       draft: { ...DEFAULT_DRAFT, tags: ['dp'], minutes: 90 },
       problems: picked,
       excludedSolvedBy: 'tester',
-      include: 2001,
+      included: [2001],
     });
     expect(created).toEqual({
       id: 'abcdefgh12',
@@ -157,13 +164,17 @@ describe('new exam', () => {
       tiers: ['silver', 'gold'],
       tags: ['dp'],
       excludedSolvedBy: 'tester',
-      include: 2001,
+      included: [2001],
       problems: picked,
       flagged: [],
       submissions: {},
     });
     expect(isExam(created)).toBe(true);
     expect(examLabel(created)).toBe('실버~골드 3문제');
+    // Exams from before the list kept one `include`; both read back.
+    expect(isExam({ ...created, included: undefined, include: 2001 })).toBe(true);
+    expect(isExam({ ...created, included: [9999] })).toBe(false);
+    expect(isExam({ ...created, included: 2001 })).toBe(false);
   });
 });
 
