@@ -53,7 +53,11 @@ const staleStatusHtml = readFileSync('tests/fixtures/status-sample.html', 'utf8'
   '</body>',
   `<script>
     const row = document.getElementById('solution-5004');
-    row.querySelector('[data-timestamp]').setAttribute('data-timestamp', String(Math.floor(Date.now() / 1000)));
+    const stamp = row.querySelector('[data-timestamp]');
+    stamp.setAttribute('data-timestamp', String(Math.floor(Date.now() / 1000)));
+    // Like Baekjoon, rewrite the relative submit time ("n초 전") on a timer (#39).
+    let seconds = 0;
+    setInterval(() => { stamp.textContent = (++seconds) + '초 전'; }, 300);
   </script></body>`,
 );
 
