@@ -25,6 +25,15 @@ test('starts with a template that does not contain a solution', async ({ page, e
   await expect(page.locator('.cm-content')).not.toContainText('console.log');
 });
 
+test('links to the open-source license notices', async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  const href = await page.getByRole('link', { name: '오픈소스 라이선스' }).getAttribute('href');
+  expect(href).toBe(`chrome-extension://${extensionId}/THIRD_PARTY_NOTICES.txt`);
+  await page.goto(href ?? '');
+  await expect(page.locator('body')).toContainText('오픈소스 라이선스 고지');
+  await expect(page.locator('body')).toContainText('pyodide');
+});
+
 test('runs the sample cases in the sandbox and reports success', async ({ page, extensionId }) => {
   await page.goto(`chrome-extension://${extensionId}/ide.html`);
   await typeCode(page, page, A_PLUS_B);

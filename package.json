@@ -19,6 +19,7 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "licenses": "node scripts/third-party-notices.ts --check",
     "test:watch": "vitest",
     "e2e": "playwright test"
   },
