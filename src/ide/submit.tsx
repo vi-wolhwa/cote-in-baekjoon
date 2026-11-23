@@ -1,26 +1,35 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { findBlockedPatterns } from '@/boj/waf';
 import { requestSubmit, watchJudgeResult, type JudgeResult } from '@/shared/submission';
 
 export type SubmitState =
-  | { phase: 'idle' }
-  | { phase: 'opening' }
-  | { phase: 'waiting' }
+  | { phase: 'idle'; last?: JudgeResult }
+  | { phase: 'opening'; warnings: string[] }
+  | { phase: 'waiting'; warnings: string[] }
   | { phase: 'result'; result: JudgeResult }
   | { phase: 'error'; reason: string };
 
 /** Submission flow on the IDE side (ADR-0002): open the official page, then show its result. */
 export function useSubmit(problemId: number, getCode: () => string, language: 'javascript') {
   const [state, setState] = useState<SubmitState>({ phase: 'idle' });
+  /** Results older than the latest 제출하기 click belong to an earlier submission. */
+  const startedAt = useRef(0);
 
   useEffect(() => {
     if (!problemId) return;
-    return watchJudgeResult(problemId, (result) => setState({ phase: 'result', result }));
+    return watchJudgeResult(problemId, (result) => {
+      if (startedAt.current === 0) setState({ phase: 'idle', last: result });
+      else if (result.updatedAt >= startedAt.current) setState({ phase: 'result', result });
+    });
   }, [problemId]);
 
   const start = async () => {
-    setState({ phase: 'opening' });
-    const res = await requestSubmit({ problemId, language, code: getCode() });
-    setState(res.ok ? { phase: 'waiting' } : { phase: 'error', reason: res.reason });
+    const code = getCode();
+    const warnings = findBlockedPatterns(code);
+    startedAt.current = Date.now();
+    setState({ phase: 'opening', warnings });
+    const res = await requestSubmit({ problemId, language, code });
+    setState(res.ok ? { phase: 'waiting', warnings } : { phase: 'error', reason: res.reason });
   };
 
   return { state, start };
@@ -30,25 +39,56 @@ export function SubmitPanel({ state }: { state: SubmitState }) {
   switch (state.phase) {
     case 'idle':
       return (
-        <p class="out-muted">
-          제출하기를 누르면 백준 제출 페이지가 열리고 언어와 코드가 채워집니다. 백준의 제출 버튼은
-          직접 눌러 주세요.
-        </p>
+        <>
+          <p class="out-muted">
+            제출하기를 누르면 백준 제출 페이지가 열리고 언어와 코드가 채워집니다. 백준의 제출 버튼은
+            직접 눌러 주세요.
+          </p>
+          {state.last && (
+            <>
+              <h3 class="out-heading">지난 제출</h3>
+              <JudgeView result={state.last} />
+            </>
+          )}
+        </>
       );
     case 'opening':
-      return <p class="out-muted">백준 제출 페이지를 여는 중입니다…</p>;
+      return (
+        <>
+          <Warnings items={state.warnings} />
+          <p class="out-muted">백준 제출 페이지를 여는 중입니다…</p>
+        </>
+      );
     case 'waiting':
       return (
-        <p class="out-muted">
-          새 탭의 백준 제출 페이지에서 코드를 확인하고 제출 버튼을 눌러 주세요. 채점이 끝나면 결과가
-          여기에 표시됩니다.
-        </p>
+        <>
+          <Warnings items={state.warnings} />
+          <p class="out-muted">
+            새 탭의 백준 제출 페이지에서 코드를 확인하고 제출 버튼을 직접 눌러 주세요. 채점이 끝나면
+            결과가 여기에 표시됩니다.
+          </p>
+        </>
       );
     case 'error':
       return <p class="out-fail">{state.reason}</p>;
     case 'result':
-      return <JudgeView result={state.result} />;
+      return (
+        <>
+          <h3 class="out-heading">채점을 시작합니다.</h3>
+          <JudgeView result={state.result} />
+        </>
+      );
   }
+}
+
+function Warnings({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <p class="out-fail">
+      코드에 백준 방화벽이 막을 수 있는 문자열이 있습니다: {items.join(', ')}. 주석이나 문자열을
+      바꾼 뒤 제출해 주세요.
+    </p>
+  );
 }
 
 function JudgeView({ result }: { result: JudgeResult }) {
@@ -62,7 +102,6 @@ function JudgeView({ result }: { result: JudgeResult }) {
     .join(', ');
   return (
     <div class="out-report" data-testid="judge">
-      <h3 class="out-heading">채점을 시작합니다.</h3>
       <table class="out-case">
         <tbody>
           <tr>
