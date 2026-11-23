@@ -167,7 +167,11 @@ export interface Exam {
   tags: string[];
   /** The Baekjoon id whose solved problems were left out. */
   excludedSolvedBy?: string;
-  /** The problem the Baekjoon menu's '모의시험' was pressed on. */
+  /**
+   * Problems the user put in by number (the setup form's '포함할 문제'). Exams made before
+   * that list existed may have `include` (one number) instead; both are read.
+   */
+  included?: number[];
   include?: number;
   problems: ExamProblem[];
   /** Problem ids marked '다시 볼 문제'. */
@@ -182,7 +186,7 @@ export function createExam(input: {
   draft: ExamDraft;
   problems: readonly PickedProblem[];
   excludedSolvedBy?: string;
-  include?: number;
+  included?: readonly number[];
 }): Exam {
   const { draft } = input;
   return {
@@ -192,7 +196,7 @@ export function createExam(input: {
     tiers: sortTiers(draft.tiers),
     tags: [...draft.tags],
     ...(input.excludedSolvedBy ? { excludedSolvedBy: input.excludedSolvedBy } : {}),
-    ...(input.include ? { include: input.include } : {}),
+    ...(input.included?.length ? { included: [...input.included] } : {}),
     problems: input.problems.map(({ id, title, level }) => ({ id, title, level })),
     flagged: [],
     submissions: {},
@@ -200,18 +204,23 @@ export function createExam(input: {
 }
 
 /**
- * The problems for a new exam: `include` first if given, then random picks, `count` in all,
- * ordered easiest first like a real test. Undefined when there are not enough.
+ * The problems for a new exam: every included problem, then random picks not already in,
+ * `count` in all, ordered easiest first like a real test. Undefined when there are not
+ * enough random picks, or more included problems than `count` (never start over the count).
  */
 export function pickProblems(
   random: readonly PickedProblem[],
   count: number,
-  include?: PickedProblem,
+  included: readonly PickedProblem[] = [],
 ): PickedProblem[] | undefined {
-  const rest = random.filter((p) => p.id !== include?.id);
-  const need = include ? count - 1 : count;
+  const ids = new Set(included.map((p) => p.id));
+  if (ids.size !== included.length || included.length > count) return undefined;
+  const rest = random.filter(
+    (p, i) => !ids.has(p.id) && random.findIndex((q) => q.id === p.id) === i,
+  );
+  const need = count - included.length;
   if (rest.length < need) return undefined;
-  const picked = [...(include ? [include] : []), ...rest.slice(0, need)];
+  const picked = [...included, ...rest.slice(0, need)];
   return picked
     .map((p, i) => ({ p, i }))
     .sort((a, b) => a.p.level - b.p.level || a.i - b.i)
@@ -423,6 +432,12 @@ export function isExam(v: unknown): v is Exam {
   const ids = new Set(problems.map((p) => p.id));
   if (ids.size !== problems.length) return false;
   if (v.include !== undefined && !ids.has(v.include as number)) return false;
+  if (
+    v.included !== undefined &&
+    !(Array.isArray(v.included) && v.included.every((id) => ids.has(id as number)))
+  ) {
+    return false;
+  }
   if (!Array.isArray(v.flagged) || !v.flagged.every((id) => ids.has(id as number))) return false;
   if (!isRecord(v.submissions)) return false;
   return Object.entries(v.submissions).every(

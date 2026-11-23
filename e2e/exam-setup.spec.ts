@@ -233,7 +233,9 @@ test('the Baekjoon menu opens the setup page with the problem included', async (
   const setup = await opened;
   await expect(setup).toHaveURL(`chrome-extension://${extensionId}/exam.html#setup?include=1000`);
   await expect(setup.getByRole('heading', { name: '모의 시험 만들기' })).toBeVisible();
-  await expect(setup.getByTestId('include')).toHaveText('1000번 문제를 넣고 나머지를 골라요.');
+  // The menu's problem starts the 포함할 문제 list; it can be removed like any other.
+  await expect(setup.getByTestId('included')).toHaveText(['1000번 ×']);
+  await expect(setup.getByRole('button', { name: '1000번 빼기' })).toBeEnabled();
 
   await setup.getByRole('button', { name: '시험 시작' }).click();
   await expect(setup).toHaveURL(new RegExp(`exam.html#[a-z0-9]{8,24}$`));
@@ -241,7 +243,82 @@ test('the Baekjoon menu opens the setup page with the problem included', async (
   const id = new URL(setup.url()).hash.slice(1);
   const stored = (await setup.evaluate((key) => chrome.storage.local.get(key), `exam:${id}`))[
     `exam:${id}`
-  ] as { include: number; problems: { id: number }[] };
-  expect(stored.include).toBe(1000);
+  ] as { included: number[]; problems: { id: number }[] };
+  expect(stored.included).toEqual([1000]);
   expect(stored.problems.map((p) => p.id).sort()).toEqual([1000, 2001, 2002, 2003]);
+});
+
+test('popup: problems to include, never more than 문제 수', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  const queries = await stubSolvedAc(context, [2001, 3000, 2002, 2003]);
+  await openPopupExamTab(page, extensionId);
+  const card = page.getByTestId('include-card');
+  const input = card.getByLabel('포함할 문제 번호');
+  const add = card.getByRole('button', { name: '추가' });
+  // From the popup the list starts empty.
+  await expect(card.getByTestId('included')).toHaveCount(0);
+
+  await input.fill('3000');
+  await add.click();
+  await input.fill('4000');
+  await input.press('Enter');
+  await input.fill('3000');
+  await add.click();
+  await expect(card.getByRole('alert')).toHaveText('3000번은 이미 넣었어요.');
+  await input.fill('10000000');
+  await add.click();
+  await expect(card.getByRole('alert')).toHaveText('1부터 9999999까지의 숫자로 입력해 주세요.');
+  await expect(card.getByTestId('included')).toHaveText(['3000번 ×', '4000번 ×']);
+
+  // 문제 수 2 with two included: adding is off and the count cannot go lower.
+  const minus = page.getByRole('button', { name: '문제 수 줄이기' });
+  await minus.click();
+  await minus.click();
+  await expect(page.getByTestId('count')).toHaveText('2');
+  await expect(minus).toBeDisabled();
+  await expect(minus).toHaveAttribute('title', '포함한 문제보다 적게 할 수 없어요');
+  await expect(input).toBeDisabled();
+  await expect(add).toBeDisabled();
+  await expect(card).toContainText('문제 수를 늘리면 더 추가할 수 있어요');
+
+  // Back to 3 and remove one: one included, two from the search.
+  await page.getByRole('button', { name: '문제 수 늘리기' }).click();
+  await expect(input).toBeEnabled();
+  await card.getByRole('button', { name: '4000번 빼기' }).click();
+  await expect(card.getByTestId('included')).toHaveText(['3000번 ×']);
+  // The list is not saved with the conditions.
+  const draft = await page.evaluate(() => chrome.storage.local.get('ui:exam-draft'));
+  expect(Object.keys(draft['ui:exam-draft'] as object)).not.toContain('included');
+
+  const opened = context.waitForEvent('page');
+  await page.getByRole('button', { name: '시험 시작' }).click();
+  const examPage = await opened;
+  const id = new URL(examPage.url()).hash.slice(1);
+  const stored = (await examPage.evaluate((key) => chrome.storage.local.get(key), `exam:${id}`))[
+    `exam:${id}`
+  ] as { included: number[]; problems: { id: number }[] };
+  expect(stored.included).toEqual([3000]);
+  expect(stored.problems.map((p) => p.id).sort()).toEqual([2001, 2002, 3000]);
+  expect(queries.filter((q) => q.pathname === '/api/v3/problem/show')).toHaveLength(1);
+});
+
+test('popup: only included problems, no search', async ({ page, context, extensionId }) => {
+  const queries = await stubSolvedAc(context, [2001, 2002]);
+  await openPopupExamTab(page, extensionId);
+  const minus = page.getByRole('button', { name: '문제 수 줄이기' });
+  await minus.click();
+  await minus.click();
+  const input = page.getByLabel('포함할 문제 번호');
+  await input.fill('3000');
+  await input.press('Enter');
+  await input.fill('4000');
+  await input.press('Enter');
+  const opened = context.waitForEvent('page');
+  await page.getByRole('button', { name: '시험 시작' }).click();
+  const examPage = await opened;
+  await expect(examPage).toHaveURL(/exam\.html#[a-z0-9]{8,24}$/);
+  expect(queries.map((q) => q.pathname)).toEqual(['/api/v3/problem/show', '/api/v3/problem/show']);
 });

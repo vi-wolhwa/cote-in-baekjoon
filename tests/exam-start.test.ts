@@ -84,10 +84,68 @@ describe('startExam', () => {
 
   it('includes the problem from the Baekjoon menu', async () => {
     const fetcher = solvedAc([1000, 21, 22, 23]);
-    const result = await startExam({ draft: DEFAULT_DRAFT, include: 1000, fetcher });
+    const result = await startExam({ draft: DEFAULT_DRAFT, included: [1000], fetcher });
     if (!result.ok) throw new Error(result.reason);
-    expect(result.exam.include).toBe(1000);
+    expect(result.exam.included).toEqual([1000]);
     expect(result.exam.problems.map((p) => p.id)).toEqual([1000, 21, 22, 23]);
+  });
+
+  it('fills the rest from the search, skipping included problems', async () => {
+    const fetcher = solvedAc([3000, 21, 4000, 22, 23]);
+    const result = await startExam({
+      draft: { ...DEFAULT_DRAFT, count: 4 },
+      included: [3000, 4000],
+      handle: 'tester',
+      fetcher,
+    });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.exam.problems.map((p) => p.id).sort()).toEqual([21, 22, 3000, 4000]);
+    const urls = fetcher.mock.calls.map((c) => new URL(c[0] as string).pathname);
+    expect(urls.filter((u) => u.endsWith('/problem/show'))).toHaveLength(2);
+    expect(urls.filter((u) => u.endsWith('/search/problem'))).toHaveLength(1);
+  });
+
+  it('does not search when the included problems fill the count', async () => {
+    const fetcher = solvedAc([21, 22]);
+    const result = await startExam({
+      draft: { ...DEFAULT_DRAFT, count: 2 },
+      included: [3000, 4000],
+      handle: 'tester',
+      fetcher,
+    });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.exam.problems.map((p) => p.id).sort()).toEqual([3000, 4000]);
+    expect(fetcher.mock.calls.every((c) => (c[0] as string).includes('/problem/show'))).toBe(true);
+    // No search, so no problems were left out for the Baekjoon id.
+    expect(result.exam.excludedSolvedBy).toBeUndefined();
+  });
+
+  it('never starts with more included problems than the count', async () => {
+    const fetcher = solvedAc([21, 22]);
+    const result = await startExam({
+      draft: { ...DEFAULT_DRAFT, count: 1 },
+      included: [3000, 4000],
+      fetcher,
+    });
+    expect(result).toMatchObject({ ok: false, reason: expect.stringContaining('문제 수(1개)') });
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(
+      await startExam({ draft: DEFAULT_DRAFT, included: [3000, 3000], fetcher }),
+    ).toMatchObject({ ok: false, reason: '같은 문제를 두 번 넣었어요.' });
+  });
+
+  it('stops when solved.ac does not know an included problem', async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith('/problem/show')) {
+        const id = Number(u.searchParams.get('problemId'));
+        return id === 9999 ? json({}, 404) : json(item(id, 3));
+      }
+      return json({ count: 4, items: [21, 22, 23, 24].map((id) => item(id)) });
+    });
+    const result = await startExam({ draft: DEFAULT_DRAFT, included: [1000, 9999], fetcher });
+    expect(result).toEqual({ ok: false, reason: '9999번 문제를 찾지 못했어요.' });
+    expect(readExams(await fakeBrowser.storage.local.get(null))).toEqual([]);
   });
 
   it('says how many problems there are when too few match', async () => {
@@ -96,7 +154,7 @@ describe('startExam', () => {
       reason: '조건에 맞는 문제가 2개뿐이에요. 조건을 넓혀 주세요.',
     });
     expect(
-      await startExam({ draft: DEFAULT_DRAFT, include: 1000, fetcher: solvedAc([1000, 5]) }),
+      await startExam({ draft: DEFAULT_DRAFT, included: [1000], fetcher: solvedAc([1000, 5]) }),
     ).toEqual({ ok: false, reason: '조건에 맞는 문제가 2개뿐이에요. 조건을 넓혀 주세요.' });
   });
 
@@ -174,12 +232,12 @@ describe('SetupForm', () => {
       ok: false as const,
       reason: '조건에 맞는 문제가 1개뿐이에요.',
     }));
-    const { root } = mount({ start, include: 1000 });
+    const { root } = mount({ start, initialIncluded: [1000] });
     act(() => button(root, '시험 시작')?.click());
     // Called during the click itself: permissions.request() needs the user's gesture.
     expect(start).toHaveBeenCalledWith({
       draft: { ...DEFAULT_DRAFT, excludeSolved: false },
-      include: 1000,
+      included: [1000],
     });
     await act(async () => {
       await Promise.resolve();
