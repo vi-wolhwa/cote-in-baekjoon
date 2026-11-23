@@ -1,0 +1,21 @@
+name: 작업
+description: 개발팀 내부 작업 (기능 구현, 기술 검증, 설정 등)
+labels: []
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: 목적
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고 사항
