@@ -39,6 +39,14 @@ jobs:
           unzip -q teavm-javac/compiler/build/distributions/dist.zip -d out/dist
           git -C teavm-javac archive --format=tar.gz --prefix=teavm-javac-${{ inputs.commit }}/ \
             -o "$PWD/out/teavm-javac-${{ inputs.commit }}-source.tar.gz" HEAD
+          # The OpenJDK sources the build downloaded and compiled into compiler.wasm (GPLv2 +
+          # Classpath Exception): the parts javac/build.gradle uses, with OpenJDK's license files.
+          JDK_DIR=$(ls -d teavm-javac/javac/build/jdk/jdk25u-*)
+          JDK=$(basename "$JDK_DIR")
+          tar -czf "out/openjdk-${JDK}-javac-source.tar.gz" -C "$(dirname "$JDK_DIR")" \
+            "$JDK/LICENSE" "$JDK/ASSEMBLY_EXCEPTION" "$JDK/ADDITIONAL_LICENSE_INFO" \
+            "$JDK/src/jdk.compiler" "$JDK/src/java.compiler" "$JDK/src/jdk.internal.opt" \
+            "$JDK/src/java.base/share/classes/jdk/internal/jmod" "$JDK/make/langtools/tools"
           (cd out/dist && sha256sum * > ../SHA256SUMS-dist.txt)
           (cd out && sha256sum *.tar.gz > SHA256SUMS-source.txt)
           ls -la out out/dist

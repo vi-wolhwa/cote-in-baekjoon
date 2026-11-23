@@ -63,7 +63,9 @@ const EMBEDDED: Notice[] = [
   {
     name: 'OpenJDK javac (teavm-javac의 compiler.wasm에 포함)',
     license: 'GPL-2.0-only WITH Classpath-exception-2.0',
-    source: 'https://github.com/openjdk/jdk',
+    // The exact sources built into compiler.wasm are attached to this release (GPLv2 §3).
+    source:
+      'https://github.com/vi-wolhwa/cote-in-baekjoon/releases/tag/sources-teavm-javac-b89345a',
     text: licenseFile('OpenJDK.txt'),
   },
 ];

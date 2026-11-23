@@ -84,4 +84,4 @@
 - 단일 목적과 관계없는 목적으로 사용자 데이터를 사용하거나 전송하지 않음
 - 신용도 판단이나 대출 목적으로 사용자 데이터를 사용하거나 전송하지 않음
 
-**개인정보처리방침 URL**: `docs/privacy.md`를 공개 주소로 게시해야 합니다. 저장소가 비공개인 동안에는 쓸 수 없으므로 #44에서 게시 위치를 정합니다(저장소 공개 후 GitHub 페이지, 또는 GitHub Pages).
+**개인정보처리방침 URL**: https://github.com/vi-wolhwa/cote-in-baekjoon/blob/main/docs/privacy.md (저장소 공개 후 확정, 2026-11-24)
