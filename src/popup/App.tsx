@@ -3,13 +3,19 @@
  * Reads the active tab's URL through `activeTab`, granted when the user opens the popup.
  */
 import { useEffect, useMemo, useState } from 'preact/hooks';
+import { DRAFT_KEY, parseDraft, type ExamDraft } from '@/exam/model';
+import { pastExams, runningExamProblems, type PastExam } from '@/exam/results';
+import { examPagePath } from '@/exam/routes';
+import { readExams, readJudges, saveDraft } from '@/exam/storage';
 import { createBackup, summarizeBackup } from '@/shared/backup';
+import { HANDLE_KEY, isHandle } from '@/shared/handle';
 import type { OpenIdeMessage } from '@/shared/messages';
 import { describeBrowser, issueUrl } from '@/shared/report';
 import { BackupTab } from './BackupTab';
+import { ExamTab } from './ExamTab';
 import { HelpTab } from './HelpTab';
 import { HomeTab } from './HomeTab';
-import { BackupIcon, HelpIcon, HomeIcon } from './icons';
+import { BackupIcon, ExamIcon, HelpIcon, HomeIcon } from './icons';
 import {
   bugReportUrl,
   computeStats,
@@ -19,10 +25,11 @@ import {
   recentProblems,
 } from './model';
 
-type Tab = 'home' | 'backup' | 'help';
+type Tab = 'home' | 'exam' | 'backup' | 'help';
 
 const TABS: { id: Tab; label: string; icon: typeof HomeIcon }[] = [
   { id: 'home', label: '홈', icon: HomeIcon },
+  { id: 'exam', label: '모의 시험', icon: ExamIcon },
   { id: 'backup', label: '백업', icon: BackupIcon },
   { id: 'help', label: '도움말', icon: HelpIcon },
 ];
@@ -66,7 +73,22 @@ export function App() {
     load().then(setLoaded, () => setLoaded({ items: {} }));
   }, []);
 
-  const data = useMemo(() => readProblems(loaded?.items ?? {}), [loaded]);
+  const data = useMemo(() => {
+    const items = loaded?.items ?? {};
+    const problems = readProblems(items);
+    // Results of a running mock exam stay hidden until it ends (ADR-0005).
+    for (const id of runningExamProblems(readExams(items), now)) problems.judges.delete(id);
+    return problems;
+  }, [loaded, now]);
+  const exams = useMemo(() => {
+    const items = loaded?.items ?? {};
+    const handle = items[HANDLE_KEY];
+    return {
+      draft: parseDraft(items[DRAFT_KEY]),
+      ...(isHandle(handle) ? { handle } : {}),
+      past: pastExams(readExams(items), readJudges(items), now),
+    };
+  }, [loaded, now]);
   const active = loaded?.active;
   const activeTitle = active ? data.metas.get(active.problemId)?.title : undefined;
 
@@ -111,6 +133,21 @@ export function App() {
             {...(openError ? { openError } : {})}
             onOpenIde={() => void openIde()}
             onOpenProblem={(id) => void openTab(problemUrl(id))}
+          />
+        ) : tab === 'exam' ? (
+          <ExamTab
+            {...exams}
+            onDraft={(draft: ExamDraft) => void saveDraft(draft).catch(() => undefined)}
+            onStarted={(exam) =>
+              void openTab(extensionUrl(examPagePath({ kind: 'exam', id: exam.id })))
+            }
+            onOpenExam={(exam: PastExam) =>
+              void openTab(
+                extensionUrl(
+                  examPagePath({ kind: exam.inProgress ? 'exam' : 'result', id: exam.id }),
+                ),
+              )
+            }
           />
         ) : tab === 'backup' ? (
           <BackupTab

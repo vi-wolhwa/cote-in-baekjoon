@@ -47,6 +47,10 @@ export function BackupTab({
             <dt>설정</dt>
             <dd>{summary.settings}개</dd>
           </div>
+          <div>
+            <dt>모의 시험</dt>
+            <dd>{summary.exams}개</dd>
+          </div>
         </dl>
         <p class="note">확장 프로그램을 삭제하면 이 데이터도 지워져요. 파일로 내보내 두세요.</p>
       </section>

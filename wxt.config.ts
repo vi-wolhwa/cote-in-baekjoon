@@ -50,6 +50,11 @@ export default defineConfig({
     // unlimitedStorage lifts the 10 MB storage.local quota so code for thousands of problems fits.
     // activeTab lets the toolbar popup read the active tab's URL when the user opens it (#79).
     permissions: ['storage', 'unlimitedStorage', 'activeTab'],
+    // The mock exam fetches a problem page from exam.html when the user opens that problem
+    // (ADR-0005). The content scripts already cover these sites, so no new install warning.
+    host_permissions: BOJ_MATCHES,
+    // solved.ac picks exam problems; asked for on the first '시험 시작' (ADR-0005).
+    optional_host_permissions: ['https://solved.ac/*'],
     content_security_policy: {
       // The sandbox page runs user-written code. It has no extension APIs and no network access.
       sandbox:

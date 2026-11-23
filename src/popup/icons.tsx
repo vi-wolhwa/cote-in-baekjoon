@@ -28,6 +28,15 @@ export const HomeIcon = (p: Props) => (
   </Icon>
 );
 
+/** Clipboard with a check: the '모의 시험' tab. */
+export const ExamIcon = (p: Props) => (
+  <Icon {...p}>
+    <path d="M9 4h6v3H9z" />
+    <path d="M9 5.5H6v15h12v-15h-3" />
+    <path d="M9 13.5l2 2 4-4" />
+  </Icon>
+);
+
 export const BackupIcon = (p: Props) => (
   <Icon {...p}>
     <path d="M12 3v12" />
