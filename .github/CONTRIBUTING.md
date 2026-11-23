@@ -94,7 +94,26 @@ Closes #이슈번호
 
 ## 8. 코드 스타일과 테스트
 
-기술 스택 ADR이 확정되면 이 절을 채운다. 다음 항목을 정한다.
-- 린트·포맷 도구
-- 테스트 도구
-- 폴더 구조
+기술 스택은 [ADR-0003](../docs/adr/0003-tech-stack.md)을 따른다.
+
+**코드 스타일**
+- 포맷은 Prettier, 린트는 ESLint(typescript-eslint)로 맞춘다. 커밋 전에 `npm run lint`가 통과해야 한다.
+- TypeScript `strict`를 켠다. `any`는 쓰지 않는다. 경계(백준 DOM, 메시지, 저장소)에서 읽은 값은 검증 함수를 거친다.
+- 파일 하나는 500줄을 넘기지 않는다.
+
+**폴더 구조**
+
+| 경로 | 내용 |
+|---|---|
+| `src/entrypoints/` | WXT 진입점: 콘텐츠 스크립트, `ide`, `sandbox`, 백그라운드 |
+| `src/boj/` | 백준 DOM 파싱, 제출 페이지 자동 입력, 채점 결과 읽기 |
+| `src/runner/` | 코드 실행 엔진(언어별) |
+| `src/ide/` | 풀이 화면 UI |
+| `src/shared/` | 메시지 타입, 저장소, 공용 유틸 |
+| `tests/` | 단위 테스트(Vitest), 백준 HTML 샘플(`tests/fixtures/`) |
+| `e2e/` | Playwright E2E 테스트 |
+
+**테스트**
+- 파서와 실행 엔진은 단위 테스트가 필수다.
+- 백준 HTML 구조 변화를 잡기 위해 실제 문제 페이지 HTML을 `tests/fixtures/`에 저장해 테스트한다.
+- 화면 흐름은 Playwright로 확장을 띄워 확인한다.
