@@ -120,7 +120,7 @@ ide.html ──postMessage──▶ sandbox.html (manifest sandbox, iframe)
 
 **바이너리 출처**
 - teavm-javac는 npm·Maven·GitHub 릴리스로 배포되지 않는다. 지금은 teavm.org 플레이그라운드 빌드(2026-11-24)에 Scanner를 넣은 파일을 `vendor/teavm-javac/`에 두고 `SHA256SUMS`로 고정한다. Scanner 추가는 `node scripts/teavm-classlib/build.ts`로 다시 할 수 있다.
-- 커밋을 고정해 GitHub Actions에서 JDK 21로 빌드하는 작업은 따로 진행한다.
+- 이 파일은 teavm-javac 커밋 `b89345a`를 GitHub Actions(`build-teavm-javac.yml`, JDK 25)로 빌드한 결과와 같다(컴파일러·런타임은 바이트까지 같음, `vendor/teavm-javac/README.md`). 새 버전도 이 워크플로로 만든다.
 
 **라이선스**
 - TeaVM, teavm-javac, 클래스 라이브러리: Apache-2.0. LICENSE·NOTICE를 동봉하고 Scanner 추가 등 수정 사실을 적는다.

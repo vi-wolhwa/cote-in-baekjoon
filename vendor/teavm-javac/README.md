@@ -4,8 +4,11 @@ Java '코드 실행'(#63, ADR-0004)에 쓰는 브라우저용 Java 컴파일러�
 
 ## 출처
 
-- 2026-11-24에 TeaVM 플레이그라운드의 빌드(`https://teavm.org/playground/4/`)에서 받았다. 빌드에 버전 표시가 없다. 당시 teavm-javac는 TeaVM 0.17.0을 쓴다.
-- 소스로 직접 빌드하는 작업은 GitHub Actions 워크플로(`build-teavm-javac.yml`)로 따로 진행한다.
+- 2026-11-24에 TeaVM 플레이그라운드의 빌드(`https://teavm.org/playground/4/`)에서 받았다. 빌드에 버전 표시가 없다.
+- **소스 빌드와 같음을 확인했다.** teavm-javac 커밋 `b89345ad7448692ca06fc5e77dfef96eccdbea88`(TeaVM 0.17.0)을 GitHub Actions 워크플로 `teavm-javac 빌드`(`.github/workflows/build-teavm-javac.yml`, JDK 25)로 빌드한 결과와 비교했다(2026-11-24).
+  - `compiler.wasm`, `compiler.wasm-runtime.js`, `runtime-classlib-teavm.bin`: 바이트까지 같다.
+  - `compile-classlib-teavm.bin`: 해시는 다르지만 1,587개 항목의 이름과 내용이 모두 같다(항목 순서만 다름).
+- 새 버전으로 바꿀 때는 워크플로를 원하는 커밋으로 실행하고, 아티팩트의 네 파일을 덮어쓴 뒤 아래 스크립트를 돌린다. 아티팩트의 소스 묶음은 javac(GPLv2)의 대응 소스로 보관한다.
 
 | 파일 | 내용 | 수정 |
 |---|---|---|
