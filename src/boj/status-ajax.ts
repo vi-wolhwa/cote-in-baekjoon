@@ -52,11 +52,11 @@ const RESULT_NAME_BY_NUMBER: readonly string[] = [
 ];
 
 /** Delays between requests: quick at first, then every 5 seconds. */
-export const POLL_DELAYS_MS = [1000, 1000, 2000, 2000, 3000, 5000];
+export const POLL_DELAYS_MS = [700, 700, 1000, 1000, 1000, 1500, 2000, 3000, 5000];
 /** Give up after this long; the user can still refresh the page. */
 export const POLL_LIMIT_MS = 10 * 60 * 1000;
 /** Start polling only if the page shows no change for this long. */
-export const POLL_GRACE_MS = 3000;
+export const POLL_GRACE_MS = 1000;
 
 export function pollDelay(attempt: number): number {
   return POLL_DELAYS_MS[Math.min(attempt, POLL_DELAYS_MS.length - 1)] ?? 5000;

@@ -1,5 +1,7 @@
 import {
   handleJudgeReport,
+  handleLanguageMissing,
+  handleLanguageMissingQuery,
   handlePendingQuery,
   handleSubmitRequest,
   handleWatchQuery,
@@ -7,6 +9,8 @@ import {
 } from '@/boj/submission-service';
 import {
   isJudgeReportMessage,
+  isLanguageMissingMessage,
+  isLanguageMissingQuery,
   isPendingQueryMessage,
   isSubmitRequestMessage,
   isWatchQueryMessage,
@@ -34,5 +38,7 @@ function route(message: unknown, sender: Browser.runtime.MessageSender): Promise
   if (isPendingQueryMessage(message)) return handlePendingQuery(message, sender);
   if (isWatchQueryMessage(message)) return handleWatchQuery(sender);
   if (isJudgeReportMessage(message)) return handleJudgeReport(message, sender);
+  if (isLanguageMissingMessage(message)) return handleLanguageMissing(message, sender);
+  if (isLanguageMissingQuery(message)) return handleLanguageMissingQuery(sender);
   return null;
 }

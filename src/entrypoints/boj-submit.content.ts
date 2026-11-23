@@ -9,6 +9,7 @@ import {
   FILL_REQUEST_EVENT,
   FILL_RESULT_EVENT,
   MAIN_READY_EVENT,
+  findLanguageSettingsUrl,
   hasInteractiveChallenge,
   isClickable,
   waitForSubmitButton,
@@ -21,6 +22,7 @@ import {
 import { findBlockedPatterns } from '@/boj/waf';
 import {
   isPendingQueryResponse,
+  type LanguageMissingMessage,
   type PendingQueryMessage,
   type PendingSubmission,
 } from '@/shared/submission';
@@ -41,6 +43,9 @@ export default defineContentScript({
     const pending = response.pending;
 
     const result = await requestFill(pending);
+    // The language is not in the user's Baekjoon language list (#59): keep the code and go to
+    // the language settings, which explain the detour and link back here.
+    if (result?.language === 'unavailable' && (await goToLanguageSettings(pending))) return;
     const blockedPatterns = findBlockedPatterns(pending.code);
     if (!pending.autoSubmit) log('자동 제출이 꺼져 있어 직접 제출을 안내합니다.');
     else if (await tryAutoSubmit(result, blockedPatterns)) return;
@@ -101,6 +106,15 @@ async function tryAutoSubmit(
   }
   log('제출 버튼을 누릅니다.');
   submit.click();
+  return true;
+}
+
+async function goToLanguageSettings(pending: PendingSubmission): Promise<boolean> {
+  const message: LanguageMissingMessage = { type: 'cib:language-missing', pending };
+  const reply: unknown = await browser.runtime.sendMessage(message).catch(() => undefined);
+  if (!(reply as { ok?: boolean } | undefined)?.ok) return false;
+  log(`${pending.languageName}이(가) 백준 언어 목록에 없어 언어 설정 페이지로 이동합니다.`);
+  location.assign(findLanguageSettingsUrl(document));
   return true;
 }
 

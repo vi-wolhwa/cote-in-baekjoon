@@ -88,6 +88,45 @@ export interface JudgeReportMessage {
   row: StatusRow;
 }
 
+/**
+ * Submit page content script → background (#59): the language is not in the user's
+ * Baekjoon language list. Keeps the code for when the user comes back from the settings.
+ */
+export interface LanguageMissingMessage {
+  type: 'cib:language-missing';
+  pending: PendingSubmission;
+}
+
+/** Language settings page content script → background (#59). */
+export interface LanguageMissingQuery {
+  type: 'cib:language-missing-query';
+}
+
+export interface LanguageMissingInfo {
+  problemId: number;
+  languageName: string;
+}
+
+export interface LanguageMissingQueryResponse {
+  info: LanguageMissingInfo | null;
+}
+
+export function isLanguageMissingMessage(v: unknown): v is LanguageMissingMessage {
+  return isObject(v) && v.type === 'cib:language-missing' && isPendingSubmission(v.pending);
+}
+
+export function isLanguageMissingQuery(v: unknown): v is LanguageMissingQuery {
+  return isObject(v) && v.type === 'cib:language-missing-query';
+}
+
+export function isLanguageMissingQueryResponse(v: unknown): v is LanguageMissingQueryResponse {
+  if (!isObject(v)) return false;
+  if (v.info === null) return true;
+  return (
+    isObject(v.info) && isProblemId(v.info.problemId) && typeof v.info.languageName === 'string'
+  );
+}
+
 export function isSubmitRequestMessage(v: unknown): v is SubmitRequestMessage {
   return (
     isObject(v) &&
@@ -183,6 +222,8 @@ export const watchKey = (problemId: number) => `cib:watch:${problemId}`;
 export const judgeKey = (problemId: number) => `judge:${problemId}`;
 /** `storage.session`: the popup window opened for submitting a problem (#35). */
 export const submitWindowKey = (problemId: number) => `cib:submit-window:${problemId}`;
+/** `storage.session`: a tab sent to the language settings because a language was missing. */
+export const languageMissingKey = (tabId: number) => `cib:language-missing:${tabId}`;
 
 export type SubmitWindowState = 'open' | 'done' | 'closed';
 
