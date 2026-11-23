@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.2.0...v0.3.0) (2026-11-23)
+
+
+### 기능
+
+* **options:** 코드·테스트 케이스 백업과 복원 ([#68](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/68)) ([9dbfcca](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/9dbfcca421beb799d46fa4700aa94bc639409625))
+* **runner:** Java 실행 엔진 추가 (TeaVM javac) ([#73](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/73)) ([e3c3ba3](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/e3c3ba3119273bd5d1fbb9bdf11f42235b769547))
+* 확장 아이콘 추가 ([#71](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/71)) ([382ccb0](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/382ccb0747941141dabe25869cbf096f04286cff)), closes [#66](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/66)
+
 ## [0.2.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.1.0...v0.2.0) (2026-11-23)
 
 
