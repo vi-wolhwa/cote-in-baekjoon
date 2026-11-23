@@ -13,13 +13,13 @@ export interface EngineInput {
   stdin: string;
   /**
    * URL of the extension's bundled runtimes, ending in `/` (e.g. `chrome-extension://id/runtime/`).
-   * Engines load `pyodide/`, `clang/` and `wasi/` from here; nothing is fetched remotely.
+   * Engines load `pyodide/`, `clang/`, `wasi/` and `teavm/` from here; nothing is fetched remotely.
    */
   runtimeBase: string;
 }
 
 export interface EngineResult extends JsRunResult {
-  /** Compiler output when the program did not compile (C++). */
+  /** Compiler output when the program did not compile (C++, Java). */
   compileError?: string;
 }
 

@@ -13,6 +13,8 @@ export default tseslint.config(
       '.claude-flow/',
       'playwright-report/',
       'test-results/',
+      // Third-party runtime files (teavm-javac), not our code.
+      'vendor/',
     ],
   },
   js.configs.recommended,

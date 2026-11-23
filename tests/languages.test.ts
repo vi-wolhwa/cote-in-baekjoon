@@ -9,6 +9,11 @@ describe('language registry', () => {
     expect(languageInfo('python3')).toMatchObject({ bojId: 28, engine: 'python' });
     expect(languageInfo('pypy3')).toMatchObject({ bojId: 73, engine: 'python' });
     expect(languageInfo('javascript')).toMatchObject({ bojId: 17, engine: 'js' });
+    expect(languageInfo('java11')).toMatchObject({
+      bojId: BOJ_LANGUAGES.java11.id,
+      engine: 'java',
+      fileName: 'Main.java',
+    });
   });
 
   it('lets Python 3 and PyPy3 share saved code', () => {
@@ -26,7 +31,8 @@ describe('language registry', () => {
 
   it('validates language ids', () => {
     expect(isLanguageId('cpp17')).toBe(true);
-    expect(isLanguageId('java11')).toBe(false);
+    expect(isLanguageId('java11')).toBe(true);
+    expect(isLanguageId('kotlin')).toBe(false);
   });
 });
 
@@ -44,10 +50,11 @@ describe('run requests', () => {
   it('accepts every IDE language with a runtime base', () => {
     expect(isRunRequest(base)).toBe(true);
     expect(isRunRequest({ ...base, language: 'cpp17' })).toBe(true);
+    expect(isRunRequest({ ...base, language: 'java11' })).toBe(true);
   });
 
   it('rejects unknown languages and missing runtime base', () => {
-    expect(isRunRequest({ ...base, language: 'java11' })).toBe(false);
+    expect(isRunRequest({ ...base, language: 'kotlin' })).toBe(false);
     expect(isRunRequest({ ...base, runtimeBase: undefined })).toBe(false);
   });
 });

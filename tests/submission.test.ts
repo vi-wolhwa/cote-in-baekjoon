@@ -92,7 +92,8 @@ describe('message guards', () => {
     expect(isSubmitRequestMessage(submitMessage)).toBe(true);
     expect(isSubmitRequestMessage({ ...submitMessage, code: '' })).toBe(false);
     expect(isSubmitRequestMessage({ ...submitMessage, language: 'python3' })).toBe(true);
-    expect(isSubmitRequestMessage({ ...submitMessage, language: 'java11' })).toBe(false);
+    expect(isSubmitRequestMessage({ ...submitMessage, language: 'java11' })).toBe(true);
+    expect(isSubmitRequestMessage({ ...submitMessage, language: 'kotlin' })).toBe(false);
     expect(isSubmitRequestMessage({ ...submitMessage, problemId: -1 })).toBe(false);
     expect(isSubmitRequestMessage({ ...submitMessage, problemId: 1.5 })).toBe(false);
     expect(isSubmitRequestMessage({ ...submitMessage, code: 'x'.repeat(600_000) })).toBe(false);

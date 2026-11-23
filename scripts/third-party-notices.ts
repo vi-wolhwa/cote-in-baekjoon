@@ -22,6 +22,10 @@ export const ALLOWED_LICENSES = [
   'BSD-3-Clause',
   '0BSD',
   'Python-2.0',
+  // Only for OpenJDK javac inside the bundled Java compiler (vendor/teavm-javac): a separate
+  // program the extension runs, not linked into our code. The notice ships the license text,
+  // and the source is available upstream.
+  'GPL-2.0-only WITH Classpath-exception-2.0',
 ];
 
 /**
@@ -48,6 +52,19 @@ const EMBEDDED: Notice[] = [
     license: 'Apache-2.0 WITH LLVM-exception',
     source: 'https://github.com/llvm/llvm-project',
     text: licenseFile('LLVM.txt'),
+  },
+  {
+    // vendor/teavm-javac is not an npm package, so it is listed here.
+    name: 'TeaVM, teavm-javac (Java 컴파일러·실행 환경, 클래스 라이브러리에 java.util.Scanner를 추가해 수정함)',
+    license: 'Apache-2.0',
+    source: 'https://github.com/konsoletyper/teavm-javac',
+    text: licenseFile('TeaVM.txt'),
+  },
+  {
+    name: 'OpenJDK javac (teavm-javac의 compiler.wasm에 포함)',
+    license: 'GPL-2.0-only WITH Classpath-exception-2.0',
+    source: 'https://github.com/openjdk/jdk',
+    text: licenseFile('OpenJDK.txt'),
   },
 ];
 

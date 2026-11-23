@@ -1,0 +1,4 @@
+a62b2494a4eecea2dd6979ce2521c022de5ec0def2d8bf04285f4131aac3a382  compile-classlib-teavm.bin
+f266a67498ca3ac190be2c447e509ca132494feac5061c4c7e8ddc8fc12c6cbd  compiler.wasm
+82975b5e1ee8b97e563974b7906578892a12b1d6c9d7666b93e808884c7ecf91  compiler.wasm-runtime.js
+898bc21849a42acc2fd73ba0ac2b15f372eb84839b4ac91b8d00f8f6f071bfac  runtime-classlib-teavm.bin

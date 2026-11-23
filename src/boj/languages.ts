@@ -13,14 +13,15 @@ export const BOJ_LANGUAGES = {
 
 export type BojLanguageKey = keyof typeof BOJ_LANGUAGES;
 
-/** Languages the IDE can run and submit (M2: JavaScript, Python, C++). */
-export type SubmitLanguage = 'javascript' | 'python3' | 'pypy3' | 'cpp17';
+/** Languages the IDE can run and submit (M2: JavaScript, Python, C++; M3: Java). */
+export type SubmitLanguage = 'javascript' | 'python3' | 'pypy3' | 'cpp17' | 'java11';
 
 export const SUBMIT_LANGUAGES: readonly SubmitLanguage[] = [
   'javascript',
   'python3',
   'pypy3',
   'cpp17',
+  'java11',
 ];
 
 export function isSubmitLanguage(v: unknown): v is SubmitLanguage {

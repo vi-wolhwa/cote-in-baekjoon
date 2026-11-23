@@ -53,6 +53,10 @@ describe('notices for this project', () => {
     expect(names).toEqual(expect.arrayContaining(['pyodide', '@yowasp/clang', 'preact']));
     expect(names.some((n) => n.startsWith('CPython'))).toBe(true);
     expect(names.some((n) => n.startsWith('LLVM'))).toBe(true);
+    expect(names.some((n) => n.startsWith('TeaVM'))).toBe(true);
+    expect(notices.find((n) => n.name.startsWith('OpenJDK javac'))?.license).toBe(
+      'GPL-2.0-only WITH Classpath-exception-2.0',
+    );
     expect(names.some((n) => n.startsWith('@types/'))).toBe(false);
   });
 
@@ -61,5 +65,7 @@ describe('notices for this project', () => {
     expect(text).toContain('Mozilla Public License Version 2.0');
     expect(text).toContain('LLVM Exceptions');
     expect(text).toContain('PYTHON SOFTWARE FOUNDATION LICENSE');
+    expect(text).toContain('"CLASSPATH" EXCEPTION TO THE GPL');
+    expect(text).toContain('developed by Alexey Andreev');
   });
 });
