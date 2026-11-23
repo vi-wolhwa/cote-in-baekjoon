@@ -7,7 +7,7 @@ import { BOJ_LANGUAGES, type SubmitLanguage } from '@/boj/languages';
 export type LanguageId = SubmitLanguage;
 
 /** In-browser engine family; several Baekjoon languages can share one. */
-export type EngineId = 'js' | 'python' | 'cpp';
+export type EngineId = 'js' | 'python' | 'cpp' | 'java';
 
 export interface LanguageInfo {
   id: LanguageId;
@@ -63,6 +63,24 @@ int main() {
     codeGroup: 'python',
     bojId: BOJ_LANGUAGES.pypy3.id,
     starter: PYTHON_STARTER,
+  },
+  {
+    id: 'java11',
+    label: 'Java 11',
+    fileName: 'Main.java',
+    engine: 'java',
+    codeGroup: 'java',
+    bojId: BOJ_LANGUAGES.java11.id,
+    starter: `import java.io.*;
+import java.util.*;
+
+public class Main {
+    public static void main(String[] args) throws IOException {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+    }
+}
+`,
   },
   {
     id: 'javascript',

@@ -33,6 +33,12 @@ const RUNTIMES: { dest: string; from: string; include: (name: string) => boolean
     from: 'node_modules/@bjorn3/browser_wasi_shim/dist',
     include: (n) => n.endsWith('.js'),
   },
+  {
+    // javac + TeaVM (Java, #63). Not on npm: vendored, see vendor/teavm-javac/README.md.
+    dest: 'teavm',
+    from: 'vendor/teavm-javac',
+    include: (n) => /\.(wasm|js|bin)$/.test(n),
+  },
 ];
 
 export default defineConfig({

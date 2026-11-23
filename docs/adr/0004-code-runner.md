@@ -80,6 +80,7 @@ ide.html ──postMessage──▶ sandbox.html (manifest sandbox, iframe)
   |---|---|---|
   | JS + Python | 6.9MB | 약 17MB |
   | JS + Python + C++ | 32MB | 약 119MB |
+  | JS + Python + C++ + Java | 38MB (Java 4.5MB) | 약 127MB |
 
 - 웹스토어 정책상 나중에 내려받을 수 없어 확장에 포함해야 한다.
 - 제품 책임자가 포함하기로 결정했다(2026-11-24).
@@ -91,7 +92,11 @@ ide.html ──postMessage──▶ sandbox.html (manifest sandbox, iframe)
 **구조**
 - 컴파일 워커는 계속 살려 둔다(컴파일러를 데워 둠). 실행 워커는 실행마다 새로 만든다. 시간 초과 때는 실행 워커만 끝내므로 다음 컴파일이 빠르다.
 - 같은 코드는 컴파일을 건너뛴다(예제 여러 개).
-- 컴파일 워커가 오류를 내거나 응답이 없으면 버리고 새로 만들어 한 번 다시 시도한다. Node에서 컴파일러 재사용 시 충돌이 한 번 재현됐기 때문이다(Edge에서는 재현되지 않음).
+- 컴파일 워커가 오류를 내거나 25초 안에 응답이 없으면 버리고 새로 만들어 한 번 다시 시도한다. Node에서 컴파일러 재사용 시 충돌이 한 번 재현됐기 때문이다(Edge에서는 재현되지 않음).
+- 컴파일 도중에 중단(취소, 준비 시간 초과)되면 컴파일 워커도 버린다.
+- 시작 클래스 `__Runner`가 표준 입력을 넣고 `Main.main`을 부른다. 잡히지 않은 예외는 JVM처럼 `Exception in thread "main" …`을 stderr에 쓰고 종료 코드 1로 끝낸다.
+- `package` 선언이 있거나 `Main` 클래스가 없으면 컴파일 전에 안내한다. 스택 초과와 너무 큰 배열은 `StackOverflowError`, `OutOfMemoryError`로 설명한다.
+- 런타임 파일은 `vendor/teavm-javac/`에서 `runtime/teavm/`으로 복사한다.
 
 **TeaVM 클래스 라이브러리의 빈 곳**
 - `java.util.Scanner`가 없다 → 직접 구현해 클래스 라이브러리에 넣는다(빌드 때 한 번).
@@ -114,7 +119,8 @@ ide.html ──postMessage──▶ sandbox.html (manifest sandbox, iframe)
 - javac가 최신이라 백준(Java 11)에서 안 되는 문법이 여기서는 될 수 있다.
 
 **바이너리 출처**
-- teavm-javac는 npm·Maven·GitHub 릴리스로 배포되지 않는다. 커밋을 고정해 GitHub Actions에서 JDK 21로 빌드하고, 결과와 SHA-256을 저장소에 둔다. 검증은 teavm.org 플레이그라운드 빌드로 했다.
+- teavm-javac는 npm·Maven·GitHub 릴리스로 배포되지 않는다. 지금은 teavm.org 플레이그라운드 빌드(2026-11-24)에 Scanner를 넣은 파일을 `vendor/teavm-javac/`에 두고 `SHA256SUMS`로 고정한다. Scanner 추가는 `node scripts/teavm-classlib/build.ts`로 다시 할 수 있다.
+- 이 파일은 teavm-javac 커밋 `b89345a`를 GitHub Actions(`build-teavm-javac.yml`, JDK 25)로 빌드한 결과와 같다(컴파일러·런타임은 바이트까지 같음, `vendor/teavm-javac/README.md`). 새 버전도 이 워크플로로 만든다.
 
 **라이선스**
 - TeaVM, teavm-javac, 클래스 라이브러리: Apache-2.0. LICENSE·NOTICE를 동봉하고 Scanner 추가 등 수정 사실을 적는다.

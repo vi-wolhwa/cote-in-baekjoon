@@ -13,3 +13,4 @@ tests/fixtures/
 .github/ISSUE_TEMPLATE/
 .release-please-manifest.json
 CHANGELOG.md
+vendor/

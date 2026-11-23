@@ -10,6 +10,7 @@ import {
   type EngineFactory,
   type EngineResult,
 } from '@/runner/engine';
+import { createJavaEngine } from '@/runner/java/engine';
 import { createJsEngine } from '@/runner/js/engine';
 import { createPythonEngine } from '@/runner/python/engine';
 import { languageInfo, type EngineId } from '@/shared/languages';
@@ -26,6 +27,7 @@ const FACTORIES: Record<EngineId, EngineFactory> = {
   js: createJsEngine,
   python: createPythonEngine,
   cpp: createCppEngine,
+  java: createJavaEngine,
 };
 
 /** Engines are kept warm between runs (a loaded Python runtime, a ready compiler). */

@@ -8,6 +8,7 @@ import {
   insertTab,
 } from '@codemirror/commands';
 import { cpp } from '@codemirror/lang-cpp';
+import { java } from '@codemirror/lang-java';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
 import {
@@ -93,6 +94,7 @@ function keymapExtension(name: Keymap): Extension {
 function languageExtension(engine: EngineId): Extension {
   if (engine === 'python') return python();
   if (engine === 'cpp') return cpp();
+  if (engine === 'java') return java();
   return javascript();
 }
 
