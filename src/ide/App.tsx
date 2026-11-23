@@ -4,11 +4,15 @@ import { SandboxRunner } from '@/runner/client';
 import { isProblemMessage, type CloseMessage, type ReadyMessage } from '@/shared/messages';
 import { DEFAULT_LANGUAGE, LANGUAGES, languageInfo, type LanguageId } from '@/shared/languages';
 import { DEMO_PROBLEM } from './demo';
+import { applyTheme, DEFAULT_THEME, type Theme } from '@/shared/theme';
 import { ResetDialog, TestCaseDialog } from './dialogs';
 import { createEditor, type EditorHandle } from './editor';
+import { BackArrowIcon } from './icons';
 import { ProblemPane, runBlockReason, runNote } from './ProblemPane';
 import { buildCaseReport, runTimeLimit, summarize, type CaseReport } from './run-report';
 import { RunOutput } from './RunOutput';
+import { SettingsDialog } from './SettingsDialog';
+import { Sidebar } from './Sidebar';
 import { SplitPane } from './SplitPane';
 import * as store from './storage';
 import { SubmitPanel, useSubmit } from './submit';
@@ -23,7 +27,7 @@ const runtimeUrl = () => hookFileUrl('/runtime/');
 const BOJ_ORIGIN = /^https:\/\/(www\.)?acmicpc\.net$/;
 
 type Output = Parameters<typeof RunOutput>[0];
-type Dialog = 'reset' | 'cases' | undefined;
+type Dialog = 'reset' | 'cases' | 'settings' | undefined;
 type Tab = 'run' | 'judge';
 
 export function App() {
@@ -57,6 +61,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const [tab, setTab] = useState<Tab>('run');
   const [saveError, setSaveError] = useState<string>();
   const [language, setLanguage] = useState<LanguageId>(DEFAULT_LANGUAGE);
+  const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
   /** Saved state is loaded and the editor exists; until then the language cannot change. */
   const [ready, setReady] = useState(false);
   /** Latest language for callbacks created once (autosave). */
@@ -91,19 +96,23 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       store.loadSplit(),
       store.loadCases(problem.id),
       store.loadLanguage(),
-    ]).then(async ([km, sp, cs, lang]) => {
+      store.loadTheme(),
+    ]).then(async ([km, sp, cs, lang, th]) => {
       const code = await store.loadCode(problem.id, languageInfo(lang).codeGroup);
       if (disposed || !editorHost.current) return;
       setKeymap(km);
       setSplit(sp);
       setCases(cs);
       setLanguage(lang);
+      setTheme(th);
+      applyTheme(document.documentElement, th);
       languageRef.current = lang;
       saveMeta(lang);
       editor.current = createEditor(editorHost.current, {
         doc: code ?? languageInfo(lang).starter,
         keymap: km,
         engine: languageInfo(lang).engine,
+        theme: th,
         onChange: (text) => {
           clearTimeout(saveTimer.current);
           const group = languageInfo(languageRef.current).codeGroup;
@@ -146,6 +155,13 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     setKeymap(km);
     editor.current?.setKeymap(km);
     void store.saveKeymap(km);
+  };
+
+  const changeTheme = (next: Theme) => {
+    setTheme(next);
+    applyTheme(document.documentElement, next);
+    editor.current?.setTheme(next);
+    void store.saveTheme(next);
   };
 
   const run = async () => {
@@ -228,159 +244,178 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
             오픈소스 라이선스
           </a>
           {embedded && (
-            <button type="button" class="link-button" onClick={close}>
-              백준 문제로 돌아가기
+            <button
+              type="button"
+              class="back-button"
+              title="백준 문제 페이지로 돌아갑니다"
+              onClick={close}
+            >
+              <BackArrowIcon />
+              돌아가기
             </button>
           )}
         </div>
       </nav>
 
-      <header class="titlebar">
-        <h1 class="title">{problem.title}</h1>
-        <div class="title-tools">
-          <div class="keymaps" role="radiogroup" aria-label="에디터 키맵">
-            {store.KEYMAPS.map((km) => (
-              <button
-                key={km}
-                type="button"
-                role="radio"
-                aria-checked={keymap === km}
-                class={keymap === km ? 'active' : ''}
-                onClick={() => changeKeymap(km)}
+      <div class="ide-body">
+        <div class="ide-main">
+          <header class="titlebar">
+            <h1 class="title">{problem.title}</h1>
+            <div class="title-tools">
+              <div class="keymaps" role="radiogroup" aria-label="에디터 키맵">
+                {store.KEYMAPS.map((km) => (
+                  <button
+                    key={km}
+                    type="button"
+                    role="radio"
+                    aria-checked={keymap === km}
+                    class={keymap === km ? 'active' : ''}
+                    onClick={() => changeKeymap(km)}
+                  >
+                    {km}
+                  </button>
+                ))}
+              </div>
+              <select
+                class="language"
+                value={language}
+                aria-label="언어"
+                disabled={running || !ready}
+                onChange={(e) => void changeLanguage(e.currentTarget.value as LanguageId)}
               >
-                {km}
-              </button>
-            ))}
-          </div>
-          <select
-            class="language"
-            value={language}
-            aria-label="언어"
-            disabled={running || !ready}
-            onChange={(e) => void changeLanguage(e.currentTarget.value as LanguageId)}
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </header>
+                {LANGUAGES.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </header>
 
-      <main class="workspace">
-        <SplitPane
-          direction="horizontal"
-          size={split.horizontal}
-          onResize={(h) => setSplit((s) => ({ ...s, horizontal: h }))}
-          onResizeEnd={saveSplit}
-          first={<ProblemPane problem={problem} />}
-          second={
+          <main class="workspace">
             <SplitPane
-              direction="vertical"
-              size={split.vertical}
-              minPx={60}
-              onResize={(v) => setSplit((s) => ({ ...s, vertical: v }))}
+              direction="horizontal"
+              size={split.horizontal}
+              onResize={(h) => setSplit((s) => ({ ...s, horizontal: h }))}
               onResizeEnd={saveSplit}
-              first={
-                <section class="code-section" aria-label="코드 편집">
-                  <div class="code-header">
-                    <div class="file-tab">{info.fileName}</div>
-                    {saveError && (
-                      <p class="save-error" role="alert">
-                        코드를 자동 저장하지 못했습니다. 코드를 따로 복사해 두세요. ({saveError})
-                      </p>
-                    )}
-                  </div>
-                  <div class="editor" ref={editorHost} />
-                </section>
-              }
+              first={<ProblemPane problem={problem} />}
               second={
-                <section class="output-section" aria-label="결과">
-                  <div class="output-tabs" role="tablist">
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={tab === 'run'}
-                      onClick={() => setTab('run')}
-                    >
-                      실행 결과
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={tab === 'judge'}
-                      onClick={() => setTab('judge')}
-                    >
-                      채점 결과
-                    </button>
-                  </div>
-                  <div class="output" role="tabpanel">
-                    {tab === 'run' ? (
-                      <>
-                        {note && <p class="out-note">{note}</p>}
-                        <RunOutput {...output} />
-                      </>
-                    ) : (
-                      <SubmitPanel state={submit.state} />
-                    )}
-                  </div>
-                </section>
+                <SplitPane
+                  direction="vertical"
+                  size={split.vertical}
+                  minPx={60}
+                  onResize={(v) => setSplit((s) => ({ ...s, vertical: v }))}
+                  onResizeEnd={saveSplit}
+                  first={
+                    <section class="code-section" aria-label="코드 편집">
+                      <div class="code-header">
+                        <div class="file-tab">{info.fileName}</div>
+                        {saveError && (
+                          <p class="save-error" role="alert">
+                            코드를 자동 저장하지 못했습니다. 코드를 따로 복사해 두세요. ({saveError}
+                            )
+                          </p>
+                        )}
+                      </div>
+                      <div class="editor" ref={editorHost} />
+                    </section>
+                  }
+                  second={
+                    <section class="output-section" aria-label="결과">
+                      <div class="output-tabs" role="tablist">
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={tab === 'run'}
+                          onClick={() => setTab('run')}
+                        >
+                          실행 결과
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={tab === 'judge'}
+                          onClick={() => setTab('judge')}
+                        >
+                          채점 결과
+                        </button>
+                      </div>
+                      <div class="output" role="tabpanel">
+                        {tab === 'run' ? (
+                          <>
+                            {note && <p class="out-note">{note}</p>}
+                            <RunOutput {...output} />
+                          </>
+                        ) : (
+                          <SubmitPanel state={submit.state} />
+                        )}
+                      </div>
+                    </section>
+                  }
+                />
               }
             />
-          }
+          </main>
+
+          <footer class="button-section">
+            <div class="buttons-left">
+              {problem.id > 0 && (
+                <a
+                  class="btn btn-dark"
+                  href={`https://www.acmicpc.net/board/search/all/problem/${problem.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  질문하기
+                </a>
+              )}
+              <button type="button" class="btn btn-dark" onClick={() => setDialog('cases')}>
+                + 테스트 케이스 추가하기
+                {cases.length > 0 && <span class="btn-badge">{cases.length}</span>}
+              </button>
+            </div>
+            <div class="buttons-right">
+              <button
+                type="button"
+                class="btn btn-dark"
+                onClick={() => setDialog('reset')}
+                disabled={running}
+              >
+                초기화
+              </button>
+              {running ? (
+                <button type="button" class="btn btn-dark" onClick={() => runner.cancel()}>
+                  실행 중지
+                </button>
+              ) : (
+                <button type="button" class="btn btn-dark" onClick={() => void run()}>
+                  코드 실행
+                </button>
+              )}
+              <button
+                type="button"
+                class="btn btn-primary"
+                disabled={running || !problem.id}
+                onClick={() => {
+                  setTab('judge');
+                  void submit.start();
+                }}
+              >
+                제출하기
+              </button>
+            </div>
+          </footer>
+        </div>
+        <Sidebar
+          problemId={problem.id}
+          language={language}
+          onOpenSettings={() => setDialog('settings')}
         />
-      </main>
+      </div>
 
-      <footer class="button-section">
-        <div class="buttons-left">
-          {problem.id > 0 && (
-            <a
-              class="btn btn-outline"
-              href={`https://www.acmicpc.net/board/search/all/problem/${problem.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              질문하기
-            </a>
-          )}
-          <button type="button" class="btn btn-dark" onClick={() => setDialog('cases')}>
-            + 테스트 케이스 추가하기
-            {cases.length > 0 && <span class="btn-badge">{cases.length}</span>}
-          </button>
-        </div>
-        <div class="buttons-right">
-          <button
-            type="button"
-            class="btn btn-dark"
-            onClick={() => setDialog('reset')}
-            disabled={running}
-          >
-            초기화
-          </button>
-          {running ? (
-            <button type="button" class="btn btn-dark" onClick={() => runner.cancel()}>
-              실행 중지
-            </button>
-          ) : (
-            <button type="button" class="btn btn-dark" onClick={() => void run()}>
-              코드 실행
-            </button>
-          )}
-          <button
-            type="button"
-            class="btn btn-primary"
-            disabled={running || !problem.id}
-            onClick={() => {
-              setTab('judge');
-              void submit.start();
-            }}
-          >
-            제출하기
-          </button>
-        </div>
-      </footer>
-
+      {dialog === 'settings' && (
+        <SettingsDialog theme={theme} onTheme={changeTheme} onClose={() => setDialog(undefined)} />
+      )}
       {dialog === 'reset' && <ResetDialog onConfirm={reset} onClose={() => setDialog(undefined)} />}
       {dialog === 'cases' && (
         <TestCaseDialog

@@ -76,7 +76,10 @@ test('rejects a file that is not a backup', async ({ page, extensionId }) => {
 test('opens from the IDE top bar', async ({ page, context, extensionId }) => {
   await page.goto(`chrome-extension://${extensionId}/ide.html`);
   const opened = context.waitForEvent('page');
-  await page.getByRole('button', { name: '백업과 복원' }).click();
+  await page
+    .getByRole('navigation', { name: '경로' })
+    .getByRole('button', { name: '백업과 복원' })
+    .click();
   const options = await opened;
   await expect(options).toHaveURL(`chrome-extension://${extensionId}/options.html`);
 });
