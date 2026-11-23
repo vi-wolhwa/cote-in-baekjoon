@@ -82,7 +82,11 @@ export async function handleSubmitRequest(
     autoSubmit: message.autoSubmit === true,
     createdAt: now,
   };
-  const watch: Watch = { problemId: message.problemId, since: now };
+  const watch: Watch = {
+    problemId: message.problemId,
+    since: now,
+    ...(message.hideResult === true ? { hideResult: true } : {}),
+  };
   // Store first so the new tab can never ask before the code is there.
   await browser.storage.session.set({
     [pendingKey(message.problemId)]: pending,
@@ -180,23 +184,35 @@ export async function handleWatchQuery(
 ): Promise<WatchQueryResponse> {
   if (!isStatusPath(bojPath(sender))) return { watches: [] };
   await removeExpired(now);
+  const watches = await activeWatches(now);
+  const submitWindow = await openSubmitWindowFor(sender.tab?.windowId);
+  const hideResult =
+    submitWindow !== undefined &&
+    watches.some((w) => w.problemId === submitWindow.problemId && w.hideResult === true);
   return {
-    watches: await activeWatches(now),
-    inSubmitWindow: await isOpenSubmitWindow(sender.tab?.windowId),
+    watches,
+    inSubmitWindow: submitWindow !== undefined,
+    ...(hideResult ? { hideResult } : {}),
   };
 }
 
-/** True when `windowId` is a submit popup this extension opened and is still waiting on. */
-async function isOpenSubmitWindow(windowId: number | undefined): Promise<boolean> {
-  if (windowId === undefined) return false;
+/** The submit popup this extension opened in `windowId` and is still waiting on, if any. */
+async function openSubmitWindowFor(
+  windowId: number | undefined,
+): Promise<SubmitWindow | undefined> {
+  if (windowId === undefined) return undefined;
   const all = await browser.storage.session.get(null);
-  return Object.entries(all).some(
-    ([key, value]) =>
+  for (const [key, value] of Object.entries(all)) {
+    if (
       key.startsWith('cib:submit-window:') &&
       isSubmitWindow(value) &&
       value.windowId === windowId &&
-      value.state === 'open',
-  );
+      value.state === 'open'
+    ) {
+      return value;
+    }
+  }
+  return undefined;
 }
 
 export async function handleJudgeReport(
@@ -380,5 +396,9 @@ function isStoredPending(v: unknown): v is StoredPending {
 function isWatch(v: unknown): v is Watch {
   if (typeof v !== 'object' || v === null) return false;
   const w = v as Record<string, unknown>;
-  return typeof w.problemId === 'number' && typeof w.since === 'number';
+  return (
+    typeof w.problemId === 'number' &&
+    typeof w.since === 'number' &&
+    (w.hideResult === undefined || typeof w.hideResult === 'boolean')
+  );
 }

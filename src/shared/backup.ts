@@ -1,11 +1,12 @@
 /**
  * Backup and restore of the data in `storage.local` (#42): code, test cases, judge results,
- * problem meta (#79) and settings. Uninstalling the extension deletes that data, so users can keep a JSON file.
+ * problem meta (#79), mock exams (ADR-0005) and settings. Uninstalling the extension deletes that data, so users can keep a JSON file.
  *
  * Kept free of extension APIs so the parsing and the restore plan can be unit tested. The
  * backup file is untrusted input: every key and value is checked before it is stored.
  */
 import { MAX_CODE_LENGTH } from '@/boj/submit-fill';
+import { DRAFT_KEY, EXAM_KEY, isDraft, isExam } from '@/exam/model';
 import { isProblemMeta } from '@/shared/problem-meta';
 import { isJudgeResult } from '@/shared/submission';
 import { isTheme, THEME_KEY } from '@/shared/theme';
@@ -28,6 +29,8 @@ export interface BackupSummary {
   cases: number;
   results: number;
   settings: number;
+  /** Mock exams (`exam:{id}`, ADR-0005). */
+  exams: number;
 }
 
 /** 'replace': the backup becomes the whole data. 'merge': keep what exists, add the rest. */
@@ -56,6 +59,7 @@ const SETTINGS: Record<string, (v: unknown) => boolean> = {
     isObject(v) && isPercent(v.horizontal) && isPercent(v.vertical) && Object.keys(v).length === 2,
   'ui:language': (v) => typeof v === 'string' && /^[a-z0-9]{1,20}$/.test(v),
   [THEME_KEY]: isTheme,
+  [DRAFT_KEY]: isDraft,
 };
 
 /** Keys older versions wrote; a backup that has them restores without them, silently. */
@@ -64,7 +68,8 @@ const RETIRED_KEYS = new Set(['ui:auto-submit']);
 /**
  * True for keys that belong in a backup. Session-only and internal keys are left out, and so
  * is the sidebar stopwatch/timer (`timer:{id}`): it is transient, and restoring a running
- * timer days later would only show a wrong time.
+ * timer days later would only show a wrong time. The logged-in Baekjoon id (`boj:handle`) is
+ * left out too: the next Baekjoon visit reads it again (ADR-0005).
  */
 export function isBackupKey(key: string): boolean {
   return (
@@ -72,6 +77,7 @@ export function isBackupKey(key: string): boolean {
     CASES_KEY.test(key) ||
     JUDGE_KEY.test(key) ||
     META_KEY.test(key) ||
+    EXAM_KEY.test(key) ||
     key in SETTINGS
   );
 }
@@ -83,6 +89,8 @@ export function isValidEntry(key: string, value: unknown): boolean {
   const judge = JUDGE_KEY.exec(key);
   if (judge) return isJudgeResult(value) && value.problemId === Number(judge[1]);
   if (META_KEY.test(key)) return isProblemMeta(value);
+  const exam = EXAM_KEY.exec(key);
+  if (exam) return isExam(value) && value.id === exam[1];
   const setting = SETTINGS[key];
   return setting ? setting(value) : false;
 }
@@ -130,21 +138,30 @@ export function parseBackup(text: string): ParseResult {
   return { ok: true, items, skipped, exportedAt };
 }
 
-/** "문제 2개 (코드 3개, 테스트 케이스 1개, 채점 결과 1개), 설정 3개" */
+/** "문제 2개 (코드 3개, 테스트 케이스 1개, 채점 결과 1개), 설정 3개", then ", 모의 시험 1개" if any. */
 export function describeSummary(s: BackupSummary): string {
-  return `문제 ${s.problems}개 (코드 ${s.codes}개, 테스트 케이스 ${s.cases}개, 채점 결과 ${s.results}개), 설정 ${s.settings}개`;
+  const exams = s.exams > 0 ? `, 모의 시험 ${s.exams}개` : '';
+  return `문제 ${s.problems}개 (코드 ${s.codes}개, 테스트 케이스 ${s.cases}개, 채점 결과 ${s.results}개), 설정 ${s.settings}개${exams}`;
 }
 
 export function summarizeBackup(items: Record<string, unknown>): BackupSummary {
   const problems = new Set<string>();
-  const summary: BackupSummary = { problems: 0, codes: 0, cases: 0, results: 0, settings: 0 };
+  const summary: BackupSummary = {
+    problems: 0,
+    codes: 0,
+    cases: 0,
+    results: 0,
+    settings: 0,
+    exams: 0,
+  };
   for (const key of Object.keys(items)) {
     const [kind, problem] = key.split(':');
     if (kind === 'code') summary.codes++;
     else if (kind === 'cases') summary.cases++;
     else if (kind === 'judge') summary.results++;
     else if (kind === 'ui') summary.settings++;
-    if (kind !== 'ui' && problem) problems.add(problem);
+    else if (kind === 'exam') summary.exams++;
+    if (kind !== 'ui' && kind !== 'exam' && problem) problems.add(problem);
   }
   summary.problems = problems.size;
   return summary;

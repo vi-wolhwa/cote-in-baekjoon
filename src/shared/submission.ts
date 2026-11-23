@@ -38,6 +38,8 @@ export interface SubmitInput {
   code: string;
   /** Press Baekjoon's submit button after filling (#41, the user opted in). */
   autoSubmit?: boolean;
+  /** Mock exam (ADR-0005): the submit window must not show the judge result. */
+  hideResult?: boolean;
 }
 
 export type SubmitResponse = { ok: true } | { ok: false; reason: string };
@@ -80,6 +82,8 @@ export interface WatchQueryResponse {
   watches: Watch[];
   /** True when the asking page is inside the submit popup the extension opened (#47). */
   inSubmitWindow?: boolean;
+  /** True when that popup is for a mock exam submission: cover the result (ADR-0005). */
+  hideResult?: boolean;
 }
 
 /** Status page content script → background. */
@@ -136,7 +140,8 @@ export function isSubmitRequestMessage(v: unknown): v is SubmitRequestMessage {
     typeof v.code === 'string' &&
     v.code.length > 0 &&
     v.code.length <= MAX_CODE_LENGTH &&
-    (v.autoSubmit === undefined || typeof v.autoSubmit === 'boolean')
+    (v.autoSubmit === undefined || typeof v.autoSubmit === 'boolean') &&
+    (v.hideResult === undefined || typeof v.hideResult === 'boolean')
   );
 }
 
@@ -174,7 +179,8 @@ export function isWatchQueryResponse(v: unknown): v is WatchQueryResponse {
     isObject(v) &&
     Array.isArray(v.watches) &&
     v.watches.every((w) => isObject(w) && isProblemId(w.problemId) && isTimestamp(w.since)) &&
-    (v.inSubmitWindow === undefined || typeof v.inSubmitWindow === 'boolean')
+    (v.inSubmitWindow === undefined || typeof v.inSubmitWindow === 'boolean') &&
+    (v.hideResult === undefined || typeof v.hideResult === 'boolean')
   );
 }
 

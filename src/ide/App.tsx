@@ -10,9 +10,9 @@ import { ResetDialog, TestCaseDialog } from './dialogs';
 import { createEditor, type EditorHandle } from './editor';
 import { BackArrowIcon } from './icons';
 import { ProblemPane, runBlockReason, runNote } from './ProblemPane';
-import { buildCaseReport, runTimeLimit, summarize, type CaseReport } from './run-report';
 import { ideReportUrl } from './report-link';
-import { RunOutput } from './RunOutput';
+import { runCases } from './run-cases';
+import { RunOutput, type RunOutputProps } from './RunOutput';
 import { Sidebar } from './Sidebar';
 import { SplitPane } from './SplitPane';
 import * as store from './storage';
@@ -24,7 +24,7 @@ const runtimeUrl = () => hookFileUrl('/runtime/');
 
 const BOJ_ORIGIN = /^https:\/\/(www\.)?acmicpc\.net$/;
 
-type Output = Parameters<typeof RunOutput>[0];
+type Output = RunOutputProps;
 type Dialog = 'reset' | 'cases' | undefined;
 type Tab = 'run' | 'judge';
 
@@ -174,31 +174,18 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       setOutput({ state: 'message', text: blockReason });
       return;
     }
-    const code = editor.current?.getCode() ?? '';
-    const all = [...problem.samples, ...cases];
-    if (all.length === 0) {
-      setOutput({
-        state: 'message',
-        text: '실행할 테스트 케이스가 없습니다. 테스트 케이스를 추가해 주세요.',
-      });
-      return;
-    }
-    const limit = runTimeLimit(problem.timeLimitMs);
-    const firstLoad = !warmEngines.current.has(info.engine);
     setRunning(true);
-    const reports: CaseReport[] = [];
-    for (const [i, sample] of all.entries()) {
-      setOutput({ state: 'running', done: i, total: all.length, preparing: firstLoad && i === 0 });
-      const response = await runner.run(language, code, sample.input, limit);
-      reports.push(buildCaseReport(i + 1, sample, response, limit, problem.timeLimitMs));
-      if (response.status !== 'cancelled' && response.status !== 'timeout') {
-        warmEngines.current.add(info.engine);
-      }
-      // A compile error is the same for every case: show it once.
-      if (response.status === 'cancelled' || response.status === 'compile-error') break;
-    }
+    const result = await runCases({
+      runner,
+      language,
+      code: editor.current?.getCode() ?? '',
+      cases: [...problem.samples, ...cases],
+      problemLimitMs: problem.timeLimitMs,
+      warmEngines: warmEngines.current,
+      onProgress: setOutput,
+    });
     setRunning(false);
-    setOutput({ state: 'report', report: summarize(reports) });
+    setOutput(result);
   };
 
   const reset = () => {

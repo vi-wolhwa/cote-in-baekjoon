@@ -48,7 +48,7 @@ describe('HelpPage', () => {
     expect(chips.every((c) => c.type === 'button')).toBe(true);
     expect(status(root)?.getAttribute('aria-live')).toBe('polite');
     expect(status(root)?.textContent).toBe('');
-    expect(root.querySelectorAll('[data-testid="report-link"]')).toHaveLength(6);
+    expect(root.querySelectorAll('[data-testid="report-link"]')).toHaveLength(HELP_SECTIONS.length);
   });
 
   it('filters while typing, marks the words and counts the results', () => {

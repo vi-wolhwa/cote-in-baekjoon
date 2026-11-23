@@ -1,13 +1,13 @@
 import { formatElapsed, type CaseReport, type RunReport } from './run-report';
 
-type Props =
+export type RunOutputProps =
   | { state: 'empty' }
   | { state: 'running'; done: number; total: number; preparing?: boolean }
   | { state: 'message'; text: string }
   | { state: 'report'; report: RunReport };
 
 /** "실행 결과" panel body (design spec §6). */
-export function RunOutput(props: Props) {
+export function RunOutput(props: RunOutputProps) {
   if (props.state === 'empty') return <p class="out-muted">실행 결과가 여기에 표시됩니다.</p>;
   if (props.state === 'message') return <p class="out-muted">{props.text}</p>;
   if (props.state === 'running') {

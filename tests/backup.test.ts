@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   backupFileName,
   createBackup,
+  describeSummary,
   isBackupKey,
   parseBackup,
   planRestore,
@@ -58,7 +59,70 @@ describe('createBackup', () => {
       cases: 1,
       results: 1,
       settings: 3,
+      exams: 0,
     });
+  });
+});
+
+describe('mock exam backup (ADR-0005)', () => {
+  const exam = {
+    id: 'abcdefgh12',
+    startedAt: 1_800_000_000_000,
+    durationMs: 60 * 60_000,
+    tiers: ['silver', 'gold'],
+    tags: ['dp'],
+    problems: [{ id: 1000, title: '테스트', level: 7 }],
+    flagged: [1000],
+    submissions: { 1000: { language: 'python3', at: 1_800_000_060_000 } },
+  };
+  const draft = {
+    tiers: ['gold'],
+    tags: [],
+    count: 3,
+    minutes: 90,
+    customMinutes: false,
+    excludeSolved: true,
+  };
+
+  it('keeps exams and the setup draft, never the Baekjoon id', () => {
+    const backup = createBackup({
+      'exam:abcdefgh12': exam,
+      'exam:zzzzzzzz99': exam,
+      'exam:bad': exam,
+      'ui:exam-draft': draft,
+      'boj:handle': 'tester',
+    });
+    expect(Object.keys(backup.items)).toEqual(['exam:abcdefgh12', 'ui:exam-draft']);
+    expect(summarizeBackup(backup.items)).toEqual({
+      problems: 0,
+      codes: 0,
+      cases: 0,
+      results: 0,
+      settings: 1,
+      exams: 1,
+    });
+    expect(describeSummary(summarizeBackup(backup.items))).toBe(
+      '문제 0개 (코드 0개, 테스트 케이스 0개, 채점 결과 0개), 설정 1개, 모의 시험 1개',
+    );
+    expect(isBackupKey('exam:abcdefgh12')).toBe(true);
+    expect(isBackupKey('boj:handle')).toBe(false);
+  });
+
+  it('checks exams in a backup file', () => {
+    const result = parseBackup(
+      JSON.stringify({
+        format: 'cote-in-baekjoon-backup',
+        version: 1,
+        items: {
+          'exam:abcdefgh12': exam,
+          'exam:abcdefgh13': { ...exam, id: 'abcdefgh13', problems: [] },
+          'ui:exam-draft': { ...draft, count: 20 },
+          'boj:handle': 'tester',
+        },
+      }),
+    );
+    expect(result).toMatchObject({ ok: true, skipped: 3 });
+    if (result.ok) expect(Object.keys(result.items)).toEqual(['exam:abcdefgh12']);
   });
 });
 

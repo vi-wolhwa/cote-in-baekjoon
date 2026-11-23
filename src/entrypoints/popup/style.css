@@ -312,11 +312,40 @@ body {
   margin: 6px 4px 4px;
 }
 
+/* 모의 시험 tab: the setup form (setup-form.css) takes these colours. */
+:root {
+  --xf-card: var(--card);
+  --xf-text: var(--text);
+  --xf-strong: var(--strong);
+  --xf-muted: var(--muted);
+  --xf-line: #2c3e50;
+  --xf-hover: var(--card-hover);
+  --xf-accent: var(--accent);
+  --xf-input: var(--page);
+  --xf-off: #3a4b5c;
+  --xf-bad: var(--bad-fg);
+  --xf-info-bg: #16304f;
+}
+.past-score {
+  flex: none;
+  color: var(--strong);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.badge-live {
+  background: #16304f;
+  color: var(--link);
+}
+.past-row .row-chevron {
+  color: var(--muted);
+  display: flex;
+}
+
 /* Bottom tab bar */
 .tabbar {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   background: var(--bar);
   border-top: 1px solid var(--bar-line);
 }
