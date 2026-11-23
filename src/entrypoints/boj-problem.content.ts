@@ -1,4 +1,5 @@
 import { diagnoseProblemPage } from '@/boj/diagnosis';
+import { askCapture, captureProblem } from '@/boj/exam-capture';
 import { insertOpenButton } from '@/boj/open-button';
 import '@/boj/open-button.css';
 import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
@@ -18,9 +19,15 @@ const OVERLAY_ID = 'cib-ide-overlay';
 export default defineContentScript({
   matches: ['https://acmicpc.net/problem/*', 'https://www.acmicpc.net/problem/*'],
   runAt: 'document_idle',
-  main() {
+  async main() {
     // The logged-in Baekjoon id, for the mock exam's '이미 푼 문제 빼기' (ADR-0005).
     void rememberHandle(document);
+    // A background tab the mock exam opened to read this problem: read it, add nothing.
+    const capture = await askCapture();
+    if (capture !== undefined) {
+      await captureProblem(document, location.href, capture);
+      return;
+    }
     // A problem page whose layout changed: say so instead of silently showing no button (#87).
     reportLayoutProblem();
     // In the problem menu between "N번" and "제출", or after the title if the menu is gone.

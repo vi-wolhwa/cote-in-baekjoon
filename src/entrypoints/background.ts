@@ -7,6 +7,19 @@ import {
   handleWatchQuery,
   handleWindowRemoved,
 } from '@/boj/submission-service';
+import {
+  handleCaptureCancel,
+  handleCaptureQuery,
+  handleCaptureRequest,
+  handleCaptureResult,
+  handleCaptureTabRemoved,
+} from '@/exam/capture';
+import {
+  isCaptureCancelMessage,
+  isCaptureQueryMessage,
+  isCaptureRequestMessage,
+  isCaptureResultMessage,
+} from '@/exam/capture-contract';
 import { handleOpenExamSetup } from '@/exam/open-setup';
 import { isOpenExamSetupMessage } from '@/shared/messages';
 import {
@@ -22,6 +35,12 @@ export default defineBackground(() => {
   browser.windows?.onRemoved.addListener((windowId) => {
     handleWindowRemoved(windowId).catch((error: unknown) =>
       console.error('[cib] window cleanup failed', error),
+    );
+  });
+  // A mock exam's background tab closed before its problem was read (ADR-0005).
+  browser.tabs.onRemoved.addListener((tabId) => {
+    handleCaptureTabRemoved(tabId).catch((error: unknown) =>
+      console.error('[cib] capture cleanup failed', error),
     );
   });
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
@@ -43,5 +62,9 @@ function route(message: unknown, sender: Browser.runtime.MessageSender): Promise
   if (isLanguageMissingMessage(message)) return handleLanguageMissing(message, sender);
   if (isLanguageMissingQuery(message)) return handleLanguageMissingQuery(sender);
   if (isOpenExamSetupMessage(message)) return handleOpenExamSetup(message, sender);
+  if (isCaptureRequestMessage(message)) return handleCaptureRequest(message, sender);
+  if (isCaptureCancelMessage(message)) return handleCaptureCancel(message, sender);
+  if (isCaptureQueryMessage(message)) return handleCaptureQuery(sender);
+  if (isCaptureResultMessage(message)) return handleCaptureResult(message, sender);
   return null;
 }

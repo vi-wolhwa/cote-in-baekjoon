@@ -45,3 +45,5 @@ export const examPagePath = (route: ExamRoute) => `/exam.html${routeHash(route)}
 
 /** '다시 풀기' opens the Baekjoon problem page with this hash: the IDE opens by itself. */
 export const PRACTICE_HASH = '#cib-ide';
+
+export const problemPageUrl = (id: number) => `https://www.acmicpc.net/problem/${id}`;

@@ -16,7 +16,6 @@ import {
   isOver,
   recordSubmission,
   remainingMs,
-  setProblemBody,
   toggleFlag,
   type Exam,
 } from './model';
@@ -100,6 +99,7 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
       <div class="ide-body">
         <ProblemWorkspace
           key={problem.id}
+          examId={exam.id}
           problem={problem}
           index={exam.problems.indexOf(problem)}
           flagged={exam.flagged.includes(problem.id)}
@@ -117,7 +117,6 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
           }}
           onFlag={() => change((e) => toggleFlag(e, problem.id))}
           onSubmitted={(lang, at) => change((e) => recordSubmission(e, problem.id, lang, at))}
-          onBody={(body) => change((e) => setProblemBody(e, body))}
         />
         <ExamSidebar remainingMs={remainingMs(exam, now)} theme={theme} onTheme={onTheme} />
       </div>
