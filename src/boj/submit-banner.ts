@@ -232,3 +232,61 @@ export function showAutoSubmitCountdown(doc: Document, delayMs: number): Promise
     });
   });
 }
+
+export const JUDGING_NOTICE_ID = 'cib-judging-notice';
+
+export const JUDGING_MESSAGE =
+  '채점 중입니다. 결과가 나오면 이 창은 자동으로 닫힙니다. 창을 닫지 말고 기다려 주세요.';
+export const JUDGED_MESSAGE = '채점이 끝났습니다. 잠시 뒤 창이 닫히고 풀이 화면으로 돌아갑니다.';
+
+/**
+ * Notice on the status page inside the submit popup (#47): closing the window while judging
+ * would lose the result in the IDE. `finish()` switches it to the "closing soon" message.
+ */
+export function showJudgingNotice(doc: Document): { finish(): void } {
+  doc.getElementById(JUDGING_NOTICE_ID)?.remove();
+  const host = doc.createElement('div');
+  host.id = JUDGING_NOTICE_ID;
+  Object.assign(host.style, {
+    position: 'fixed',
+    top: '12px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: '2147483647',
+    width: 'min(720px, calc(100vw - 32px))',
+  } satisfies Partial<CSSStyleDeclaration>);
+  const root = host.attachShadow({ mode: 'open' });
+  const box = doc.createElement('div');
+  box.setAttribute('role', 'status');
+  box.setAttribute('aria-live', 'polite');
+  const paint = (tone: 'warning' | 'info') => {
+    const colors = COLORS[tone];
+    Object.assign(box.style, {
+      padding: '12px 16px',
+      border: `1px solid ${colors.border}`,
+      borderLeftWidth: '6px',
+      borderRadius: '6px',
+      background: colors.background,
+      color: colors.text,
+      font: '14px/1.6 "Noto Sans KR", "Apple SD Gothic Neo", sans-serif',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+    } satisfies Partial<CSSStyleDeclaration>);
+  };
+  const title = doc.createElement('strong');
+  title.textContent = '코딩테스트 in 백준';
+  title.style.display = 'block';
+  const message = doc.createElement('p');
+  message.className = 'cib-message';
+  message.style.margin = '4px 0 0';
+  message.textContent = JUDGING_MESSAGE;
+  box.append(title, message);
+  paint('warning');
+  root.append(box);
+  doc.body.append(host);
+  return {
+    finish() {
+      message.textContent = JUDGED_MESSAGE;
+      paint('info');
+    },
+  };
+}

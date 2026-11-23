@@ -19,9 +19,11 @@ function setup(answers: unknown[]) {
   const reported: StatusRow[] = [];
   let rows = [waiting];
   const fetchStatus = vi.fn(async () => answers.shift());
+  const onDone = vi.fn();
   const poller = new StatusPoller({
     readRows: () => rows,
     fetchStatus,
+    onDone,
     report: (r) => reported.push(r),
     now: () => clock,
     setTimer: (fn, ms) => timers.push({ fn, at: clock + ms }),
@@ -40,6 +42,7 @@ function setup(answers: unknown[]) {
     poller,
     reported,
     fetchStatus,
+    onDone,
     advance,
     setRows: (r: StatusRow[]) => (rows = r),
     tick: () => poller.tick(),
@@ -114,5 +117,19 @@ describe('StatusPoller', () => {
     t.setClock(POLL_GRACE_MS * 3);
     await t.tick();
     expect(t.reported.at(-1)?.resultCode).toBe('ac');
+  });
+
+  it('calls onDone once when judging is final, not when stopped early', async () => {
+    const t = setup([{ result: 4 }]);
+    t.poller.start();
+    t.setClock(POLL_GRACE_MS);
+    await t.tick();
+    t.poller.stop();
+    expect(t.onDone).toHaveBeenCalledTimes(1);
+
+    const early = setup([]);
+    early.poller.start();
+    early.poller.stop();
+    expect(early.onDone).not.toHaveBeenCalled();
   });
 });

@@ -78,6 +78,8 @@ export interface WatchQueryMessage {
 
 export interface WatchQueryResponse {
   watches: Watch[];
+  /** True when the asking page is inside the submit popup the extension opened (#47). */
+  inSubmitWindow?: boolean;
 }
 
 /** Status page content script → background. */
@@ -132,7 +134,8 @@ export function isWatchQueryResponse(v: unknown): v is WatchQueryResponse {
   return (
     isObject(v) &&
     Array.isArray(v.watches) &&
-    v.watches.every((w) => isObject(w) && isProblemId(w.problemId) && isTimestamp(w.since))
+    v.watches.every((w) => isObject(w) && isProblemId(w.problemId) && isTimestamp(w.since)) &&
+    (v.inSubmitWindow === undefined || typeof v.inSubmitWindow === 'boolean')
   );
 }
 

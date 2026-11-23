@@ -10,6 +10,7 @@ import {
   type StatusRow,
 } from '@/boj/status';
 import { fetchSolutionStatus } from '@/boj/status-ajax';
+import { showJudgingNotice } from '@/boj/submit-banner';
 import { StatusPoller } from '@/boj/status-poller';
 import {
   isWatchQueryResponse,
@@ -39,6 +40,8 @@ export default defineContentScript({
     if (ctx.isInvalid) return;
 
     const watches = response.watches;
+    // Inside the submit popup: ask the user to keep the window open until judging ends (#47).
+    let notice: { finish(): void } | undefined;
     const poller: StatusPoller = new StatusPoller({
       readRows: () => latestRowsForWatches(parseStatusRows(document), watches, username),
       fetchStatus: fetchSolutionStatus,
@@ -47,6 +50,7 @@ export default defineContentScript({
         browser.runtime.sendMessage(message).catch(() => poller.forget(row.problemId));
       },
       showInPage: updateRowText,
+      onDone: () => notice?.finish(),
       log,
     });
 
@@ -66,6 +70,7 @@ export default defineContentScript({
     const limit = setTimeout(stop, OBSERVE_LIMIT_MS);
     ctx.onInvalidated(stop);
 
+    if (response.inSubmitWindow) notice = showJudgingNotice(document);
     poller.start();
     if (poller.isStopped) return stop();
     log('채점 결과를 기다립니다.');
