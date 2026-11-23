@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- Synthetic page that mimics the structure of Baekjoon's /submit form. Not real data. -->
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>제출 (테스트용)</title>
+  </head>
+  <body>
+    <form id="submit_form" method="post" action="/submit/1000">
+      <select id="language" name="language" class="language-select">
+        <option value="84">C++17</option>
+        <option value="93">Java 11</option>
+        <option value="28" selected>Python 3</option>
+        <option value="73">PyPy3</option>
+        <option value="17">node.js</option>
+      </select>
+      <div id="language_chosen" class="chosen-container chosen-container-single">
+        <a class="chosen-single"><span>Python 3</span></a>
+      </div>
+      <textarea id="source" name="source"></textarea>
+      <div class="CodeMirror cm-s-default"><div class="CodeMirror-code"></div></div>
+      <button type="submit" id="submit_button">제출</button>
+    </form>
+  </body>
+</html>

@@ -9,7 +9,12 @@ export const test = base.extend<{ context: BrowserContext; extensionId: string }
   context: async ({}, use) => {
     const context = await chromium.launchPersistentContext('', {
       channel: process.env.PW_CHANNEL ?? 'chromium',
-      args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+        // Tests serve Baekjoon pages with routes; anything unrouted must never reach the site.
+        '--host-resolver-rules=MAP acmicpc.net ~NOTFOUND, MAP *.acmicpc.net ~NOTFOUND',
+      ],
     });
     await use(context);
     await context.close();

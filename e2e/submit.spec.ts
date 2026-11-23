@@ -1,0 +1,126 @@
+import type { BrowserContext } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { expect, test } from './fixtures';
+
+/** The parts of the extension API these tests call from an extension page. */
+declare const chrome: {
+  runtime: { sendMessage(message: unknown): Promise<unknown> };
+  storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
+};
+
+// Synthetic pages only: every Baekjoon request is answered locally or aborted.
+const submitHtml = readFileSync('tests/fixtures/submit-sample.html', 'utf8').replace(
+  '</body>',
+  `<script>
+    window.__cib = { submitted: false, clicked: false };
+    document.getElementById('submit_form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      window.__cib.submitted = true;
+    });
+    document.getElementById('submit_button').addEventListener('click', () => {
+      window.__cib.clicked = true;
+    });
+    // Stand-in for CodeMirror 5, created late like a page script would.
+    setTimeout(() => {
+      let value = '';
+      document.querySelector('.CodeMirror').CodeMirror = {
+        getValue: () => value,
+        setValue: (v) => { value = v; },
+      };
+    }, 300);
+  </script></body>`,
+);
+
+const statusHtml = readFileSync('tests/fixtures/status-sample.html', 'utf8').replace(
+  '</body>',
+  `<script>
+    // Our row was submitted just now; it finishes judging a moment later.
+    const row = document.getElementById('solution-5004');
+    row.querySelector('[data-timestamp]').setAttribute('data-timestamp', String(Math.floor(Date.now() / 1000)));
+    setTimeout(() => {
+      const span = row.querySelector('span.result-text');
+      span.className = 'result-text result-ac';
+      span.setAttribute('data-color', 'ac');
+      span.textContent = '맞았습니다!!';
+      row.querySelector('td.memory').textContent = '9000';
+      row.querySelector('td.time').textContent = '44';
+    }, 800);
+  </script></body>`,
+);
+
+async function routeBaekjoon(context: BrowserContext) {
+  await context.route(/^https:\/\/(www\.)?acmicpc\.net\//, (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/submit/1000') {
+      return route.fulfill({ contentType: 'text/html; charset=utf-8', body: submitHtml });
+    }
+    if (url.pathname === '/status') {
+      return route.fulfill({ contentType: 'text/html; charset=utf-8', body: statusHtml });
+    }
+    return route.abort();
+  });
+}
+
+test('fills the submit page, never submits, and reports the judge result', async ({
+  context,
+  page,
+  extensionId,
+}) => {
+  await routeBaekjoon(context);
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+
+  const code = 'let n = 2;\nwhile (n --> 0) console.log(n);';
+  const opened = context.waitForEvent('page');
+  const response = await page.evaluate(
+    (code) =>
+      chrome.runtime.sendMessage({
+        type: 'cib:submit-request',
+        problemId: 1000,
+        language: 'javascript',
+        code,
+      }),
+    code,
+  );
+  expect(response).toEqual({ ok: true });
+
+  // Playwright routes do not catch the first navigation of a tab the extension creates, and
+  // the fixture makes Baekjoon's host unresolvable, so load the page again once it is ours.
+  const submitPage = await opened;
+  await submitPage.goto('https://acmicpc.net/submit/1000');
+  await expect(
+    submitPage.getByText(
+      '언어와 코드를 채웠습니다. 내용을 확인하고 백준의 제출 버튼을 직접 눌러 주세요.',
+    ),
+  ).toBeVisible();
+  await expect(submitPage.getByText(/방화벽이 막을 수 있는 문자열이 있습니다: -->/)).toBeVisible();
+  expect(await submitPage.locator('select#language').inputValue()).toBe('17');
+  const state = await submitPage.evaluate(() => {
+    const el = document.querySelector('.CodeMirror') as Element & {
+      CodeMirror: { getValue(): string };
+    };
+    const flags = (window as unknown as { __cib: { submitted: boolean; clicked: boolean } }).__cib;
+    return { value: el.CodeMirror.getValue(), ...flags };
+  });
+  expect(state).toEqual({ value: code, submitted: false, clicked: false });
+
+  // The pending code is handed out once: a reload does not refill.
+  await submitPage.reload();
+  await submitPage.waitForTimeout(1000);
+  await expect(submitPage.locator('#cib-submit-banner')).toHaveCount(0);
+
+  // The user submitted on Baekjoon, which redirects to their status page.
+  await submitPage.goto('https://acmicpc.net/status?from_mine=1&problem_id=1000&user_id=tester');
+  await expect
+    .poll(() => page.evaluate(() => chrome.storage.local.get('judge:1000')), { timeout: 10_000 })
+    .toMatchObject({
+      'judge:1000': {
+        problemId: 1000,
+        solutionId: 5004,
+        status: 'done',
+        resultCode: 'ac',
+        resultText: '맞았습니다!!',
+        memoryKb: 9000,
+        timeMs: 44,
+      },
+    });
+});
