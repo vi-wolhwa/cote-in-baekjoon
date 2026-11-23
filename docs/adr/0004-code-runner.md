@@ -58,8 +58,21 @@ ide.html ──postMessage──▶ sandbox.html (manifest sandbox, iframe)
 | 언어 | 런타임 | 측정 (Edge, 2026-11-24) | 한계 |
 |---|---|---|---|
 | Python 3, PyPy3 | Pyodide 314.0.7 (MPL-2.0) | 로드 약 1.5초, 실행은 즉시 | 실행은 CPython 기준. PyPy3 제출은 백준에서 PyPy로 채점된다 |
-| C++17 | @yowasp/clang 21.1.4-3 (LLVM Apache-2.0 with LLVM exception, 패키지 ISC) + browser_wasi_shim 0.4.2 (MIT/Apache-2.0) | 첫 컴파일 약 3.0초, 이후 약 1.9초(`-O2`, `bits/stdc++.h`) | 예외(`throw`/`try`)는 링크 실패라 지원하지 않는다. `bits/stdc++.h`는 직접 제공한다 |
+| C++17 | @yowasp/clang 21.1.4-3 (LLVM Apache-2.0 with LLVM exception, 패키지 ISC) + browser_wasi_shim 0.4.2 (MIT/Apache-2.0) | 첫 실행(로드+컴파일) 3.5~7.7초, 이후 컴파일 약 2.4~2.9초(`bits/stdc++.h`), 실행 0~25ms | 아래 'C++ 세부'를 본다 |
 | Java (M3) | TeaVM 0.13 (Apache-2.0) 후보 | 미측정 | 표준 라이브러리 일부만 지원 |
+
+**C++ 세부 (#51)**
+- 플래그는 `-std=gnu++17 -O2 -fno-exceptions -DONLINE_JUDGE -DBOJ`이고, 링크 스택은 64MiB다.
+- 같은 코드를 다시 실행하면 컴파일을 건너뛴다(예제 여러 개).
+- **예외 미지원**: 포함된 libc++에 예외 런타임이 없다. `throw`/`try`는 컴파일 에러로 알리고, 백준 제출에서는 정상 동작한다고 안내한다.
+- **재귀 깊이 약 1만**
+  - 브라우저 워커의 기본 스택 때문에 재귀는 약 1만 단계까지만 안정적이다.
+  - JSPI(`WebAssembly.promising`)가 있으면 별도 스택에서 실행해 한계를 늘렸다.
+  - 스택 초과 시에는 백준에서는 더 깊이 될 수 있다고 안내한다.
+  - 10만 단계까지 지원하려면 컴파일된 프로그램을 변환해야 해서 후속 과제로 둔다.
+- `bits/stdc++.h`는 wasi-libc++에서 컴파일되는 표준 헤더만 직접 묶었다. `csetjmp`, `csignal`, GNU 전용 헤더(`ext/pb_ds`)는 없다.
+- 미리 컴파일한 헤더(PCH)를 쓰면 컴파일이 약 0.5초로 줄지만 최초 생성에 약 10초가 든다. 후속 과제로 둔다.
+- 0이 아닌 종료 코드는 백준처럼 런타임 에러로 표시한다.
 
 **제외: CheerpJ** — 무료 등급은 CDN 제공(원격 코드)이다. 패키지에 포함하려면 유료 라이선스가 필요하다.
 
