@@ -43,7 +43,7 @@ export function HomeTab(props: HomeProps) {
       )}
 
       <section class="stats" aria-label="기록">
-        <StatTile label="푼 문제" value={stats.submitted} />
+        <StatTile label="제출한 문제" value={stats.submitted} />
         <StatTile label="맞은 문제" value={stats.accepted} />
         <StatTile label="최근 7일" value={stats.lastWeek} />
       </section>

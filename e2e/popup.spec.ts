@@ -77,7 +77,7 @@ test('home: empty state, and the search opens a problem page', async ({
   await expect(page.getByRole('heading', { name: '코테 in 백준' })).toBeVisible();
   await expect(page.getByText(/^v\d+\.\d+\.\d+$/)).toBeVisible();
   await expect(page.getByText('아직 푼 문제가 없어요')).toBeVisible();
-  await expect(page.getByTestId('stat')).toHaveText(['0푼 문제', '0맞은 문제', '0최근 7일']);
+  await expect(page.getByTestId('stat')).toHaveText(['0제출한 문제', '0맞은 문제', '0최근 7일']);
   // The popup is open on its own tab here, not on a problem page: no hero card.
   await expect(page.getByText('지금 보는 문제')).toHaveCount(0);
 
@@ -105,7 +105,7 @@ test('home: stats and recent problems from saved results', async ({
   await openPopup(page, extensionId);
   await seed(page);
 
-  await expect(page.getByTestId('stat')).toHaveText(['3푼 문제', '1맞은 문제', '2최근 7일']);
+  await expect(page.getByTestId('stat')).toHaveText(['3제출한 문제', '1맞은 문제', '2최근 7일']);
   const rows = page.getByTestId('recent');
   await expect(rows).toHaveText([
     /^1000 · A\+B3분 전C\+\+17$/,

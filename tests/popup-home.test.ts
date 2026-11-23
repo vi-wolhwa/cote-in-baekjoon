@@ -81,7 +81,7 @@ describe('HomeTab', () => {
       ],
     });
     const stats = [...root.querySelectorAll('[data-testid="stat"]')].map((s) => s.textContent);
-    expect(stats).toEqual(['2푼 문제', '1맞은 문제', '1최근 7일']);
+    expect(stats).toEqual(['2제출한 문제', '1맞은 문제', '1최근 7일']);
     const rows = [...root.querySelectorAll<HTMLButtonElement>('[data-testid="recent"]')];
     expect(rows.map((r) => r.textContent)).toEqual(['1000 · A+B3분 전C++17', '1001번2일 전']);
     expect(rows[0]?.querySelector('.status-accepted')?.getAttribute('aria-label')).toBe(
