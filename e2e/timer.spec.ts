@@ -104,12 +104,55 @@ test('timer: 30분 by default, quick picks, and 시간 종료 at zero', async ({
   await expect(pop.getByText('시간 종료 · 1분이 지났어요.')).toBeVisible();
   await expect(display).toHaveCSS('color', 'rgb(255, 123, 123)');
   const button = page.getByRole('button', { name: '타이머' });
-  await expect(button).toHaveClass(/is-done/);
+  await expect(page.getByTestId('timer-badge')).toHaveClass(/is-done/);
   await expect(page.getByRole('status').filter({ hasText: '시간 종료' })).toHaveCount(1);
 
   await pop.getByRole('button', { name: '다시 시작' }).click();
   await expect(display).toHaveText('01:00');
-  await expect(button).toHaveClass(/is-running/);
+  await expect(page.getByTestId('timer-badge')).toHaveClass(/is-running/);
+  await expect(button).toHaveCount(1);
+});
+
+test('the popover keeps one height in every mode and state', async ({ page, extensionId }) => {
+  await page.clock.install({ time: new Date('2026-11-24T10:00:00+09:00') });
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  const pop = await openTimer(page);
+  const height = async () => Math.round((await pop.boundingBox())?.height ?? 0);
+  const stopwatch = await height();
+  await pop.getByRole('button', { name: '시작' }).click();
+  expect(await height()).toBe(stopwatch);
+  await pop.getByRole('button', { name: '초기화' }).click();
+  await pop.getByRole('radio', { name: '타이머' }).click();
+  expect(await height()).toBe(stopwatch);
+  await pop.getByRole('textbox', { name: '분' }).fill('0');
+  await expect(pop.getByText('1분에서 9시간 59분 사이로 정해 주세요.')).toBeVisible();
+  expect(await height()).toBe(stopwatch);
+  await pop.getByRole('textbox', { name: '분' }).fill('1');
+  await pop.getByRole('button', { name: '시작' }).click();
+  expect(await height()).toBe(stopwatch);
+  await page.clock.runFor(61_000);
+  await expect(pop.getByText('시간 종료 · 1분이 지났어요.')).toBeVisible();
+  expect(await height()).toBe(stopwatch);
+
+  // The sidebar button keeps its size; the time shows under it.
+  const button = await page.getByRole('button', { name: '타이머' }).boundingBox();
+  expect(button).toMatchObject({ width: 32, height: 32 });
+});
+
+test('the popover opens by itself when the countdown ends', async ({ page, extensionId }) => {
+  await page.clock.install({ time: new Date('2026-11-24T10:00:00+09:00') });
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  const pop = await openTimer(page);
+  await pop.getByRole('radio', { name: '타이머' }).click();
+  await pop.getByRole('textbox', { name: '분' }).fill('1');
+  await pop.getByRole('button', { name: '시작' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: '타이머' })).toHaveCount(0);
+
+  await page.clock.runFor(61_000);
+  const opened = page.getByRole('dialog', { name: '타이머' });
+  await expect(opened).toBeVisible();
+  await expect(opened.getByText('시간 종료 · 1분이 지났어요.')).toBeVisible();
 });
 
 test('the timer survives closing the IDE and reloading the problem page', async ({
@@ -153,10 +196,7 @@ test('the popover follows the light theme', async ({ page, extensionId }) => {
   await expect(pop).toHaveCSS('border-top-color', 'rgb(23, 35, 52)');
   await page.keyboard.press('Escape');
 
-  await page.getByRole('button', { name: '설정' }).click();
-  const settings = page.getByRole('dialog', { name: '설정' });
-  await settings.getByRole('radio', { name: 'Light' }).check();
-  await settings.getByRole('button', { name: '닫기', exact: true }).click();
+  await page.getByRole('button', { name: '라이트 테마로 바꾸기' }).click();
 
   pop = await openTimer(page);
   await expect(pop).toHaveCSS('background-color', 'rgb(255, 255, 255)');
