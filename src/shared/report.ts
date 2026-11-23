@@ -22,6 +22,8 @@ export interface ReportContext {
   problemId?: number;
   /** Language label shown in the IDE, e.g. "Java 11". */
   language?: string;
+  /** Fills "무엇이 잘못되었나요?" (bug form only), e.g. a self-diagnosis line (#87). */
+  details?: string;
 }
 
 /** The issue form URL with the known fields filled in (form field ids are the keys). */
@@ -32,6 +34,7 @@ export function issueUrl(kind: IssueKind, context: ReportContext): string {
     if (context.problemId) params.set('problem', String(context.problemId));
     if (context.language) params.set('language', context.language);
   }
+  if (kind === 'bug' && context.details) params.set('what', context.details);
   return `${REPO_URL}/issues/new?${params.toString()}`;
 }
 

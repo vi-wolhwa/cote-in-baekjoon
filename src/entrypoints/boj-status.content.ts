@@ -9,6 +9,8 @@ import {
   parseStatusRows,
   type StatusRow,
 } from '@/boj/status';
+import { diagnoseStatusPage } from '@/boj/diagnosis';
+import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
 import { fetchSolutionStatus } from '@/boj/status-ajax';
 import { showJudgingNotice } from '@/boj/submit-banner';
 import { StatusPoller } from '@/boj/status-poller';
@@ -26,12 +28,20 @@ export default defineContentScript({
   matches: ['https://acmicpc.net/status*', 'https://www.acmicpc.net/status*'],
   runAt: 'document_idle',
   async main(ctx) {
-    const table = document.querySelector('#status-table');
-    if (!table) return;
-
     const query: WatchQueryMessage = { type: 'cib:watch-query' };
     const response: unknown = await browser.runtime.sendMessage(query).catch(() => undefined);
     if (!isWatchQueryResponse(response) || response.watches.length === 0) return;
+    // A result is awaited but the table cannot be read: the layout changed (#87).
+    const layoutProblem = diagnoseStatusPage(document, parseStatusRows(document).length);
+    if (layoutProblem) {
+      log(`페이지 구조 문제: ${layoutProblem.missing.join(', ')}`);
+      showDiagnosisNotice(document, layoutProblem, {
+        version: browser.runtime.getManifest().version,
+        problemId: response.watches[0]?.problemId,
+      });
+    }
+    const table = document.querySelector('#status-table');
+    if (!table) return;
     const username = findLoggedInUser(document, location.href);
     if (!username) {
       log('로그인한 사용자를 찾지 못해 채점 결과를 전달하지 않습니다.');

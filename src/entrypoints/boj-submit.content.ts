@@ -4,6 +4,8 @@
  * user opted in to auto-submit (#41) it presses that button for them after a short,
  * cancellable countdown. Filling itself happens in boj-submit-main.content.ts.
  */
+import { diagnoseSubmitButton, diagnoseSubmitFill, type Diagnosis } from '@/boj/diagnosis';
+import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
 import { copyText, showAutoSubmitCountdown, showSubmitBanner } from '@/boj/submit-banner';
 import {
   FILL_REQUEST_EVENT,
@@ -46,9 +48,12 @@ export default defineContentScript({
     // The language is not in the user's Baekjoon language list (#59): keep the code and go to
     // the language settings, which explain the detour and link back here.
     if (result?.language === 'unavailable' && (await goToLanguageSettings(pending))) return;
+    // The form changed so it could not be filled: tell the user and offer a report (#87).
+    const fillProblem = diagnoseSubmitFill(result);
+    if (fillProblem) reportLayoutProblem(fillProblem, pending.problemId);
     const blockedPatterns = findBlockedPatterns(pending.code);
     if (!pending.autoSubmit) log('자동 제출이 꺼져 있어 직접 제출을 안내합니다.');
-    else if (await tryAutoSubmit(result, blockedPatterns)) return;
+    else if (await tryAutoSubmit(result, blockedPatterns, pending.problemId)) return;
 
     const copied = result?.code === 'ok' ? false : await copyText(pending.code);
     showSubmitBanner(document, {
@@ -75,6 +80,7 @@ const SUBMIT_BUTTON_WAIT_MS = 10_000;
 async function tryAutoSubmit(
   result: FillResult | undefined,
   blockedPatterns: string[],
+  problemId: number,
 ): Promise<boolean> {
   if (result?.code !== 'ok' || result.language !== 'ok') {
     log('언어나 코드를 다 채우지 못해 자동 제출하지 않습니다.');
@@ -94,6 +100,8 @@ async function tryAutoSubmit(
   const submit = await waitForSubmitButton(document, SUBMIT_BUTTON_WAIT_MS);
   if (!submit) {
     log('제출 버튼이 준비되지 않아 자동 제출하지 않습니다.');
+    // A human check can appear while waiting; only a missing button is a layout problem.
+    if (!hasInteractiveChallenge(document)) reportLayoutProblem(diagnoseSubmitButton(), problemId);
     return false;
   }
   if (!(await showAutoSubmitCountdown(document, AUTO_SUBMIT_DELAY_MS))) {
@@ -116,6 +124,14 @@ async function goToLanguageSettings(pending: PendingSubmission): Promise<boolean
   log(`${pending.languageName}이(가) 백준 언어 목록에 없어 언어 설정 페이지로 이동합니다.`);
   location.assign(findLanguageSettingsUrl(document));
   return true;
+}
+
+function reportLayoutProblem(diagnosis: Diagnosis, problemId: number) {
+  log(`페이지 구조 문제: ${diagnosis.missing.join(', ')}`);
+  showDiagnosisNotice(document, diagnosis, {
+    version: browser.runtime.getManifest().version,
+    problemId,
+  });
 }
 
 function log(message: string) {
