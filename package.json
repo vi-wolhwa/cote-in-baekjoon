@@ -31,7 +31,10 @@
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.15",
     "@lezer/highlight": "1.2.5",
+    "@replit/codemirror-emacs": "6.1.0",
+    "@replit/codemirror-vim": "6.4.0",
     "dompurify": "3.4.17",
+    "mathjax-full": "3.2.2",
     "preact": "11.2.0"
   },
   "devDependencies": {

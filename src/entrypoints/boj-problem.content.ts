@@ -1,5 +1,5 @@
 import { parseProblem } from '@/boj/problem';
-import { isCloseMessage, type ProblemMessage } from '@/shared/messages';
+import { isCloseMessage, isReadyMessage, type ProblemMessage } from '@/shared/messages';
 
 const BUTTON_ID = 'cib-open-ide';
 const OVERLAY_ID = 'cib-ide-overlay';
@@ -10,7 +10,9 @@ export default defineContentScript({
   main() {
     const title = document.querySelector('#problem_title');
     if (!title || document.getElementById(BUTTON_ID)) return;
-    title.insertAdjacentElement('afterend', createButton());
+    // Place the button at the end of the title line, after Baekjoon's problem labels.
+    const heading = title.closest('h1, h2, h3') ?? title.parentElement ?? title;
+    heading.append(createButton());
   },
 });
 
@@ -58,19 +60,23 @@ function openIde() {
   } satisfies Partial<CSSStyleDeclaration>);
 
   const previousOverflow = document.documentElement.style.overflow;
+  // The frame's origin is the extension's fixed id even when src uses a dynamic URL.
+  const ideOrigin = `chrome-extension://${browser.runtime.id}`;
+  const sendProblem = () => {
+    const message: ProblemMessage = { type: 'cib:problem', problem };
+    frame.contentWindow?.postMessage(message, ideOrigin);
+  };
   const onMessage = (event: MessageEvent) => {
-    if (event.source !== frame.contentWindow || !isCloseMessage(event.data)) return;
-    window.removeEventListener('message', onMessage);
-    frame.remove();
-    document.documentElement.style.overflow = previousOverflow;
+    if (event.source !== frame.contentWindow) return;
+    if (isReadyMessage(event.data)) {
+      sendProblem();
+    } else if (isCloseMessage(event.data)) {
+      window.removeEventListener('message', onMessage);
+      frame.remove();
+      document.documentElement.style.overflow = previousOverflow;
+    }
   };
   window.addEventListener('message', onMessage);
-
-  frame.addEventListener('load', () => {
-    const message: ProblemMessage = { type: 'cib:problem', problem };
-    // The frame's origin is the extension's fixed id even when src uses a dynamic URL.
-    frame.contentWindow?.postMessage(message, `chrome-extension://${browser.runtime.id}`);
-  });
 
   document.documentElement.style.overflow = 'hidden';
   document.body.append(frame);

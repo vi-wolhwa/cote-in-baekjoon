@@ -5,20 +5,36 @@
  */
 import JsWorker from '@/runner/js/worker?worker&inline';
 import type { JsRunResult } from '@/runner/js/execute';
-import { isRunRequest, type RunRequest, type RunResponse } from '@/shared/messages';
+import {
+  isCancelRequest,
+  isRunRequest,
+  type RunRequest,
+  type RunResponse,
+} from '@/shared/messages';
 
 const MAX_TIME_LIMIT_MS = 10_000;
 
+/** Running programs, so a cancel request can stop them. */
+const active = new Map<number, () => void>();
+
 window.addEventListener('message', (event) => {
-  // Only the IDE page that embeds this sandbox may ask it to run code.
-  if (event.source !== window.parent || !isRunRequest(event.data)) return;
-  run(event.data);
+  // Only the IDE page that embeds this sandbox may talk to it.
+  if (event.source !== window.parent) return;
+  if (isRunRequest(event.data)) run(event.data);
+  else if (isCancelRequest(event.data)) for (const cancel of [...active.values()]) cancel();
 });
 
 function run(req: RunRequest) {
   const worker = new JsWorker();
   const started = performance.now();
-  const reply = (status: RunResponse['status'], result?: JsRunResult) => {
+  let done = false;
+
+  const finish = (status: RunResponse['status'], result?: JsRunResult) => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    worker.terminate();
+    active.delete(req.id);
     const response: RunResponse = {
       type: 'cib:run-result',
       id: req.id,
@@ -30,23 +46,17 @@ function run(req: RunRequest) {
   };
 
   const timer = setTimeout(
-    () => {
-      worker.terminate();
-      reply('timeout');
-    },
+    () => finish('timeout'),
     Math.min(Math.max(req.timeLimitMs, 100), MAX_TIME_LIMIT_MS),
   );
+  active.set(req.id, () => finish('cancelled'));
 
   worker.onmessage = (event: MessageEvent<JsRunResult>) => {
-    clearTimeout(timer);
-    worker.terminate();
     const r = event.data;
-    reply(r.outputLimitExceeded ? 'output-limit' : r.error ? 'error' : 'ok', r);
+    finish(r.outputLimitExceeded ? 'output-limit' : r.error ? 'error' : 'ok', r);
   };
   worker.onerror = (event) => {
-    clearTimeout(timer);
-    worker.terminate();
-    reply('error', {
+    finish('error', {
       stdout: '',
       stderr: '',
       exitCode: 1,

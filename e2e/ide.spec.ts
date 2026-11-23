@@ -14,7 +14,12 @@ test('stops an infinite loop with a timeout', async ({ page, extensionId }) => {
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.type('while (true) {}');
   await page.getByRole('button', { name: '코드 실행' }).click();
-  await expect(page.getByTestId('case').first()).toContainText('시간 초과', { timeout: 15_000 });
+  await expect(page.getByTestId('case').first()).toContainText(
+    '초를 초과하여 실행이 중단되었습니다',
+    {
+      timeout: 15_000,
+    },
+  );
 });
 
 test('user code cannot reach the network from the sandbox', async ({ page, extensionId }) => {
@@ -40,7 +45,9 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   await page.goto('https://acmicpc.net/problem/1000');
   await page.getByRole('button', { name: '코테 화면으로 풀기' }).click();
   const ide = page.frameLocator('#cib-ide-overlay');
-  await expect(ide.getByText('1000번 · 테스트용 덧셈')).toBeVisible();
-  await ide.getByRole('button', { name: '닫기' }).click();
+  await expect(ide.getByRole('heading', { name: '테스트용 덧셈' })).toBeVisible();
+  await ide.getByRole('button', { name: '코드 실행' }).click();
+  await expect(ide.getByTestId('summary')).toHaveText('2개 중 2개 성공');
+  await ide.getByRole('button', { name: '백준 문제로 돌아가기' }).click();
   await expect(page.locator('#cib-ide-overlay')).toHaveCount(0);
 });

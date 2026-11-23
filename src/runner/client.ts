@@ -1,4 +1,9 @@
-import { isRunResponse, type RunRequest, type RunResponse } from '@/shared/messages';
+import {
+  isRunResponse,
+  type CancelRequest,
+  type RunRequest,
+  type RunResponse,
+} from '@/shared/messages';
 
 /**
  * IDE-side handle to the sandbox page. Creates one hidden sandbox iframe and
@@ -41,5 +46,11 @@ export class SandboxRunner {
       // The request carries only user code and sample input.
       this.frame.contentWindow?.postMessage(request, '*');
     });
+  }
+
+  /** Stops every running program; their run() calls resolve with status 'cancelled'. */
+  cancel() {
+    const request: CancelRequest = { type: 'cib:cancel' };
+    this.frame.contentWindow?.postMessage(request, '*');
   }
 }
