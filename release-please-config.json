@@ -6,12 +6,30 @@
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "changelog-sections": [
-        { "type": "feat", "section": "기능" },
-        { "type": "fix", "section": "버그 수정" },
-        { "type": "perf", "section": "성능" },
-        { "type": "docs", "section": "문서", "hidden": true },
-        { "type": "chore", "section": "기타", "hidden": true }
-      ]
+        {
+          "type": "feat",
+          "section": "기능"
+        },
+        {
+          "type": "fix",
+          "section": "버그 수정"
+        },
+        {
+          "type": "perf",
+          "section": "성능"
+        },
+        {
+          "type": "docs",
+          "section": "문서",
+          "hidden": true
+        },
+        {
+          "type": "chore",
+          "section": "기타",
+          "hidden": true
+        }
+      ],
+      "initial-version": "0.1.0"
     }
   }
 }
