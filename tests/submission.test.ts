@@ -99,6 +99,8 @@ describe('message guards', () => {
     expect(isSubmitRequestMessage({ ...submitMessage, code: 'x'.repeat(600_000) })).toBe(false);
     expect(isSubmitRequestMessage({ ...submitMessage, autoSubmit: true })).toBe(true);
     expect(isSubmitRequestMessage({ ...submitMessage, autoSubmit: 'yes' })).toBe(false);
+    expect(isSubmitRequestMessage({ ...submitMessage, hideResult: true })).toBe(true);
+    expect(isSubmitRequestMessage({ ...submitMessage, hideResult: 1 })).toBe(false);
   });
 
   it('validates the other messages', () => {
@@ -335,6 +337,23 @@ describe('submit popup window', () => {
     await expect(handleWatchQuery(statusSender, NOW + 1000)).resolves.toMatchObject({
       inSubmitWindow: false,
     });
+  });
+
+  it('asks the submit popup to cover the result of a mock exam submission (ADR-0005)', async () => {
+    mockPopup();
+    await handleSubmitRequest({ ...submitMessage, hideResult: true }, ideSender, NOW);
+    const answer = await handleWatchQuery(popupSender, NOW + 1000);
+    expect(answer).toMatchObject({
+      inSubmitWindow: true,
+      hideResult: true,
+      watches: [{ problemId: 1000, since: NOW, hideResult: true }],
+    });
+    expect(isWatchQueryResponse(answer)).toBe(true);
+    // Outside the popup the page is not covered.
+    expect(await handleWatchQuery(statusSender, NOW + 1000)).not.toHaveProperty('hideResult');
+    // A practice submission of the same problem replaces the watch: nothing to hide.
+    await handleSubmitRequest(submitMessage, ideSender, NOW + 2000);
+    expect(await handleWatchQuery(popupSender, NOW + 3000)).not.toHaveProperty('hideResult');
   });
 });
 

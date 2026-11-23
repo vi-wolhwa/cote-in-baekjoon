@@ -52,3 +52,35 @@ export const BackArrowIcon = () => (
     <path d="M19 12H5M11 6l-6 6 6 6" />
   </Icon>
 );
+
+/** '다시 볼 문제' in the mock exam. */
+export const FlagIcon = ({ size = 16 }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M6 21V4M6 4h11l-2.5 4L17 12H6" />
+  </Icon>
+);
+
+export const CheckIcon = ({ size = 14 }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </Icon>
+);
+
+export const CrossIcon = ({ size = 14 }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </Icon>
+);
+
+export const DashIcon = ({ size = 14 }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M7 12h10" />
+  </Icon>
+);
+
+/** Hourglass for the exam's remaining time. */
+export const HourglassIcon = () => (
+  <Icon>
+    <path d="M7 3h10M7 21h10M8 3c0 4 4 6 4 9s-4 5-4 9M16 3c0 4-4 6-4 9s4 5 4 9" />
+  </Icon>
+);

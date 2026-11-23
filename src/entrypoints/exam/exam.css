@@ -1,0 +1,366 @@
+/*
+ * Mock exam pages (exam.html, docs/design/ide-spec.md §8). Builds on the IDE's tokens in
+ * ../ide/style.css, so the dark and light themes follow the same switch.
+ */
+:root {
+  --exam-accent: #5aa2ff;
+  --exam-danger: #ff7b7b;
+  --exam-flag: #ffc857;
+  --exam-card: #202b3d;
+  --exam-current-bg: #16304f;
+  --ok-fg: #5dd39e;
+  --ok-bg: #12372a;
+  --bad-fg: #ff7a85;
+  --bad-bg: #3a1e23;
+  --none-fg: #98a8b9;
+  --none-bg: #202b3d;
+
+  /* Setup form (setup-form.css) */
+  --xf-card: #202b3d;
+  --xf-text: #b2c0cc;
+  --xf-strong: #ffffff;
+  --xf-muted: #98a8b9;
+  --xf-line: #44576c;
+  --xf-hover: #2c3d4f;
+  --xf-accent: #0078ff;
+  --xf-input: #263747;
+  --xf-off: #44576c;
+  --xf-bad: #ff7b7b;
+  --xf-info-bg: #16304f;
+}
+:root[data-theme='light'] {
+  --exam-accent: #0053f4;
+  --exam-danger: #d32f2f;
+  --exam-flag: #a15c00;
+  --exam-card: #f7f7fb;
+  --exam-current-bg: #e8f1ff;
+  --ok-fg: #137333;
+  --ok-bg: #e6f4ea;
+  --bad-fg: #c5221f;
+  --bad-bg: #fdecea;
+  --none-fg: #5f7f90;
+  --none-bg: #e9ecf3;
+
+  --xf-card: #f7f7fb;
+  --xf-text: #263747;
+  --xf-strong: #263747;
+  --xf-muted: #5f7f90;
+  --xf-line: #d7e2eb;
+  --xf-hover: #e9ecf3;
+  --xf-accent: #0053f4;
+  --xf-input: #ffffff;
+  --xf-off: #c9d1db;
+  --xf-bad: #d32f2f;
+  --xf-info-bg: #e8f1ff;
+}
+:root[data-theme='light'] .xf-start {
+  background: #0078ff;
+  color: #ffffff;
+}
+:root[data-theme='light'] .xf-start:hover:not(:disabled) {
+  background: #0053f4;
+}
+
+/* Top bar: the hint and the red '시험 종료'. */
+.exam-hint {
+  color: var(--top-text);
+  font-size: 14px;
+}
+.end-button {
+  padding: 4px 14px;
+  border: 1px solid #d32f2f;
+  border-radius: 4px;
+  background: #d32f2f;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  cursor: pointer;
+}
+.end-button:hover:not(:disabled) {
+  background: #b71c1c;
+  border-color: #b71c1c;
+}
+.end-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn-danger {
+  background: #d32f2f;
+  color: #ffffff;
+}
+.btn-danger:hover {
+  background: #b71c1c;
+}
+
+/* Problem number strip */
+.exam-strip {
+  flex: none;
+  padding: 8px 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--line);
+}
+.exam-strip ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.strip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 40px;
+  height: 32px;
+  padding: 0 10px;
+  justify-content: center;
+  border: 1px solid var(--chip-border);
+  border-radius: 16px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.strip-item:hover {
+  background: var(--icon-hover-bg);
+}
+.strip-item.is-current {
+  border-color: var(--exam-accent);
+  background: var(--exam-current-bg);
+  color: var(--text-strong);
+}
+.strip-mark {
+  display: inline-flex;
+}
+.strip-submitted {
+  color: var(--exam-accent);
+}
+.strip-flagged {
+  color: var(--exam-flag);
+}
+
+/* Title row */
+.exam-title-index {
+  margin-right: 8px;
+  color: var(--exam-accent);
+  font-weight: 700;
+}
+.flag-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--chip-border);
+  border-radius: 4px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.flag-button.is-on {
+  border-color: var(--exam-flag);
+  color: var(--exam-flag);
+}
+.exam-loading {
+  margin: 16px 0 0;
+  color: var(--out-hint);
+}
+.exam-load-error {
+  margin-top: 16px;
+}
+.exam-load-error p {
+  margin: 0 0 12px;
+  color: var(--fail);
+}
+
+/* Sidebar: remaining time first, then the theme switch. */
+.exam-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--exam-accent);
+}
+.exam-time-label {
+  color: var(--icon);
+  font-size: 10px;
+}
+.exam-time-value {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.exam-time.is-warning {
+  color: var(--exam-danger);
+}
+.exam-sidebar .sidebar-divider {
+  margin: 16px 0;
+}
+
+/* Setup, result and not-found pages */
+.exam-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+}
+.exam-page-main {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.exam-page-main.setup {
+  max-width: 440px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.exam-empty {
+  margin: 24px 0 16px;
+}
+.setup-title,
+.result-title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 22px;
+}
+.setup-sub,
+.result-sub {
+  margin: 6px 0 20px;
+  color: var(--out-hint);
+  font-size: 14px;
+}
+
+.result-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--exam-card);
+}
+.result-card-label {
+  color: var(--out-hint);
+  font-size: 13px;
+}
+.result-card-value {
+  color: var(--text-strong);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.result-card-sub {
+  color: var(--out-hint);
+  font-size: 13px;
+}
+.result-note {
+  margin: 16px 0 0;
+  color: var(--out-hint);
+  font-size: 14px;
+}
+.result-rows {
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.result-status {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+.result-status.is-accepted {
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+}
+.result-status.is-wrong {
+  background: var(--bad-bg);
+  color: var(--bad-fg);
+}
+.result-status.is-judging,
+.result-status.is-none {
+  background: var(--none-bg);
+  color: var(--none-fg);
+}
+.result-main,
+.result-judge {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.result-main {
+  flex: 1;
+}
+.result-judge {
+  flex: none;
+  align-items: flex-end;
+  text-align: right;
+}
+.result-name {
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.result-meta,
+.result-at {
+  color: var(--out-hint);
+  font-size: 13px;
+}
+.result-text {
+  font-size: 14px;
+  font-weight: 600;
+}
+.result-text.is-accepted {
+  color: var(--ok-fg);
+}
+.result-text.is-wrong {
+  color: var(--bad-fg);
+}
+.result-text.is-judging,
+.result-text.is-none {
+  color: var(--none-fg);
+}
+.result-retry {
+  flex: none;
+  height: 32px;
+  font-size: 14px;
+}
+.result-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+@media (max-width: 560px) {
+  .result-cards {
+    grid-template-columns: 1fr;
+  }
+  .result-row {
+    flex-wrap: wrap;
+  }
+}

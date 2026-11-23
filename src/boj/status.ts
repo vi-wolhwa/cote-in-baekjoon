@@ -143,6 +143,8 @@ export interface Watch {
   problemId: number;
   /** When the submit page was opened, in milliseconds since the epoch. */
   since: number;
+  /** A mock exam submission: the submit window covers the result (ADR-0005). */
+  hideResult?: boolean;
 }
 
 /** Allowed difference between the local clock and Baekjoon's server clock. */
