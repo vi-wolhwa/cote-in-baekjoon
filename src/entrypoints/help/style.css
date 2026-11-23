@@ -418,6 +418,14 @@ code mark {
   font-size: 12px;
   text-align: center;
 }
+.help-footer a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.help-footer a:hover {
+  color: var(--text);
+}
 
 @media (max-width: 560px) {
   .hero {

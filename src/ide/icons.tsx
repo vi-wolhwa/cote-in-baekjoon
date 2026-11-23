@@ -32,29 +32,12 @@ export const GearIcon = () => (
   </Icon>
 );
 
-/** Speech bubble with "!" for "문제 신고". */
-export const ReportIcon = () => (
+/** Stopwatch for the sidebar timer. */
+export const TimerIcon = () => (
   <Icon>
-    <path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
-    <path d="M12 7.5v4" />
-    <path d="M12 14.2v.1" />
-  </Icon>
-);
-
-export const HelpIcon = () => (
-  <Icon>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.4" />
-    <path d="M12 16.8v.1" />
-  </Icon>
-);
-
-/** Tray with an upload and a download arrow for "백업과 복원". */
-export const BackupIcon = () => (
-  <Icon>
-    <path d="M4 14v5h16v-5" />
-    <path d="M9 13V4M6 7l3-3 3 3" />
-    <path d="M15 4v9M12 10l3 3 3-3" />
+    <circle cx="12" cy="13.5" r="7.5" />
+    <path d="M10 2.5h4M12 2.5v3.5M18 6.5l1.5-1.5" />
+    <path d="M12 13.5V9.5" />
   </Icon>
 );
 

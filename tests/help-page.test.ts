@@ -141,4 +141,14 @@ describe('HelpPage', () => {
     expect(hrefs[1]).toContain('template=3-feature.yml');
     expect(hrefs[2]).toBe('https://github.com/vi-wolhwa/cote-in-baekjoon/issues');
   });
+
+  it('links the open-source license notices next to the version', () => {
+    const { root } = mount({ noticesUrl: 'chrome-extension://x/THIRD_PARTY_NOTICES.txt' });
+    const footer = root.querySelector('.help-footer');
+    expect(footer?.textContent).toContain('v1.2.3');
+    const link = footer?.querySelector('a');
+    expect(link?.textContent).toBe('오픈소스 라이선스');
+    expect(link?.getAttribute('href')).toBe('chrome-extension://x/THIRD_PARTY_NOTICES.txt');
+    expect(link?.getAttribute('target')).toBe('_blank');
+  });
 });

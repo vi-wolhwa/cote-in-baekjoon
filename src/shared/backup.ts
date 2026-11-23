@@ -61,7 +61,11 @@ const SETTINGS: Record<string, (v: unknown) => boolean> = {
 /** Keys older versions wrote; a backup that has them restores without them, silently. */
 const RETIRED_KEYS = new Set(['ui:auto-submit']);
 
-/** True for keys that belong in a backup. Session-only and internal keys are left out. */
+/**
+ * True for keys that belong in a backup. Session-only and internal keys are left out, and so
+ * is the sidebar stopwatch/timer (`timer:{id}`): it is transient, and restoring a running
+ * timer days later would only show a wrong time.
+ */
 export function isBackupKey(key: string): boolean {
   return (
     CODE_KEY.test(key) ||

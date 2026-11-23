@@ -15,11 +15,27 @@ test('shows the right sidebar under the top bar, 64px wide', async ({ page, exte
   const gear = sidebar.getByRole('button', { name: '설정' });
   const gearBox = await gear.boundingBox();
   expect(gearBox).toMatchObject({ width: 32, height: 32, y: 47 + 16 });
-  for (const name of ['문제 신고', '도움말', '백업과 복원']) {
-    await expect(
-      sidebar.getByRole(name === '백업과 복원' ? 'button' : 'link', { name }),
-    ).toHaveAttribute('title', name);
-  }
+  // Only tools for the problem: settings, then the timer. No links.
+  await expect(sidebar.getByRole('button')).toHaveText(['', '']);
+  const names = await sidebar
+    .getByRole('button')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  expect(names).toEqual(['설정', '타이머']);
+  await expect(sidebar.getByRole('link')).toHaveCount(0);
+  await expect(sidebar.getByRole('button', { name: '타이머' })).toHaveAttribute('title', '타이머');
+  const timerBox = await sidebar.getByRole('button', { name: '타이머' }).boundingBox();
+  expect(timerBox).toMatchObject({ width: 32, height: 32 });
+
+  // The top bar holds the extension menu.
+  const top = page.getByRole('navigation', { name: '경로' });
+  await expect(top.getByRole('link', { name: '도움말' })).toBeVisible();
+  await expect(top.getByRole('link', { name: '문제 신고' })).toBeVisible();
+  await expect(top.getByRole('button', { name: '백업과 복원' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '오픈소스 라이선스' })).toHaveCount(0);
+  const order = await top
+    .locator('.topbar-links > *')
+    .evaluateAll((els) => els.map((e) => e.textContent?.trim()));
+  expect(order).toEqual(['도움말', '문제 신고', '백업과 복원']);
   // The title bar, workspace and button bar end where the sidebar starts.
   const titlebar = await page.locator('.titlebar').boundingBox();
   expect((titlebar?.x ?? 0) + (titlebar?.width ?? 0)).toBe(1024 - 64);

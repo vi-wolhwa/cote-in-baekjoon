@@ -1,26 +1,17 @@
 /**
- * Right sidebar (docs/design/ide-spec.md §10): settings first, as on the reference screen,
- * then a divider and this product's extra tools.
+ * Right sidebar (docs/design/ide-spec.md §10): tools for the problem on screen. Settings
+ * first, as on the reference screen, then a divider and the timer. Extension-wide links
+ * (도움말, 문제 신고, 백업과 복원) live in the top bar.
  */
-import type { LanguageId } from '@/shared/languages';
-import { describeBrowser } from '@/shared/report';
-import { BackupIcon, GearIcon, HelpIcon, ReportIcon } from './icons';
-import { sidebarReportUrl } from './report-link';
+import { GearIcon } from './icons';
+import { TimerTool } from './TimerTool';
 
 interface Props {
   problemId: number;
-  language: LanguageId;
   onOpenSettings: () => void;
 }
 
-export function Sidebar({ problemId, language, onOpenSettings }: Props) {
-  const reportUrl = sidebarReportUrl({
-    version: browser.runtime.getManifest().version,
-    browser: describeBrowser(navigator),
-    problemId,
-    language,
-  });
-
+export function Sidebar({ problemId, onOpenSettings }: Props) {
   return (
     <aside class="sidebar" aria-label="도구">
       <button
@@ -34,37 +25,7 @@ export function Sidebar({ problemId, language, onOpenSettings }: Props) {
         <GearIcon />
       </button>
       <hr class="sidebar-divider" />
-      <div class="sidebar-tools">
-        <a
-          class="sidebar-button"
-          href={reportUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="문제 신고"
-          aria-label="문제 신고"
-        >
-          <ReportIcon />
-        </a>
-        <a
-          class="sidebar-button"
-          href={browser.runtime.getURL('/help.html')}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="도움말"
-          aria-label="도움말"
-        >
-          <HelpIcon />
-        </a>
-        <button
-          type="button"
-          class="sidebar-button"
-          title="백업과 복원"
-          aria-label="백업과 복원"
-          onClick={() => void browser.runtime.openOptionsPage()}
-        >
-          <BackupIcon />
-        </button>
-      </div>
+      <TimerTool problemId={problemId} />
     </aside>
   );
 }

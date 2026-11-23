@@ -25,9 +25,15 @@ test('starts with a template that does not contain a solution', async ({ page, e
   await expect(page.locator('.cm-content')).not.toContainText('console.log');
 });
 
-test('links to the open-source license notices', async ({ page, extensionId }) => {
-  await page.goto(`chrome-extension://${extensionId}/ide.html`);
-  const href = await page.getByRole('link', { name: '오픈소스 라이선스' }).getAttribute('href');
+test('the help page footer links to the open-source license notices', async ({
+  page,
+  extensionId,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/help.html`);
+  const href = await page
+    .locator('.help-footer')
+    .getByRole('link', { name: '오픈소스 라이선스' })
+    .getAttribute('href');
   expect(href).toBe(`chrome-extension://${extensionId}/THIRD_PARTY_NOTICES.txt`);
   await page.goto(href ?? '');
   await expect(page.locator('body')).toContainText('오픈소스 라이선스 고지');
@@ -77,7 +83,25 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
       : route.abort(),
   );
   await page.goto('https://acmicpc.net/problem/1000');
-  await page.getByRole('button', { name: '코테 화면으로 풀기' }).click();
+  // In Baekjoon's problem menu, between "1000번" and "제출", as tall as the other pills.
+  const open = page.getByRole('button', { name: '코테 화면으로 풀기' });
+  const items = page.locator('ul.problem-menu > li');
+  await expect(items.nth(1)).toHaveId('cib-open-ide-item');
+  await expect(items.nth(0)).toHaveText('1000번');
+  await expect(items.nth(2)).toHaveText('제출');
+  await expect(open).toHaveCSS('background-color', 'rgb(38, 55, 71)');
+  await expect(open).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(open).toHaveCSS('font-weight', '600');
+  await expect(open).toHaveCSS('border-radius', '4px');
+  const pill = await items.nth(0).locator('a').boundingBox();
+  const own = await open.boundingBox();
+  expect(own?.height).toBeCloseTo(pill?.height ?? 0, 0);
+  expect(own?.y).toBeCloseTo(pill?.y ?? 0, 0);
+  await open.hover();
+  await expect(open).toHaveCSS('background-color', 'rgb(47, 68, 87)');
+  await open.click();
+  // The click does not follow href="#".
+  await expect(page).toHaveURL('https://acmicpc.net/problem/1000');
   const ide = page.frameLocator('#cib-ide-overlay');
   await expect(ide.getByRole('heading', { name: '테스트용 덧셈' })).toBeVisible();
   await expect(ide.getByRole('link', { name: '질문하기' })).toHaveAttribute(
@@ -102,6 +126,10 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   await expect(
     ide.getByRole('navigation', { name: '경로' }).getByRole('link', { name: '도움말' }),
   ).toHaveCSS('font-weight', '400');
+  const topLinks = await ide
+    .locator('.topbar-links > *')
+    .evaluateAll((els) => els.map((e) => e.textContent?.trim()));
+  expect(topLinks).toEqual(['도움말', '문제 신고', '백업과 복원', '돌아가기']);
   await back.click();
   await expect(page.locator('#cib-ide-overlay')).toHaveCount(0);
 });

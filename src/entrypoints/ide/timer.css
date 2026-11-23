@@ -1,0 +1,219 @@
+/* Sidebar timer and its popover (ide-spec.md §10). Follows the IDE theme. */
+:root {
+  --timer-bg: #263747;
+  --timer-inset: #202b3d;
+  --timer-border: #172334;
+  --timer-text: #ffffff;
+  --timer-muted: #b2c0cc;
+  --timer-seg-active-bg: #44576c;
+  --timer-seg-active-text: #ffffff;
+  --timer-shadow: 0 12px 32px rgba(5, 10, 16, 0.5);
+  /* Lighter than #0078FF so 11px text keeps 4.5:1 on the dark sidebar. */
+  --timer-accent: #5aa2ff;
+  --timer-paused: #98a8b9;
+  --timer-done: #ff7b7b;
+}
+:root[data-theme='light'] {
+  --timer-bg: #ffffff;
+  --timer-inset: #f7f7fb;
+  --timer-border: #d7e2eb;
+  --timer-text: #263747;
+  --timer-muted: #5f7f90;
+  --timer-seg-active-bg: #ffffff;
+  --timer-seg-active-text: #263747;
+  --timer-shadow: 0 12px 32px rgba(38, 55, 71, 0.16);
+  --timer-accent: #0053f4;
+  --timer-paused: #5f7f90;
+  --timer-done: #d32f2f;
+}
+
+/* The full sidebar width, so the popover can sit just left of the sidebar. */
+.timer-tool {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.timer-button {
+  flex-direction: column;
+  gap: 2px;
+}
+.timer-button[class*='is-'] {
+  width: auto;
+  min-width: 32px;
+  height: auto;
+  min-height: 32px;
+  padding: 6px 4px 4px;
+}
+.timer-button.is-running {
+  color: var(--timer-accent);
+}
+.timer-button.is-done {
+  color: var(--timer-done);
+}
+.timer-badge {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+}
+.timer-button.is-paused .timer-badge {
+  color: var(--timer-paused);
+}
+.timer-button.is-done .timer-badge {
+  animation: timer-pulse 1.6s ease-in-out infinite;
+}
+@keyframes timer-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timer-button.is-done .timer-badge {
+    animation: none;
+  }
+}
+
+.timer-pop {
+  position: absolute;
+  top: -8px;
+  right: calc(100% + 8px);
+  z-index: 30;
+  width: 280px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid var(--timer-border);
+  border-radius: 8px;
+  background: var(--timer-bg);
+  color: var(--timer-text);
+  box-shadow: var(--timer-shadow);
+}
+
+.timer-modes {
+  display: flex;
+  padding: 3px;
+  border-radius: 6px;
+  background: var(--timer-inset);
+  border: 1px solid var(--timer-border);
+}
+.timer-modes button {
+  flex: 1;
+  height: 30px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--timer-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.timer-modes button[aria-checked='true'] {
+  background: var(--timer-seg-active-bg);
+  color: var(--timer-seg-active-text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(5, 10, 16, 0.2);
+}
+.timer-modes button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.timer-display {
+  margin: 4px 0 0;
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 44px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+.timer-pop.is-done .timer-display {
+  color: var(--timer-done);
+}
+.timer-edit {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+.timer-field {
+  width: 1.5ch;
+  padding: 0 2px;
+  border: none;
+  border-bottom: 2px solid var(--timer-border);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.timer-field + .timer-unit + .timer-field {
+  width: 2.4ch;
+}
+.timer-field:hover {
+  border-bottom-color: var(--timer-muted);
+}
+.timer-field:focus-visible {
+  outline: none;
+  border-bottom-color: var(--blue);
+}
+.timer-unit {
+  margin-right: 8px;
+  color: var(--timer-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.timer-unit:last-child {
+  margin-right: 0;
+}
+
+.timer-presets {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.timer-chip {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--timer-border);
+  border-radius: 14px;
+  background: var(--timer-inset);
+  color: var(--timer-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.timer-chip:hover {
+  color: var(--timer-text);
+}
+.timer-chip[aria-pressed='true'] {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #ffffff;
+}
+
+.timer-note {
+  margin: -6px 0 0;
+  color: var(--timer-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.timer-note.timer-done {
+  color: var(--timer-done);
+  font-weight: 600;
+}
+
+.timer-actions {
+  display: flex;
+  gap: 8px;
+}
+.timer-actions .btn {
+  flex: 1;
+  justify-content: center;
+  height: 36px;
+  font-size: 14px;
+  font-weight: 600;
+}
