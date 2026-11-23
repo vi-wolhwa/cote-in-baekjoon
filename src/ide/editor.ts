@@ -1,45 +1,139 @@
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentLess,
+  indentMore,
+  insertTab,
+} from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
-import { bracketMatching, indentUnit } from '@codemirror/language';
-import { EditorState } from '@codemirror/state';
-import { EditorView, highlightActiveLine, keymap, lineNumbers } from '@codemirror/view';
+import {
+  bracketMatching,
+  HighlightStyle,
+  indentUnit,
+  syntaxHighlighting,
+} from '@codemirror/language';
+import { searchKeymap } from '@codemirror/search';
+import { Compartment, EditorState, type Extension } from '@codemirror/state';
+import {
+  drawSelection,
+  EditorView,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  keymap,
+  lineNumbers,
+} from '@codemirror/view';
+import { emacs } from '@replit/codemirror-emacs';
+import { vim } from '@replit/codemirror-vim';
+import { tags as t } from '@lezer/highlight';
+import type { Keymap } from './storage';
 
-/** Skeleton editor. Theme and keymaps follow docs/design/ide-spec.md in M1. */
-export function createEditor(parent: HTMLElement, doc: string) {
+/** Colors from docs/design/ide-spec.md §2. */
+const theme = EditorView.theme(
+  {
+    '&': { color: '#eaeaea', backgroundColor: 'transparent', height: '100%' },
+    '.cm-scroller': {
+      fontFamily: 'Hack, Menlo, Monaco, Consolas, monospace',
+      fontSize: '16px',
+      lineHeight: '22.4px',
+    },
+    '.cm-content': { caretColor: '#cdd7e0', padding: '4px 0' },
+    '.cm-cursor, .cm-dropCursor': { borderLeft: '1px solid #cdd7e0' },
+    '.cm-gutters': { backgroundColor: 'transparent', color: '#44576c', border: 'none' },
+    '.cm-activeLine': { backgroundColor: '#202b3d' },
+    '.cm-activeLineGutter': { backgroundColor: 'transparent', color: '#98a8b9' },
+    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+      backgroundColor: '#44576c !important',
+    },
+    '.cm-matchingBracket, &.cm-focused .cm-matchingBracket': {
+      backgroundColor: '#44576c',
+      color: '#ffffff',
+      borderRadius: '2px',
+      outline: 'none',
+    },
+    '.cm-panels': { backgroundColor: '#202b3d', color: '#eaeaea' },
+    '.cm-vim-panel': { fontFamily: 'Hack, Menlo, Monaco, Consolas, monospace' },
+  },
+  { dark: true },
+);
+
+const highlight = HighlightStyle.define([
+  { tag: [t.keyword, t.controlKeyword, t.moduleKeyword, t.operatorKeyword], color: '#c38fe5' },
+  { tag: [t.string, t.special(t.string), t.regexp], color: '#e7c547' },
+  { tag: [t.number, t.bool, t.null, t.atom], color: '#a16a94' },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: '#d27b53' },
+  { tag: t.function(t.definition(t.variableName)), color: '#ffeb3b' },
+  { tag: t.definition(t.variableName), color: '#4caf50' },
+  { tag: [t.local(t.variableName), t.special(t.variableName)], color: '#7aa6da' },
+  { tag: [t.propertyName, t.attributeName], color: '#99cc99' },
+  { tag: t.tagName, color: '#d54e53' },
+  { tag: [t.operator, t.typeName, t.meta, t.standard(t.variableName)], color: '#eaeaea' },
+]);
+
+/** Sublime-style Tab: indent a selection, insert spaces otherwise. Shift-Tab outdents. */
+const sublimeTab = keymap.of([
+  {
+    key: 'Tab',
+    run: (view) =>
+      view.state.selection.ranges.some((r) => !r.empty) ? indentMore(view) : insertTab(view),
+    shift: indentLess,
+  },
+]);
+
+function keymapExtension(name: Keymap): Extension {
+  if (name === 'vim') return vim();
+  if (name === 'emacs') return emacs();
+  return sublimeTab;
+}
+
+export interface EditorHandle {
+  getCode(): string;
+  setCode(code: string): void;
+  setKeymap(name: Keymap): void;
+  focus(): void;
+  destroy(): void;
+}
+
+export function createEditor(
+  parent: HTMLElement,
+  options: { doc: string; keymap: Keymap; onChange: (code: string) => void },
+): EditorHandle {
+  const keymapSlot = new Compartment();
   const view = new EditorView({
     parent,
     state: EditorState.create({
-      doc,
+      doc: options.doc,
       extensions: [
+        // The vim/emacs extensions must come before other keymaps to take priority.
+        keymapSlot.of(keymapExtension(options.keymap)),
         lineNumbers(),
-        history(),
+        highlightActiveLineGutter(),
         highlightActiveLine(),
+        drawSelection(),
+        history(),
         bracketMatching(),
         closeBrackets(),
         indentUnit.of('    '),
         EditorState.tabSize.of(4),
         EditorView.lineWrapping,
-        keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+        keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
         javascript(),
-        EditorView.theme(
-          {
-            '&': { color: '#eaeaea', backgroundColor: 'transparent', height: '100%' },
-            '.cm-content': {
-              fontFamily: 'Hack, Menlo, Monaco, Consolas, monospace',
-              fontSize: '16px',
-            },
-            '.cm-gutters': { backgroundColor: 'transparent', color: '#44576c', border: 'none' },
-            '.cm-activeLine': { backgroundColor: '#202b3d' },
-            '&.cm-focused .cm-cursor': { borderLeftColor: '#cdd7e0' },
-          },
-          { dark: true },
-        ),
+        syntaxHighlighting(highlight),
+        theme,
+        EditorView.updateListener.of((u) => {
+          if (u.docChanged) options.onChange(u.state.doc.toString());
+        }),
       ],
     }),
   });
+
   return {
     getCode: () => view.state.doc.toString(),
+    setCode: (code) =>
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: code } }),
+    setKeymap: (name) => view.dispatch({ effects: keymapSlot.reconfigure(keymapExtension(name)) }),
+    focus: () => view.focus(),
     destroy: () => view.destroy(),
   };
 }

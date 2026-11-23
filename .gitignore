@@ -39,3 +39,6 @@ build/
 .wxt/
 playwright-report/
 test-results/
+
+# Claude Code agent worktrees
+.claude/worktrees/

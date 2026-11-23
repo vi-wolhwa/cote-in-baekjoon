@@ -12,6 +12,11 @@ export interface CloseMessage {
   type: 'cib:close';
 }
 
+/** IDE iframe → content script: listening, please send the problem. */
+export interface ReadyMessage {
+  type: 'cib:ready';
+}
+
 /** IDE → sandbox iframe. */
 export interface RunRequest {
   type: 'cib:run';
@@ -22,7 +27,12 @@ export interface RunRequest {
   timeLimitMs: number;
 }
 
-export type RunStatus = 'ok' | 'error' | 'timeout' | 'output-limit';
+export type RunStatus = 'ok' | 'error' | 'timeout' | 'output-limit' | 'cancelled';
+
+/** IDE → sandbox iframe: stop every running program. */
+export interface CancelRequest {
+  type: 'cib:cancel';
+}
 
 /** Sandbox iframe → IDE. */
 export interface RunResponse {
@@ -47,6 +57,10 @@ export function isProblemMessage(v: unknown): v is ProblemMessage {
   );
 }
 
+export function isReadyMessage(v: unknown): v is ReadyMessage {
+  return isObject(v) && v.type === 'cib:ready';
+}
+
 export function isCloseMessage(v: unknown): v is CloseMessage {
   return isObject(v) && v.type === 'cib:close';
 }
@@ -61,6 +75,10 @@ export function isRunRequest(v: unknown): v is RunRequest {
     typeof v.stdin === 'string' &&
     typeof v.timeLimitMs === 'number'
   );
+}
+
+export function isCancelRequest(v: unknown): v is CancelRequest {
+  return isObject(v) && v.type === 'cib:cancel';
 }
 
 export function isRunResponse(v: unknown): v is RunResponse {
