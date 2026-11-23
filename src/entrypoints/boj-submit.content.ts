@@ -22,6 +22,7 @@ import {
   type FillResult,
 } from '@/boj/submit-fill';
 import { findBlockedPatterns } from '@/boj/waf';
+import { rememberHandle } from '@/shared/handle';
 import {
   isPendingQueryResponse,
   type LanguageMissingMessage,
@@ -36,6 +37,7 @@ export default defineContentScript({
   matches: ['https://acmicpc.net/submit/*', 'https://www.acmicpc.net/submit/*'],
   runAt: 'document_idle',
   async main(ctx) {
+    void rememberHandle(document);
     const problemId = parseSubmitProblemId(location.href);
     if (problemId === undefined) return;
 

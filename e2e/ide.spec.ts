@@ -88,7 +88,9 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   const items = page.locator('ul.problem-menu > li');
   await expect(items.nth(1)).toHaveId('cib-open-ide-item');
   await expect(items.nth(0)).toHaveText('1000번');
-  await expect(items.nth(2)).toHaveText('제출');
+  // "모의시험" (#102) follows it, before "제출".
+  await expect(items.nth(2)).toHaveText('모의시험');
+  await expect(items.nth(3)).toHaveText('제출');
   await expect(open).toHaveCSS('background-color', 'rgb(38, 55, 71)');
   await expect(open).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(open).toHaveCSS('font-weight', '600');
@@ -97,6 +99,12 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   const own = await open.boundingBox();
   expect(own?.height).toBeCloseTo(pill?.height ?? 0, 0);
   expect(own?.y).toBeCloseTo(pill?.y ?? 0, 0);
+  // Its lighter companion: same height, navy outline and text on no fill.
+  const exam = page.getByRole('button', { name: '모의시험' });
+  expect((await exam.boundingBox())?.height).toBeCloseTo(pill?.height ?? 0, 0);
+  await expect(exam).toHaveCSS('border-top-color', 'rgb(38, 55, 71)');
+  await expect(exam).toHaveCSS('color', 'rgb(38, 55, 71)');
+  await expect(exam).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await open.hover();
   await expect(open).toHaveCSS('background-color', 'rgb(47, 68, 87)');
   await open.click();

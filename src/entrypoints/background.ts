@@ -7,6 +7,8 @@ import {
   handleWatchQuery,
   handleWindowRemoved,
 } from '@/boj/submission-service';
+import { handleOpenExamSetup } from '@/exam/open-setup';
+import { isOpenExamSetupMessage } from '@/shared/messages';
 import {
   isJudgeReportMessage,
   isLanguageMissingMessage,
@@ -40,5 +42,6 @@ function route(message: unknown, sender: Browser.runtime.MessageSender): Promise
   if (isJudgeReportMessage(message)) return handleJudgeReport(message, sender);
   if (isLanguageMissingMessage(message)) return handleLanguageMissing(message, sender);
   if (isLanguageMissingQuery(message)) return handleLanguageMissingQuery(sender);
+  if (isOpenExamSetupMessage(message)) return handleOpenExamSetup(message, sender);
   return null;
 }

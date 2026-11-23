@@ -23,6 +23,16 @@ export interface OpenIdeMessage {
   type: 'cib:open-ide';
 }
 
+/**
+ * Problem page content script → background: the Baekjoon menu's '모의시험' (#102). Content
+ * scripts cannot open extension pages with the tabs API, so the background opens
+ * exam.html#setup?include={problemId}.
+ */
+export interface OpenExamSetupMessage {
+  type: 'cib:open-exam-setup';
+  problemId: number;
+}
+
 /** IDE → sandbox iframe. */
 export interface RunRequest {
   type: 'cib:run';
@@ -75,6 +85,17 @@ export function isCloseMessage(v: unknown): v is CloseMessage {
 
 export function isOpenIdeMessage(v: unknown): v is OpenIdeMessage {
   return isObject(v) && v.type === 'cib:open-ide';
+}
+
+export function isOpenExamSetupMessage(v: unknown): v is OpenExamSetupMessage {
+  return (
+    isObject(v) &&
+    v.type === 'cib:open-exam-setup' &&
+    typeof v.problemId === 'number' &&
+    Number.isInteger(v.problemId) &&
+    v.problemId >= 1 &&
+    v.problemId <= 9_999_999
+  );
 }
 
 export function isRunRequest(v: unknown): v is RunRequest {

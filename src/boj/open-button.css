@@ -43,3 +43,47 @@
   line-height: 18px;
   vertical-align: middle;
 }
+
+/*
+ * "모의시험" (#102): the lighter companion of the navy pill. Same size (the 1px border is
+ * taken from the padding), transparent with a navy outline and text; a light fill on hover.
+ */
+#cib-open-exam {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px 0 0;
+  padding: 9px 14px;
+  border: 1px solid #263747;
+  border-radius: 4px;
+  background: transparent;
+  color: #263747;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#cib-open-exam:hover,
+#cib-open-exam:focus {
+  background: #e9ecf3;
+  color: #263747;
+  text-decoration: none;
+}
+#cib-open-exam:focus {
+  outline: none;
+}
+#cib-open-exam:focus-visible {
+  outline: 2px solid #5aa2ff;
+  outline-offset: 2px;
+}
+#cib-open-exam svg {
+  flex: none;
+}
+#cib-open-exam[data-place='title'] {
+  display: inline-flex;
+  margin: 0 0 0 8px;
+  padding: 6px 12px;
+  line-height: 18px;
+  vertical-align: middle;
+}
