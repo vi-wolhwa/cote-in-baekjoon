@@ -1,8 +1,26 @@
 import { readFileSync } from 'node:fs';
+import type { FrameLocator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
+
+const A_PLUS_B =
+  "const [a, b] = require('fs').readFileSync('/dev/stdin').toString().trim().split(' ').map(Number); console.log(a + b);";
+
+/** Replaces the editor content by typing, like a user would. */
+async function typeCode(page: Page, root: Page | FrameLocator, code: string) {
+  await root.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type(code);
+}
+
+test('starts with a template that does not contain a solution', async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  await expect(page.locator('.cm-content')).toContainText("readFileSync('/dev/stdin')");
+  await expect(page.locator('.cm-content')).not.toContainText('console.log');
+});
 
 test('runs the sample cases in the sandbox and reports success', async ({ page, extensionId }) => {
   await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  await typeCode(page, page, A_PLUS_B);
   await page.getByRole('button', { name: '코드 실행' }).click();
   await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공');
 });
@@ -46,6 +64,11 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   await page.getByRole('button', { name: '코테 화면으로 풀기' }).click();
   const ide = page.frameLocator('#cib-ide-overlay');
   await expect(ide.getByRole('heading', { name: '테스트용 덧셈' })).toBeVisible();
+  await expect(ide.getByRole('link', { name: '질문하기' })).toHaveAttribute(
+    'href',
+    'https://www.acmicpc.net/board/search/all/problem/1000',
+  );
+  await typeCode(page, ide, A_PLUS_B);
   await ide.getByRole('button', { name: '코드 실행' }).click();
   await expect(ide.getByTestId('summary')).toHaveText('2개 중 2개 성공');
   await ide.getByRole('button', { name: '백준 문제로 돌아가기' }).click();

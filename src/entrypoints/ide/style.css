@@ -330,6 +330,18 @@ textarea {
   flex-direction: column;
   height: 100%;
 }
+.code-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.save-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 13px;
+}
 .file-tab {
   flex: none;
   align-self: flex-start;
@@ -337,7 +349,6 @@ textarea {
   font-size: 14px;
   font-weight: 700;
   color: var(--text-strong);
-  border-bottom: 1px solid var(--line);
 }
 .editor {
   flex: 1;
@@ -428,6 +439,9 @@ textarea {
 .out-fail {
   color: var(--red) !important;
 }
+.out-warn {
+  color: #f0a63a !important;
+}
 .out-fail-summary {
   color: var(--red-dark);
 }
@@ -461,12 +475,16 @@ textarea {
   gap: 8px;
 }
 .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 40px;
   padding: 7px 13px;
   border-radius: 4px;
   border: 1px solid transparent;
   font-size: 16px;
   font-weight: 500;
+  text-decoration: none;
   cursor: pointer;
   transition:
     background-color 80ms,
@@ -492,12 +510,23 @@ textarea {
 }
 .btn-outline {
   background: transparent;
-  border-color: var(--label);
-  color: var(--label);
+  border-color: var(--text);
+  color: var(--text);
 }
 .btn-outline:hover {
   background: var(--label);
+  border-color: var(--label);
   color: #fff;
+}
+.btn-badge {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
 }
 .btn-light {
   background: #e9ecf3;

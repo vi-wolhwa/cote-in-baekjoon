@@ -90,6 +90,7 @@ function sectionHtml(doc: Document, selector: string): string | undefined {
   const el = doc.querySelector(selector);
   if (!el) return undefined;
   const copy = el.cloneNode(true) as Element;
+  restoreMathSource(copy);
   for (const node of copy.querySelectorAll('[src], [href]')) {
     for (const attr of ['src', 'href']) {
       const value = node.getAttribute(attr);
@@ -99,6 +100,24 @@ function sectionHtml(doc: Document, selector: string): string | undefined {
     }
   }
   return copy.innerHTML.trim();
+}
+
+/**
+ * Baekjoon's MathJax replaces TeX with rendered output by the time the user clicks.
+ * Its config appends the original source (delimiters included) to every formula as a
+ * hidden `.mjx-copytext` span, so put that source back and let the IDE render it again.
+ * Without a copy span, fall back to the assistive MathML the browser can draw itself.
+ */
+export function restoreMathSource(root: Element) {
+  for (const container of root.querySelectorAll('mjx-container')) {
+    const source = container.querySelector('.mjx-copytext')?.textContent?.replace(/\u200a/g, '');
+    if (source) {
+      container.replaceWith(root.ownerDocument.createTextNode(source));
+      continue;
+    }
+    const mathml = container.querySelector('mjx-assistive-mml math');
+    if (mathml) container.replaceWith(mathml);
+  }
 }
 
 function nonEmpty(html: string | undefined): string | undefined {

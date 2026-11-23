@@ -48,6 +48,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const [running, setRunning] = useState(false);
   const [dialog, setDialog] = useState<Dialog>();
   const [tab, setTab] = useState<Tab>('run');
+  const [saveError, setSaveError] = useState<string>();
   const editorHost = useRef<HTMLDivElement>(null);
   const editor = useRef<EditorHandle | undefined>(undefined);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -74,10 +75,12 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
         keymap: km,
         onChange: (text) => {
           clearTimeout(saveTimer.current);
-          saveTimer.current = setTimeout(
-            () => void store.saveCode(problem.id, LANGUAGE, text),
-            400,
-          );
+          saveTimer.current = setTimeout(() => {
+            store.saveCode(problem.id, LANGUAGE, text).then(
+              () => setSaveError(undefined),
+              (e: unknown) => setSaveError(e instanceof Error ? e.message : String(e)),
+            );
+          }, 400);
         },
       });
       editor.current.focus();
@@ -116,7 +119,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     for (const [i, sample] of all.entries()) {
       setOutput({ state: 'running', done: i, total: all.length });
       const response = await runner.run(code, sample.input, limit);
-      reports.push(buildCaseReport(i + 1, sample, response, limit));
+      reports.push(buildCaseReport(i + 1, sample, response, limit, problem.timeLimitMs));
       if (response.status === 'cancelled') break;
     }
     setRunning(false);
@@ -146,15 +149,6 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           <li aria-current="page">{problem.id ? `${problem.id}번` : '예시 문제'}</li>
         </ol>
         <div class="topbar-links">
-          {problem.id > 0 && (
-            <a
-              href={`https://www.acmicpc.net/board/search/all/problem/${problem.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              질문 게시판
-            </a>
-          )}
           {embedded && (
             <button type="button" class="link-button" onClick={close}>
               백준 문제로 돌아가기
@@ -202,7 +196,14 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
               onResizeEnd={saveSplit}
               first={
                 <section class="code-section" aria-label="코드 편집">
-                  <div class="file-tab">solution.js</div>
+                  <div class="code-header">
+                    <div class="file-tab">solution.js</div>
+                    {saveError && (
+                      <p class="save-error" role="alert">
+                        코드를 자동 저장하지 못했습니다. 코드를 따로 복사해 두세요. ({saveError})
+                      </p>
+                    )}
+                  </div>
                   <div class="editor" ref={editorHost} />
                 </section>
               }
@@ -245,8 +246,19 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
 
       <footer class="button-section">
         <div class="buttons-left">
-          <button type="button" class="btn btn-outline" onClick={() => setDialog('cases')}>
-            테스트 케이스 추가하기
+          {problem.id > 0 && (
+            <a
+              class="btn btn-outline"
+              href={`https://www.acmicpc.net/board/search/all/problem/${problem.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              질문하기
+            </a>
+          )}
+          <button type="button" class="btn btn-dark" onClick={() => setDialog('cases')}>
+            + 테스트 케이스 추가하기
+            {cases.length > 0 && <span class="btn-badge">{cases.length}</span>}
           </button>
         </div>
         <div class="buttons-right">
@@ -289,7 +301,9 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           onClose={() => setDialog(undefined)}
           onSave={(next) => {
             setCases(next);
-            void store.saveCases(problem.id, next);
+            store
+              .saveCases(problem.id, next)
+              .catch((e: unknown) => setSaveError(e instanceof Error ? e.message : String(e)));
           }}
         />
       )}
