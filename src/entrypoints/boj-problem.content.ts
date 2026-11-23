@@ -1,4 +1,6 @@
-import { parseProblem } from '@/boj/problem';
+import { diagnoseProblemPage } from '@/boj/diagnosis';
+import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
+import { parseProblem, parseProblemId } from '@/boj/problem';
 import {
   isCloseMessage,
   isOpenIdeMessage,
@@ -13,6 +15,8 @@ export default defineContentScript({
   matches: ['https://acmicpc.net/problem/*', 'https://www.acmicpc.net/problem/*'],
   runAt: 'document_idle',
   main() {
+    // A problem page whose layout changed: say so instead of silently showing no button (#87).
+    reportLayoutProblem();
     const title = document.querySelector('#problem_title');
     if (!title || document.getElementById(BUTTON_ID)) return;
     // Place the button at the end of the title line, after Baekjoon's problem labels.
@@ -52,7 +56,9 @@ function openIde() {
   if (document.getElementById(OVERLAY_ID)) return;
   const problem = parseProblem(document, location.href);
   if (!problem) {
-    alert('문제 정보를 읽지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.');
+    if (!reportLayoutProblem()) {
+      alert('문제 정보를 읽지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.');
+    }
     return;
   }
 
@@ -91,4 +97,15 @@ function openIde() {
 
   document.documentElement.style.overflow = 'hidden';
   document.body.append(frame);
+}
+
+/** Shows the self-diagnosis notice when the problem page lacks what the IDE needs (#87). */
+function reportLayoutProblem(): boolean {
+  const diagnosis = diagnoseProblemPage(document, location.href);
+  if (!diagnosis) return false;
+  showDiagnosisNotice(document, diagnosis, {
+    version: browser.runtime.getManifest().version,
+    problemId: parseProblemId(location.href),
+  });
+  return true;
 }
