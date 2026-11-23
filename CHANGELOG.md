@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.1.0...v0.2.0) (2026-11-23)
+
+
+### 기능
+
+* **boj:** 언어가 백준 목록에 없으면 언어 설정으로 안내, 채점 후 팝업 더 빨리 닫기 ([#62](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/62)) ([8948b3e](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/8948b3e8129dec8a10bdf2e549225fde9d9fc339)), closes [#59](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/59)
+* **runner:** C++ 실행 엔진 추가 (YoWASP clang + WASI) ([#57](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/57)) ([66cc606](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/66cc6065641437d7dacde4adf6a051c63f48bdc5)), closes [#51](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/51)
+* **runner:** Pyodide로 Python 코드 실행 ([#56](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/56)) ([8b93987](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/8b939871546f452626d78dcac3c06b2b5f5f9b52)), closes [#50](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/50)
+* **runner:** 다국어 실행 기반 (언어 선택, 실행 엔진 구조, 런타임 패키징) ([#53](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/53)) ([d1584b0](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/d1584b086214fdf626bc242ddaf8d85b0cb8c088)), closes [#49](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/49)
+
 ## 0.1.0 (2026-11-23)
 
 
