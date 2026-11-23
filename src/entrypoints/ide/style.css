@@ -1,0 +1,96 @@
+/* Skeleton styles. The full screen follows docs/design/ide-spec.md in M1. */
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: #263747;
+  color: #b2c0cc;
+  font-family: Inter, 'Noto Sans KR', 'Helvetica Neue', Helvetica, Arial, '맑은 고딕', sans-serif;
+}
+.ide {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.ide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 16px;
+  color: #fff;
+  border-bottom: 1px solid #172334;
+}
+.ide-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 40% 60%;
+}
+.ide-problem {
+  overflow: auto;
+  padding: 16px;
+  font-size: 16px;
+  line-height: 1.8;
+  border-right: 1px solid #172334;
+}
+.ide-problem h2 {
+  color: #fff;
+  font-size: 16px;
+}
+.ide-problem pre {
+  background: #202b3d;
+  padding: 12px 16px;
+  border-radius: 4px;
+}
+.ide-run {
+  display: grid;
+  grid-template-rows: 60% 40%;
+  min-height: 0;
+}
+.ide-editor {
+  min-height: 0;
+  overflow: auto;
+}
+.ide-output {
+  overflow: auto;
+  padding: 12px 16px;
+  border-top: 1px solid #172334;
+  font-family: Hack, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  color: #78909c;
+  white-space: pre-wrap;
+}
+.ide-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  height: 57px;
+  padding: 8px 16px;
+  box-sizing: border-box;
+  border-top: 1px solid #172334;
+}
+.ide-footer button,
+.ide-header button {
+  height: 40px;
+  padding: 7px 13px;
+  border-radius: 4px;
+  border: none;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  background: #44576c;
+  color: #fff;
+}
+.ide-footer button.primary {
+  background: #0078ff;
+}
+.pass {
+  color: #0078ff;
+}
+.fail {
+  color: #d32f2f;
+}

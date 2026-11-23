@@ -218,12 +218,19 @@ milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
 
 - ALWAYS run tests after code changes
 - ALWAYS verify build succeeds before committing
-- There is no `package.json` yet; fill in the real commands here once the
-  extension is scaffolded
+- Screen spec: `docs/design/ide-spec.md`. Runner design: `docs/adr/0004-code-runner.md`
 
 ```bash
-npm run build && npm test
+npm run lint && npm run typecheck && npm test   # lint, types, unit tests (Vitest)
+npm run build                                   # .output/chrome-mv3 (load unpacked)
+npm run e2e                                     # Playwright, needs a build first
 ```
+
+- On this Windows machine Playwright's bundled Chromium fails to start
+  (SxS error), so run E2E locally with Edge: `PW_CHANNEL=msedge npm run e2e`.
+  CI uses the bundled Chromium on Linux.
+- Test fixtures under `tests/fixtures/` are synthetic pages that mirror Baekjoon's
+  HTML structure. Never commit real Baekjoon problem text.
 
 ## CLI Quick Reference
 
