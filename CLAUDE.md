@@ -194,7 +194,9 @@ milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
 
 - Never use the Programmers name, logo, colors or other brand assets (PRD §8)
 - Docs, issues and PRs are written in Korean
-- Only send requests to acmicpc.net on a direct user action; no background crawling
+- Only send requests to acmicpc.net on a direct user action; no background crawling.
+  The one exception is ADR-0002's judge-result fallback: `/status/ajax` for the user's
+  own just-made submission, backed off, until final, at most 10 minutes
 - Ask the product owner (the user) only for decisions they must make:
   product direction, design approval, costs, publishing, big structural changes.
   Decide technical and process choices yourself and record them as ADRs in `docs/adr/`

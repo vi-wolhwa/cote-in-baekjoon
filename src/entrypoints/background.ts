@@ -3,6 +3,7 @@ import {
   handlePendingQuery,
   handleSubmitRequest,
   handleWatchQuery,
+  handleWindowRemoved,
 } from '@/boj/submission-service';
 import {
   isJudgeReportMessage,
@@ -12,6 +13,11 @@ import {
 } from '@/shared/submission';
 
 export default defineBackground(() => {
+  browser.windows?.onRemoved.addListener((windowId) => {
+    handleWindowRemoved(windowId).catch((error: unknown) =>
+      console.error('[cib] window cleanup failed', error),
+    );
+  });
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     const reply = route(message, sender);
     if (!reply) return undefined;

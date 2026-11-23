@@ -48,17 +48,35 @@ const statusHtml = readFileSync('tests/fixtures/status-sample.html', 'utf8').rep
   </script></body>`,
 );
 
-async function routeBaekjoon(context: BrowserContext) {
+/** A status page whose realtime updates never arrive (Baekjoon's Pusher over quota). */
+const staleStatusHtml = readFileSync('tests/fixtures/status-sample.html', 'utf8').replace(
+  '</body>',
+  `<script>
+    const row = document.getElementById('solution-5004');
+    row.querySelector('[data-timestamp]').setAttribute('data-timestamp', String(Math.floor(Date.now() / 1000)));
+  </script></body>`,
+);
+
+async function routeBaekjoon(context: BrowserContext, status = statusHtml) {
+  const ajaxCalls: string[] = [];
   await context.route(/^https:\/\/(www\.)?acmicpc\.net\//, (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/submit/1000') {
       return route.fulfill({ contentType: 'text/html; charset=utf-8', body: submitHtml });
     }
     if (url.pathname === '/status') {
-      return route.fulfill({ contentType: 'text/html; charset=utf-8', body: statusHtml });
+      return route.fulfill({ contentType: 'text/html; charset=utf-8', body: status });
+    }
+    if (url.pathname === '/status/ajax' && route.request().method() === 'POST') {
+      ajaxCalls.push(route.request().postData() ?? '');
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ result: 4, memory: 9000, time: 44 }),
+      });
     }
     return route.abort();
   });
+  return ajaxCalls;
 }
 
 test('fills the submit page, never submits, and reports the judge result', async ({
@@ -123,4 +141,32 @@ test('fills the submit page, never submits, and reports the judge result', async
         timeMs: 44,
       },
     });
+  // Judging finished in the submit popup: it closes and the IDE comes back.
+  await submitPage.waitForEvent('close', { timeout: 10_000 });
+});
+
+test('falls back to the status request when live updates never arrive', async ({
+  context,
+  page,
+  extensionId,
+}) => {
+  const ajaxCalls = await routeBaekjoon(context, staleStatusHtml);
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  const opened = context.waitForEvent('page');
+  await page.evaluate(() =>
+    chrome.runtime.sendMessage({
+      type: 'cib:submit-request',
+      problemId: 1000,
+      language: 'javascript',
+      code: 'console.log(1);',
+    }),
+  );
+  const submitPage = await opened;
+  await submitPage.goto('https://acmicpc.net/status?from_mine=1&problem_id=1000&user_id=tester');
+  await expect
+    .poll(() => page.evaluate(() => chrome.storage.local.get('judge:1000')), { timeout: 15_000 })
+    .toMatchObject({ 'judge:1000': { solutionId: 5004, status: 'done', resultCode: 'ac' } });
+  expect(ajaxCalls[0]).toBe('solution_id=5004');
+  // Asked again only while the result was still pending.
+  expect(ajaxCalls.length).toBeLessThanOrEqual(2);
 });

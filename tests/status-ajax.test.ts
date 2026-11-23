@@ -1,0 +1,59 @@
+import { describe, expect, it } from 'vitest';
+import { applyAjaxResult, pollDelay } from '@/boj/status-ajax';
+import type { StatusRow } from '@/boj/status';
+
+const row: StatusRow = {
+  solutionId: 99,
+  username: 'tester',
+  problemId: 1000,
+  resultCode: 'wait',
+  resultText: '기다리는 중',
+  submittedAt: 1,
+};
+
+describe('applyAjaxResult', () => {
+  it('maps a final result with memory and time', () => {
+    expect(applyAjaxResult(row, { result: 4, memory: 11000, time: 12 })).toEqual({
+      ...row,
+      resultCode: 'ac',
+      resultText: '맞았습니다!!',
+      memoryKb: 11000,
+      timeMs: 12,
+    });
+  });
+
+  it('shows judging progress', () => {
+    expect(applyAjaxResult(row, { result: 3, progress: 35 })).toMatchObject({
+      resultCode: 'judging',
+      resultText: '채점 중 (35%)',
+    });
+  });
+
+  it('adds wrong-answer feedback and runtime error reasons', () => {
+    expect(applyAjaxResult(row, { result: 6, feedback: '1%' })?.resultText).toBe('틀렸습니다 [1%]');
+    expect(applyAjaxResult(row, { result: 10, rte_reason: 'TypeError' })?.resultText).toBe(
+      '런타임 에러 (TypeError)',
+    );
+  });
+
+  it('fills in the remaining seconds before judging starts', () => {
+    expect(applyAjaxResult(row, { result: 14, remain: 3 })).toMatchObject({
+      resultCode: 'compile',
+      resultText: '3초 후 채점 시작',
+    });
+  });
+
+  it('rejects errors and unknown shapes', () => {
+    expect(applyAjaxResult(row, { error: true })).toBeUndefined();
+    expect(applyAjaxResult(row, { result: 99 })).toBeUndefined();
+    expect(applyAjaxResult(row, 'nope')).toBeUndefined();
+  });
+});
+
+describe('pollDelay', () => {
+  it('backs off and then stays at 5 seconds', () => {
+    expect(pollDelay(0)).toBe(1000);
+    expect(pollDelay(4)).toBe(3000);
+    expect(pollDelay(50)).toBe(5000);
+  });
+});

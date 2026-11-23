@@ -7,9 +7,12 @@ import { BOJ_LANGUAGES } from '@/boj/languages';
 import { CLOCK_SKEW_MS, judgeStatusOf, type Watch } from '@/boj/status';
 import {
   isJudgeResult,
+  isSubmitWindow,
   judgeKey,
   pendingKey,
+  submitWindowKey,
   watchKey,
+  type SubmitWindow,
   type JudgeReportMessage,
   type JudgeResult,
   type PendingQueryMessage,
@@ -81,14 +84,10 @@ export async function handleSubmitRequest(
   });
 
   try {
-    const tab = await browser.tabs.create({
-      url: submitUrl(message.problemId),
-      active: true,
-      ...(sender.tab ? { index: sender.tab.index + 1, openerTabId: sender.tab.id } : {}),
-    });
-    if (tab.id !== undefined) {
+    const tabId = await openSubmitWindow(message.problemId, sender, now);
+    if (tabId !== undefined) {
       await browser.storage.session.set({
-        [pendingKey(message.problemId)]: { ...pending, tabId: tab.id },
+        [pendingKey(message.problemId)]: { ...pending, tabId },
       });
     }
   } catch {
@@ -171,7 +170,101 @@ export async function handleJudgeReport(
     ...(row.timeMs !== undefined ? { timeMs: row.timeMs } : {}),
   };
   await browser.storage.local.set({ [key]: result });
+  if (status === 'done') await finishSubmitWindow(row.problemId, sender, now);
   return { ok: true };
+}
+
+/** Size of the submit popup; it sits over the right side (editor) of the IDE window. */
+const POPUP_WIDTH = 760;
+const POPUP_HEIGHT = 860;
+/** How long the final result stays visible in the popup before it closes. */
+export const CLOSE_DELAY_MS = 1500;
+
+/**
+ * Opens the official submit page in a small popup window over the IDE, so the user presses
+ * Baekjoon's submit button and comes straight back (#35). Falls back to a tab where popup
+ * windows are not available. Returns the id of the tab showing the submit page.
+ */
+export async function openSubmitWindow(
+  problemId: number,
+  sender: Sender,
+  now = Date.now(),
+): Promise<number | undefined> {
+  const url = submitUrl(problemId);
+  if (!browser.windows?.create) {
+    const tab = await browser.tabs.create({ url, active: true });
+    return tab.id;
+  }
+  const bounds =
+    sender.tab?.windowId !== undefined
+      ? await browser.windows.get(sender.tab.windowId).catch(() => undefined)
+      : undefined;
+  const width = POPUP_WIDTH;
+  const height = Math.min(POPUP_HEIGHT, bounds?.height ?? POPUP_HEIGHT);
+  const position =
+    bounds?.left !== undefined && bounds.top !== undefined && bounds.width !== undefined
+      ? { left: bounds.left + Math.max(0, bounds.width - width - 24), top: bounds.top + 80 }
+      : {};
+  // Chrome rejects bounds it considers off-screen; retry without a position, then use a tab.
+  const win =
+    (await browser.windows
+      .create({ url, type: 'popup', focused: true, width, height, ...position })
+      .catch(() => undefined)) ??
+    (await browser.windows.create({ url, type: 'popup', focused: true }).catch(() => undefined));
+  if (win?.id === undefined) {
+    const tab = await browser.tabs.create({
+      url,
+      active: true,
+      ...(sender.tab ? { index: sender.tab.index + 1, openerTabId: sender.tab.id } : {}),
+    });
+    return tab.id;
+  }
+  const record: SubmitWindow = {
+    problemId,
+    windowId: win.id,
+    returnTabId: sender.tab?.id,
+    returnWindowId: sender.tab?.windowId,
+    state: 'open',
+    updatedAt: now,
+  };
+  await browser.storage.session.set({ [submitWindowKey(problemId)]: record });
+  return win.tabs?.[0]?.id;
+}
+
+/**
+ * Judging finished in our popup: let the user see the result for a moment, close the popup
+ * and bring the IDE back to the front. Results from other tabs or windows change nothing.
+ */
+export async function finishSubmitWindow(
+  problemId: number,
+  sender: Sender,
+  now = Date.now(),
+  delayMs = CLOSE_DELAY_MS,
+): Promise<void> {
+  const key = submitWindowKey(problemId);
+  const record = (await browser.storage.session.get(key))[key];
+  if (!isSubmitWindow(record) || record.state !== 'open') return;
+  if (sender.tab?.windowId !== record.windowId) return;
+
+  await browser.storage.session.set({ [key]: { ...record, state: 'done', updatedAt: now } });
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+  await browser.windows.remove(record.windowId).catch(() => undefined);
+  if (record.returnWindowId !== undefined) {
+    await browser.windows.update(record.returnWindowId, { focused: true }).catch(() => undefined);
+  }
+  if (record.returnTabId !== undefined) {
+    await browser.tabs.update(record.returnTabId, { active: true }).catch(() => undefined);
+  }
+}
+
+/** The user closed a submit popup before judging finished. */
+export async function handleWindowRemoved(windowId: number, now = Date.now()): Promise<void> {
+  const all = await browser.storage.session.get(null);
+  for (const [key, value] of Object.entries(all)) {
+    if (!key.startsWith('cib:submit-window:') || !isSubmitWindow(value)) continue;
+    if (value.windowId !== windowId || value.state !== 'open') continue;
+    await browser.storage.session.set({ [key]: { ...value, state: 'closed', updatedAt: now } });
+  }
 }
 
 function isStatusPath(path: string | undefined): boolean {
