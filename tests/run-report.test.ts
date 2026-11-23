@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCaseReport, runTimeLimit, summarize } from '@/ide/run-report';
+import { buildCaseReport, errorDetails, runTimeLimit, summarize } from '@/ide/run-report';
 import type { RunResponse } from '@/shared/messages';
 
 const sample = { input: '1 2\n', output: '3\n' };
@@ -105,5 +105,18 @@ describe('summarize and limits', () => {
     expect(runTimeLimit(1000)).toBe(3000);
     expect(runTimeLimit(5000)).toBe(10_000);
     expect(runTimeLimit(undefined)).toBe(6000);
+  });
+});
+
+describe('errorDetails', () => {
+  it('does not repeat the summary already at the end of a traceback', () => {
+    const trace =
+      'Traceback (most recent call last):\n  File "solution.py", line 1\nZeroDivisionError: division by zero\n';
+    expect(errorDetails('ZeroDivisionError: division by zero', trace)).toBe(trace.trimEnd());
+  });
+
+  it('keeps both when stderr does not contain the summary', () => {
+    expect(errorDetails('TypeError: x', 'debug line')).toBe('TypeError: x\ndebug line');
+    expect(errorDetails(undefined, '')).toBeUndefined();
   });
 });
