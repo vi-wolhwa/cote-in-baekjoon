@@ -43,6 +43,21 @@ describe('applyAjaxResult', () => {
     });
   });
 
+  it('reads the shape the live endpoint returns', () => {
+    // Observed on 2026-11-24 for a public submission.
+    const live = {
+      solution_id: '105252998',
+      result: '11',
+      judge_platform: 'gce',
+      result_color: 'ce',
+      result_name: '컴파일 에러',
+    };
+    expect(applyAjaxResult(row, live)).toMatchObject({
+      resultCode: 'ce',
+      resultText: '컴파일 에러',
+    });
+  });
+
   it('rejects errors and unknown shapes', () => {
     expect(applyAjaxResult(row, { error: true })).toBeUndefined();
     expect(applyAjaxResult(row, { result: 99 })).toBeUndefined();

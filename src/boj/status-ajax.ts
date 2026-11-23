@@ -7,7 +7,7 @@
  * just made with the same request the page itself sends (`POST /status/ajax`), at a slow,
  * growing interval, only until the result is final (ADR-0002).
  */
-import type { ResultCode, StatusRow } from './status';
+import { isResultCode, type ResultCode, type StatusRow } from './status';
 
 /** Index = Baekjoon's numeric result (`App.result_colors()` in app.min.js). */
 const RESULT_CODE_BY_NUMBER: readonly ResultCode[] = [
@@ -68,8 +68,13 @@ export function applyAjaxResult(row: StatusRow, answer: unknown): StatusRow | un
   const a = answer as Record<string, unknown>;
   if (a.error) return undefined;
   const result = Number(a.result);
-  const resultCode = RESULT_CODE_BY_NUMBER[result];
-  const baseName = RESULT_NAME_BY_NUMBER[result];
+  // The live endpoint answers `result` as a string ("11") and, as of 2026-11, also sends
+  // `result_color` and the Korean `result_name`; prefer those when they look valid.
+  const resultCode = isResultCode(a.result_color) ? a.result_color : RESULT_CODE_BY_NUMBER[result];
+  const baseName =
+    typeof a.result_name === 'string' && a.result_name
+      ? a.result_name
+      : RESULT_NAME_BY_NUMBER[result];
   if (!Number.isInteger(result) || !resultCode || !baseName) return undefined;
 
   let resultText =
