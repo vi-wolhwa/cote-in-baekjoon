@@ -1,4 +1,4 @@
-import type { CaseReport, RunReport } from './run-report';
+import { formatElapsed, type CaseReport, type RunReport } from './run-report';
 
 type Props =
   | { state: 'empty' }
@@ -64,6 +64,10 @@ function CaseTable({ c }: { c: CaseReport }) {
           <Row label="출력" value={c.output.trimEnd()} />
         )}
         {c.error && <Row label="에러" value={c.error} tone="out-fail" />}
+        {c.status !== 'timeout' && c.status !== 'cancelled' && (
+          <Row label="실행 시간" value={formatElapsed(c.elapsedMs)} />
+        )}
+        {c.warning && <Row label="주의" value={c.warning} tone="out-warn" />}
       </tbody>
     </table>
   );

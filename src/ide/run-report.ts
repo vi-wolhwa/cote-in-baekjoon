@@ -18,6 +18,8 @@ export interface CaseReport {
   output?: string;
   /** Error details (stderr or exception). */
   error?: string;
+  /** Shown when the run finished but took longer than the problem's time limit. */
+  warning?: string;
   elapsedMs: number;
 }
 
@@ -33,6 +35,7 @@ export function buildCaseReport(
   sample: { input: string; output: string },
   response: RunResponse,
   timeLimitMs: number,
+  problemLimitMs?: number,
 ): CaseReport {
   const base = {
     index,
@@ -45,11 +48,14 @@ export function buildCaseReport(
 
   switch (response.status) {
     case 'timeout': {
-      const seconds = Math.round(timeLimitMs / 100) / 10;
+      const limit = seconds(timeLimitMs);
+      const reason = problemLimitMs
+        ? ` 문제의 시간 제한은 ${seconds(problemLimitMs)}초이고, 브라우저 실행은 백준보다 느릴 수 있어 ${limit}초까지 기다렸습니다.`
+        : '';
       return {
         ...base,
         status: 'timeout',
-        message: `실행 시간이 ${seconds}초를 초과하여 실행이 중단되었습니다. 실행 시간이 더 짧은 다른 방법을 찾아보세요.`,
+        message: `실행 시간이 ${limit}초를 초과하여 실행이 중단되었습니다.${reason} 실행 시간이 더 짧은 다른 방법을 찾아보세요.`,
       };
     }
     case 'output-limit':
@@ -68,12 +74,17 @@ export function buildCaseReport(
       break;
   }
 
+  const warning =
+    problemLimitMs && response.elapsedMs > problemLimitMs
+      ? `실행 시간 ${seconds(response.elapsedMs)}초가 문제의 시간 제한 ${seconds(problemLimitMs)}초를 넘었습니다. 백준에서는 시간 초과가 될 수 있습니다.`
+      : undefined;
   if (outputsMatch(stdout, sample.output)) {
     return {
       ...base,
       status: 'pass',
       message: '테스트를 통과하였습니다.',
       error: stderr || undefined,
+      warning,
     };
   }
   const actual = stdout.trimEnd();
@@ -87,7 +98,17 @@ export function buildCaseReport(
       : '실행한 결괏값이 기댓값과 다릅니다.',
     output: oneLine ? undefined : stdout,
     error: stderr || undefined,
+    warning,
   };
+}
+
+function seconds(ms: number): number {
+  return Math.round(ms / 100) / 10;
+}
+
+/** "12ms" under a second, "1.23초" above. */
+export function formatElapsed(ms: number): string {
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}초`;
 }
 
 export function summarize(cases: CaseReport[]): RunReport {

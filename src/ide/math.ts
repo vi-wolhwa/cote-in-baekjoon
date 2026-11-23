@@ -31,6 +31,8 @@ function getDocument() {
         ],
         processEscapes: true,
         tags: 'ams',
+        // Same as Baekjoon: neutralize macros that can inject classes, styles or links.
+        macros: { class: ' ', style: ' ', href: ' ' },
       }),
       OutputJax: new SVG({ fontCache: 'global' }),
       ignoreHtmlClass: 'no-mathjax',

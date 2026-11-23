@@ -62,6 +62,26 @@ describe('buildCaseReport', () => {
     expect(r.message).toContain('6초를 초과');
   });
 
+  it('explains the browser margin when the problem limit is known', () => {
+    const r = buildCaseReport(
+      1,
+      sample,
+      { type: 'cib:run-result', id: 1, status: 'timeout', elapsedMs: 6000 },
+      6000,
+      2000,
+    );
+    expect(r.message).toContain('문제의 시간 제한은 2초');
+    expect(r.message).toContain('6초까지 기다렸습니다');
+  });
+
+  it('warns when a passing run is slower than the problem limit', () => {
+    const slow = { ...ok('3\n'), elapsedMs: 2500 };
+    const r = buildCaseReport(1, sample, slow, 6000, 2000);
+    expect(r.status).toBe('pass');
+    expect(r.warning).toContain('2.5초가 문제의 시간 제한 2초를 넘었습니다');
+    expect(buildCaseReport(1, sample, ok('3\n'), 6000, 2000).warning).toBeUndefined();
+  });
+
   it('reports cancelled runs', () => {
     const r = buildCaseReport(
       1,

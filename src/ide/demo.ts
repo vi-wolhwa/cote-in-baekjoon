@@ -21,7 +21,4 @@ export const DEMO_PROBLEM: Problem = {
 
 export const STARTER_CODE = `const input = require('fs').readFileSync('/dev/stdin').toString().trim().split('\\n');
 
-// 여기에 코드를 작성하세요.
-const [a, b] = input[0].split(' ').map(Number);
-console.log(a + b);
 `;

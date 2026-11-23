@@ -69,3 +69,22 @@ describe('outputsMatch', () => {
     expect(outputsMatch('1\n2', '1 2')).toBe(false);
   });
 });
+
+describe('formulas already rendered by Baekjoon', () => {
+  const rendered = readFileSync('tests/fixtures/problem-rendered.html', 'utf8');
+  const doc = () => new DOMParser().parseFromString(rendered, 'text/html');
+
+  it('puts the original TeX back from the hidden copy text', () => {
+    const p = parseProblem(doc(), 'https://acmicpc.net/problem/2');
+    expect(p?.sections.description).toBe(
+      String.raw`<p>\(a\)개의 값과 \(\binom{x}{y}\)을 구한다.</p>`,
+    );
+    expect(p?.sections.description).not.toContain('mjx-');
+  });
+
+  it('falls back to MathML when there is no copy text', () => {
+    const p = parseProblem(doc(), 'https://acmicpc.net/problem/2');
+    expect(p?.sections.input).toContain('<math');
+    expect(p?.sections.input).not.toContain('mjx-container');
+  });
+});
