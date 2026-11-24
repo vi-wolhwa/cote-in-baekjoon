@@ -1,7 +1,9 @@
 /**
- * Runs generated solution-mode programs with the real engines under Node: JavaScript
- * (runJs), Python (Pyodide worker), C++ (bundled clang + WASI) and Java (TeaVM). Each case
- * is the user's `solution` plus the glue, as it would be run and submitted.
+ * Shared by tests/solution-run-*.test.ts: generated solution-mode programs run with the real
+ * engines under Node — JavaScript (runJs), Python (Pyodide worker), C and C++ (bundled clang +
+ * WASI) and Java (TeaVM). Each case is the user's `solution` plus the glue, as it would be run
+ * and submitted. Split by engine so the test files run in parallel; each engine starts the
+ * first time a file uses it.
  */
 import * as wasi from '@bjorn3/browser_wasi_shim';
 import * as clang from '@yowasp/clang';
@@ -9,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import vm from 'node:vm';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { compileCpp, type RunClang } from '@/runner/cpp/compile';
 import { runWasm } from '@/runner/cpp/run-wasm';
 import type { EngineResult } from '@/runner/engine';
@@ -19,13 +21,7 @@ import type { TeaVMRuntime } from '@/runner/java/teavm';
 import { runJs } from '@/runner/js/execute';
 import type { WorkerMessage } from '@/runner/python/engine';
 import { checkFormat, type Format } from '@/solution/dsl';
-import {
-  buildProgram,
-  GLUE_COMPILE_NOTE,
-  GLUE_INPUT_MESSAGE,
-  mapRunMessages,
-  NO_SOLUTION_MESSAGE,
-} from '@/solution/program';
+import { buildProgram } from '@/solution/program';
 import type { GlueId } from '@/solution/glue';
 
 const f = (x: unknown): Format => {
@@ -34,7 +30,7 @@ const f = (x: unknown): Format => {
   return r.format;
 };
 
-const AB = f({
+export const AB = f({
   v: 1,
   params: [
     { name: 'a', type: 'int' },
@@ -44,7 +40,7 @@ const AB = f({
   cases: null,
   ret: { type: 'int' },
 });
-const SORT = f({
+export const SORT = f({
   v: 1,
   params: [
     { name: 'n', type: 'int' },
@@ -175,7 +171,7 @@ interface Case {
   code: Partial<Record<GlueId, string>>;
 }
 
-const CASES: Record<string, Case> = {
+export const CASES: Record<string, Case> = {
   'A+B': {
     format: AB,
     input: '1 2\n',
@@ -353,25 +349,67 @@ function startPythonWorker() {
   return { next, send: (data: unknown) => scope.onmessage?.({ data }) };
 }
 
-let python: ReturnType<typeof startPythonWorker>;
 let pyId = 1;
-let javaRuntime: TeaVMRuntime;
-let java: JavaToolchain;
+let python: Promise<ReturnType<typeof startPythonWorker>> | undefined;
+let clangReady: Promise<unknown> | undefined;
+let javaTools: Promise<{ runtime: TeaVMRuntime; toolchain: JavaToolchain }> | undefined;
 
-async function run(glue: GlueId, source: string, stdin: string): Promise<EngineResult> {
+function pythonEngine() {
+  python ??= (async () => {
+    const worker = startPythonWorker();
+    worker.send({
+      type: 'init',
+      moduleUrl: pathToFileURL(path.join(PYODIDE_DIR, 'pyodide.mjs')).href,
+      indexURL: PYODIDE_DIR,
+      harness: readFileSync('src/runner/python/harness.py', 'utf8'),
+    });
+    expect(await worker.next()).toMatchObject({ type: 'ready' });
+    return worker;
+  })();
+  return python;
+}
+
+function clangEngine() {
+  clangReady ??= Promise.resolve(runClang(undefined, {}, { fetchProgress: () => undefined }));
+  return clangReady;
+}
+
+function javaEngine() {
+  javaTools ??= (async () => {
+    const bytes = (name: string) => readFileSync(path.join(VENDOR, name));
+    const int8 = (b: Buffer) => new Int8Array(b.buffer, b.byteOffset, b.byteLength);
+    const runtime = (await import(
+      pathToFileURL(path.join(VENDOR, 'compiler.wasm-runtime.js')).href
+    )) as TeaVMRuntime;
+    const toolchain = await createJavaToolchain({
+      runtime,
+      compilerWasm: bytes('compiler.wasm'),
+      sdk: int8(bytes('compile-classlib-teavm.bin')),
+      classlib: int8(bytes('runtime-classlib-teavm.bin')),
+      threadShim: readFileSync('src/runner/java/Thread.java', 'utf8'),
+      freshPerCompile: true,
+    });
+    return { runtime, toolchain };
+  })();
+  return javaTools;
+}
+
+export async function run(glue: GlueId, source: string, stdin: string): Promise<EngineResult> {
   switch (glue) {
     case 'js':
       return runJs(source, stdin);
     case 'python': {
+      const worker = await pythonEngine();
       const id = pyId++;
-      python.send({ type: 'run', id, code: source, stdin, outputLimit: 1_000_000 });
-      const msg = await python.next();
+      worker.send({ type: 'run', id, code: source, stdin, outputLimit: 1_000_000 });
+      const msg = await worker.next();
       if (msg.type !== 'result') throw new Error(JSON.stringify(msg));
       return msg.result;
     }
     case 'c':
     case 'cpp': {
       // C runs as C99 here, the older of the two C standards (the native tests use C11).
+      await clangEngine();
       const options = glue === 'c' ? ({ lang: 'c', std: 'gnu99' } as const) : undefined;
       const compiled = await compileCpp(runClang, source, options);
       if ('compileError' in compiled)
@@ -385,7 +423,8 @@ async function run(glue: GlueId, source: string, stdin: string): Promise<EngineR
       return runWasm(wasi, await WebAssembly.compile(compiled.wasm), stdin);
     }
     case 'java': {
-      const compiled = await java.compile(source);
+      const { runtime, toolchain } = await javaEngine();
+      const compiled = await toolchain.compile(source);
       if ('compileError' in compiled)
         return {
           stdout: '',
@@ -394,119 +433,31 @@ async function run(glue: GlueId, source: string, stdin: string): Promise<EngineR
           outputLimitExceeded: false,
           compileError: compiled.compileError,
         };
-      return runJava(javaRuntime.load, compiled.wasm, stdin);
+      return runJava(runtime.load, compiled.wasm, stdin);
     }
     default:
       throw new Error(`no engine for ${glue}`);
   }
 }
 
-beforeAll(async () => {
-  python = startPythonWorker();
-  python.send({
-    type: 'init',
-    moduleUrl: pathToFileURL(path.join(PYODIDE_DIR, 'pyodide.mjs')).href,
-    indexURL: PYODIDE_DIR,
-    harness: readFileSync('src/runner/python/harness.py', 'utf8'),
-  });
-  expect(await python.next()).toMatchObject({ type: 'ready' });
-  await runClang(undefined, {}, { fetchProgress: () => undefined });
-  const bytes = (name: string) => readFileSync(path.join(VENDOR, name));
-  const int8 = (b: Buffer) => new Int8Array(b.buffer, b.byteOffset, b.byteLength);
-  javaRuntime = (await import(
-    pathToFileURL(path.join(VENDOR, 'compiler.wasm-runtime.js')).href
-  )) as TeaVMRuntime;
-  java = await createJavaToolchain({
-    runtime: javaRuntime,
-    compilerWasm: bytes('compiler.wasm'),
-    sdk: int8(bytes('compile-classlib-teavm.bin')),
-    classlib: int8(bytes('runtime-classlib-teavm.bin')),
-    threadShim: readFileSync('src/runner/java/Thread.java', 'utf8'),
-    freshPerCompile: true,
-  });
-}, 180_000);
-
-describe('solution programs run on every engine', { timeout: 120_000 }, () => {
-  for (const [name, c] of Object.entries(CASES)) {
-    for (const [glue, code] of Object.entries(c.code) as [GlueId, string][]) {
-      it(`${name}: ${glue}`, async () => {
-        const program = buildProgram(glue, c.format, code);
-        const r = await run(glue, program.source, c.input);
-        expect(r.compileError).toBeUndefined();
-        expect(r.error).toBeUndefined();
-        expect(r.stdout).toBe(c.output);
-      });
+/**
+ * Every case's program for these glue languages runs and prints the expected output. `part`
+ * runs every other case (0 or 1 of 2) so a slow engine can be split over two test files.
+ */
+export function runCases(glues: readonly GlueId[], part?: { index: number; of: number }): void {
+  describe('solution programs run', { timeout: 180_000 }, () => {
+    for (const [k, [name, c]] of Object.entries(CASES).entries()) {
+      if (part && k % part.of !== part.index) continue;
+      for (const [glue, code] of Object.entries(c.code) as [GlueId, string][]) {
+        if (!glues.includes(glue)) continue;
+        it(`${name}: ${glue}`, async () => {
+          const program = buildProgram(glue, c.format, code);
+          const r = await run(glue, program.source, c.input);
+          expect(r.compileError).toBeUndefined();
+          expect(r.error).toBeUndefined();
+          expect(r.stdout).toBe(c.output);
+        });
+      }
     }
-  }
-});
-
-describe('errors point at the user code', { timeout: 120_000 }, () => {
-  it('JavaScript: input that does not match the format', async () => {
-    const program = buildProgram('js', AB, CASES['A+B']?.code.js ?? '');
-    const r = await run('js', program.source, '1\n');
-    expect(mapRunMessages('js', program, { error: r.error, stderr: r.stderr }).error).toBe(
-      GLUE_INPUT_MESSAGE,
-    );
   });
-
-  it('Python: no solution function, and a traceback line in the user code', async () => {
-    const missing = buildProgram('python', AB, 'def solve(a, b):\n    return a + b');
-    const r1 = await run('python', missing.source, '1 2\n');
-    expect(mapRunMessages('python', missing, { error: r1.error, stderr: r1.stderr }).error).toBe(
-      NO_SOLUTION_MESSAGE,
-    );
-
-    const broken = buildProgram('python', AB, '# 주석\ndef solution(a, b):\n    return a // 0');
-    const r2 = await run('python', broken.source, '1 2\n');
-    const mapped = mapRunMessages('python', broken, { error: r2.error, stderr: r2.stderr });
-    expect(mapped.stderr).toContain('File "solution.py", line 3, in solution');
-    expect(mapped.stderr).toContain('(입출력 코드)');
-  });
-
-  it('C++: a compile error is reported at the line the user wrote', async () => {
-    const program = buildProgram('cpp', AB, 'int solution(int a, int b) {\n    return a + c;\n}');
-    const r = await run('cpp', program.source, '1 2\n');
-    const mapped = mapRunMessages('cpp', program, { compileError: r.compileError, stderr: '' });
-    expect(mapped.compileError).toMatch(
-      /^solution\.cpp:2:\d+: error: use of undeclared identifier 'c'/,
-    );
-  });
-
-  it('C: compile errors point at solution.c, and input mismatches are explained', async () => {
-    const broken = buildProgram(
-      'c',
-      AB,
-      '// 주석\nint solution(int a, int b) {\n    return a + c;\n}',
-    );
-    const r1 = await run('c', broken.source, '1 2\n');
-    const m1 = mapRunMessages('cpp', broken, { compileError: r1.compileError, stderr: '' });
-    expect(m1.compileError).toMatch(/^solution\.c:3:\d+: error: use of undeclared identifier 'c'/);
-
-    const ok = buildProgram('c', AB, CASES['A+B']?.code.c ?? '');
-    const r2 = await run('c', ok.source, '1 x\n');
-    expect(r2.exitCode).toBe(1);
-    expect(mapRunMessages('cpp', ok, { error: r2.error, stderr: r2.stderr }).error).toBe(
-      GLUE_INPUT_MESSAGE,
-    );
-  });
-
-  it('C: a signature that does not match the format is reported in the glue', async () => {
-    const program = buildProgram('c', SORT, 'int solution(int n, int arr[]) {\n    return n;\n}');
-    const r = await run('c', program.source, '1\n5\n');
-    const mapped = mapRunMessages('cpp', program, { compileError: r.compileError, stderr: '' });
-    expect(mapped.compileError).toContain('solution.c(입출력 코드)');
-    expect(mapped.compileError).toContain(GLUE_COMPILE_NOTE);
-  });
-
-  it('Java: a wrong return type is reported in the glue with a Korean note', async () => {
-    const program = buildProgram(
-      'java',
-      AB,
-      'class Solution {\n    public String solution(int a, int b) {\n        return "x";\n    }\n}',
-    );
-    const r = await run('java', program.source, '1 2\n');
-    const mapped = mapRunMessages('java', program, { compileError: r.compileError, stderr: '' });
-    expect(mapped.compileError).toContain('Solution.java(입출력 코드)');
-    expect(mapped.compileError).toContain('반환 타입');
-  });
-});
+}

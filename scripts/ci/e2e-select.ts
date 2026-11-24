@@ -6,7 +6,7 @@
  * names runs everything, so a new area is never skipped by mistake. Pushes to main always
  * run everything (the workflow does not call this then).
  *
- *   node scripts/ci/e2e-select.ts origin/main   →  prints "all", "none" or spec file names
+ *   node scripts/ci/e2e-select.ts origin/main   →  `e2e=all|none|<spec files>` and `unit=true|false`
  */
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -77,8 +77,18 @@ function changedFiles(base: string): string[] {
   return out.split('\n').filter(Boolean);
 }
 
+/** Unit tests are needed unless only documentation changed. */
+export function needsUnit(files: string[]): boolean {
+  return files.some((f) => !/^docs\/|^[^/]+\.md$|^\.github\/ISSUE_TEMPLATE\//.test(f));
+}
+
+/** `e2e=…` and `unit=…` lines for $GITHUB_OUTPUT. */
+export function outputs(files: string[]): string {
+  const picked = selectSpecs(files);
+  const e2e = Array.isArray(picked) ? picked.map((s) => `e2e/${s}.spec.ts`).join(' ') : picked;
+  return `e2e=${e2e}\nunit=${needsUnit(files)}\n`;
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const base = process.argv[2] ?? 'origin/main';
-  const picked = selectSpecs(changedFiles(base));
-  console.log(Array.isArray(picked) ? picked.map((s) => `e2e/${s}.spec.ts`).join(' ') : picked);
+  process.stdout.write(outputs(changedFiles(process.argv[2] ?? 'origin/main')));
 }

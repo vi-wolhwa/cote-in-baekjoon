@@ -1,7 +1,7 @@
 /** Which E2E specs a pull request runs (scripts/ci/e2e-select.mjs, ADR-0009). */
 import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { RULES, selectSpecs } from '../scripts/ci/e2e-select.ts';
+import { needsUnit, outputs, RULES, selectSpecs } from '../scripts/ci/e2e-select.ts';
 
 const SPECS = readdirSync('e2e')
   .filter((f) => f.endsWith('.spec.ts'))
@@ -41,5 +41,14 @@ describe('selectSpecs', () => {
       if (!Array.isArray(target)) continue;
       for (const s of target) expect(SPECS, s).toContain(s);
     }
+  });
+});
+
+describe('workflow outputs', () => {
+  it('skips unit tests only for documentation', () => {
+    expect(needsUnit(['docs/a.md', 'README.md'])).toBe(false);
+    expect(needsUnit(['docs/a.md', 'tests/x.test.ts'])).toBe(true);
+    expect(outputs(['src/ide/Sidebar.tsx'])).toBe('e2e=e2e/sidebar.spec.ts\nunit=true\n');
+    expect(outputs(['docs/a.md'])).toBe('e2e=none\nunit=false\n');
   });
 });
