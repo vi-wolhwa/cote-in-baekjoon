@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.13.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.12.0...v0.13.0) (2026-11-24)
+
+
+### 기능
+
+* **formats:** 블로그 출처와 동시 수집, 형식 221문제 추가 ([#153](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/153)) ([7aa9e5e](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/7aa9e5e76cdf4ad80a4189da59a3f5312e5a3d5d))
+* **formats:** 상위 1만 문제 중 647문제 형식 추가, 언어 예약어 보강 ([#156](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/156)) ([7e96e34](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/7e96e3460bbd2e7701319b84740c07fd9121d82a))
+
+
+### 성능
+
+* **solution:** 형식 데이터를 번호 구간 파일로 나눠 문제를 열 때 한 파일만 읽기 ([#155](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/155)) ([5e05385](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/5e053857a7a36b505f2823f24e86a625f5416bc2))
+
 ## [0.12.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.11.1...v0.12.0) (2026-11-24)
 
 
