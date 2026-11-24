@@ -1,0 +1,5 @@
+{"v":1,"formats":{
+"33515":{"v":1,"params":[{"name":"t1","type":"int"},{"name":"t2","type":"int"}],"lines":[["t1","t2"]],"cases":null,"ret":{"type":"int"}},
+"33612":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":null,"ret":{"type":"int[]","sep":" "}},
+"33964":{"v":1,"params":[{"name":"x","type":"int"},{"name":"y","type":"int"}],"lines":[["x","y"]],"cases":null,"ret":{"type":"int"}}
+}}

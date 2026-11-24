@@ -1,5 +1,6 @@
 /**
- * Builds `src/data/formats.json` (ADR-0006 source 2) from the local problem cache (#116).
+ * Builds the format data `public/formats/{shard}.json` (ADR-0006 source 2, ADR-0011) from the
+ * local problem cache (#116).
  *
  * Only formats reviewed in `formats-reviewed.json` are shipped, and only when they pass the
  * extension's sample validation: unreviewed inference agreed with review on only about a third of
@@ -8,13 +9,14 @@
  * Problem text is read from the local cache and never written out; the output holds problem ids
  * and formats only.
  *
- *   npm run formats:build                          # src/data/formats.json + cache/build-report.json
+ *   npm run formats:build                          # public/formats/*.json + cache/build-report.json
  *   npm run formats:build -- --review out/         # review sheets for unreviewed problems (local)
  *   npm run formats:build -- --review out/ --all   # review sheets for every problem
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { shardOf } from '@/solution/bundled';
 import { checkFormat, formatToJson, sameFormat, type Format } from '@/solution/dsl';
 import { inferCandidates, MIN_SCORE } from '@/solution/infer';
 import { isExcluded } from '@/solution/source';
@@ -26,7 +28,7 @@ import type { ProblemRecord } from './lib/record.ts';
 const { values: args } = parseArgs({
   options: {
     cache: { type: 'string', default: 'data/boj-cache' },
-    out: { type: 'string', default: 'src/data/formats.json' },
+    out: { type: 'string', default: 'public/formats' },
     reviewed: { type: 'string', default: 'scripts/formats/formats-reviewed.json' },
     review: { type: 'string' },
     all: { type: 'boolean', default: false },
@@ -138,12 +140,25 @@ const sorted = Object.fromEntries(
 for (const [k, f] of Object.entries(sorted)) {
   if (!checkFormat(f).ok) throw new Error(`형식 검사 실패: ${k}`);
 }
-writeFileSync(args.out, formatsFile(sorted));
+// One file per shard; files of shards that no longer have problems are removed.
+const shards = new Map<number, Record<string, unknown>>();
+for (const [k, f] of Object.entries(sorted)) {
+  const n = shardOf(Number(k));
+  const shard = shards.get(n) ?? {};
+  shard[k] = f;
+  shards.set(n, shard);
+}
+mkdirSync(args.out, { recursive: true });
+for (const file of readdirSync(args.out)) {
+  if (/^\d+\.json$/.test(file)) rmSync(join(args.out, file));
+}
+for (const [n, shard] of shards) writeFileSync(join(args.out, `${n}.json`), formatsFile(shard));
 
 const report = {
   generatedAt: new Date().toISOString(),
   total: ids.length,
   shipped: Object.keys(sorted).length,
+  shards: shards.size,
   counts,
   inferenceAgreement: compared
     ? {

@@ -10,6 +10,7 @@ import type { RunResponse } from '@/shared/messages';
 import { languageInfo, solutionLanguageReason, type LanguageId } from '@/shared/languages';
 import { sameFormat, type Format } from '@/solution/dsl';
 import { buildProgram, mapRunMessages } from '@/solution/program';
+import { loadBundledFormat } from '@/solution/bundled';
 import { resolveFormat, type Resolved } from '@/solution/source';
 import { refreshStarter, solutionFileName, starterCode } from '@/solution/starter';
 import type { EditorHandle } from './editor';
@@ -38,6 +39,8 @@ export function useSolution(deps: SolutionDeps) {
   /** The mode is on for the problem; a language without glue still uses standard I/O. */
   const fnRef = useRef(false);
   const formatRef = useRef<Format | undefined>(undefined);
+  /** The problem's entry in the format data, read once per load. */
+  const bundledRef = useRef<Format | undefined>(undefined);
   const modeOn = pref && resolved.format !== undefined;
   fnRef.current = modeOn;
   formatRef.current = resolved.format;
@@ -68,11 +71,13 @@ export function useSolution(deps: SolutionDeps) {
    * already showing code (the exam loads the statement later), its code follows the mode.
    */
   const load = async (problem = deps.problem, editorShown = false): Promise<boolean> => {
-    const [on, saved] = await Promise.all([
+    const [on, saved, bundled] = await Promise.all([
       store.loadSolutionMode(),
       store.loadUserFormat(deps.problemId),
+      loadBundledFormat(deps.problemId),
     ]);
-    const res = problem ? resolveFormat(problem, saved) : {};
+    bundledRef.current = bundled;
+    const res = problem ? resolveFormat(problem, saved, bundled) : {};
     const next = on && res.format !== undefined;
     if (editorShown && next !== fnRef.current) await swap(next, res.format);
     setPref(on);
@@ -123,7 +128,7 @@ export function useSolution(deps: SolutionDeps) {
   /** Drops the user's format; the bundled or inferred one (if any) takes over. */
   const resetFormat = async () => {
     await store.clearUserFormat(deps.problemId);
-    const res = deps.problem ? resolveFormat(deps.problem, undefined) : {};
+    const res = deps.problem ? resolveFormat(deps.problem, undefined, bundledRef.current) : {};
     if (fnRef.current && !res.format) await swap(false, undefined);
     formatRef.current = res.format;
     setResolved(res);

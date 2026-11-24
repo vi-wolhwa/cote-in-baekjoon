@@ -1,0 +1,6 @@
+{"v":1,"formats":{
+"34217":{"v":1,"params":[{"name":"a","type":"int"},{"name":"b","type":"int"},{"name":"c","type":"int"},{"name":"d","type":"int"}],"lines":[["a","b"],["c","d"]],"cases":null,"ret":{"type":"string"}},
+"34665":{"v":1,"params":[{"name":"a","type":"string"},{"name":"b","type":"string"}],"lines":[["a"],["b"]],"cases":null,"ret":{"type":"string"}},
+"34921":{"v":1,"params":[{"name":"a","type":"int"},{"name":"t","type":"int"}],"lines":[["a","t"]],"cases":null,"ret":{"type":"int"}},
+"34945":{"v":1,"params":[{"name":"x","type":"int"}],"lines":[["x"]],"cases":null,"ret":{"type":"bool","yes":"Success!","no":"Oh My God!"}}
+}}

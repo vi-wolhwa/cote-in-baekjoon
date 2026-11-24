@@ -1,0 +1,16 @@
+{"v":1,"formats":{
+"29163":{"v":1,"params":[{"name":"n","type":"int"},{"name":"a","type":"int[]","len":"n"}],"lines":[["n"],["a"]],"cases":null,"ret":{"type":"bool","yes":"Happy","no":"Sad"}},
+"29699":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":null,"ret":{"type":"string"}},
+"29720":{"v":1,"params":[{"name":"n","type":"int"},{"name":"m","type":"int"},{"name":"k","type":"int"}],"lines":[["n","m","k"]],"cases":null,"ret":{"type":"int[]","sep":" "}},
+"29722":{"v":1,"params":[{"name":"today","type":"string"},{"name":"n","type":"int"}],"lines":[["today"],["n"]],"cases":null,"ret":{"type":"string"}},
+"29725":{"v":1,"params":[{"name":"board","type":"char[][]","cols":8}],"lines":[{"repeat":8,"of":"board"}],"cases":null,"ret":{"type":"int"}},
+"29729":{"v":1,"params":[{"name":"s0","type":"int"},{"name":"n","type":"int"},{"name":"m","type":"int"},{"name":"commands","type":"int[]"}],"lines":[["s0","n","m"],{"repeat":"n+m","of":"commands"}],"cases":null,"ret":{"type":"int"}},
+"29731":{"v":1,"params":[{"name":"n","type":"int"},{"name":"pledges","type":"line[]"}],"lines":[["n"],{"repeat":"n","of":"pledges"}],"cases":null,"ret":{"type":"bool","yes":"Yes","no":"No"}},
+"29736":{"v":1,"params":[{"name":"a","type":"int"},{"name":"b","type":"int"},{"name":"k","type":"int"},{"name":"x","type":"int"}],"lines":[["a","b"],["k","x"]],"cases":null,"ret":{"type":"string"}},
+"29738":{"v":1,"params":[{"name":"t","type":"int"},{"name":"ranks","type":"int[]"}],"lines":[["t"],{"repeat":"t","of":"ranks"}],"cases":null,"ret":{"type":"line[]"}},
+"29751":{"v":1,"params":[{"name":"w","type":"int"},{"name":"h","type":"int"}],"lines":[["w","h"]],"cases":null,"ret":{"type":"double","digits":1}},
+"29752":{"v":1,"params":[{"name":"n","type":"int"},{"name":"s","type":"int[]","len":"n"}],"lines":[["n"],["s"]],"cases":null,"ret":{"type":"int"}},
+"29766":{"v":1,"params":[{"name":"s","type":"line"}],"lines":[["s"]],"cases":null,"ret":{"type":"int"}},
+"29790":{"v":1,"params":[{"name":"n","type":"int"},{"name":"u","type":"int"},{"name":"l","type":"int"}],"lines":[["n","u","l"]],"cases":null,"ret":{"type":"string"}},
+"29807":{"v":1,"params":[{"name":"t","type":"int"},{"name":"scores","type":"int[]","len":"t"}],"lines":[["t"],["scores"]],"cases":null,"ret":{"type":"int"}}
+}}

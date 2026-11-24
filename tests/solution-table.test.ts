@@ -4,12 +4,12 @@
  * Also the '형식 오류 신고' issue link.
  */
 import { describe, expect, it } from 'vitest';
-import bundledData from '@/data/formats.json';
+import { readdirSync, readFileSync } from 'node:fs';
 import { sampleRows } from '@/solution/cases';
 import { checkFormat, formatToJson, sameFormat, type Format } from '@/solution/dsl';
 import { signature } from '@/solution/edit';
 import { refreshStarter } from '@/solution/starter';
-import { parseBundled } from '@/solution/source';
+import { pickBundled } from '@/solution/bundled';
 import {
   addRow,
   casesFor,
@@ -62,7 +62,16 @@ const back = (format: Format) => f(fromTable(toTable(format)));
 
 describe('table model', () => {
   it('round-trips every bundled format', () => {
-    const all = [...parseBundled(bundledData).values()];
+    const all = readdirSync('public/formats').flatMap((file) => {
+      const raw = JSON.parse(readFileSync(`public/formats/${file}`, 'utf8')) as {
+        formats: Record<string, unknown>;
+      };
+      return Object.keys(raw.formats).map((id) => {
+        const format = pickBundled(raw, Number(id));
+        if (!format) throw new Error(`형식 데이터 ${id}가 검사를 통과하지 못합니다`);
+        return format;
+      });
+    });
     expect(all.length).toBeGreaterThan(800);
     for (const format of all) expect(formatToJson(back(format))).toBe(formatToJson(format));
   });
