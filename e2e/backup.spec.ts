@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
+// These tests compare stored items exactly: keep the solution switch at its default so the
+// fixture writes nothing to storage.
+test.use({ solutionMode: true });
+
 declare const chrome: {
   storage: {
     local: {

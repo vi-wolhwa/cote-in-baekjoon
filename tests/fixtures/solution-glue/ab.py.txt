@@ -1,0 +1,50 @@
+def solution(a, b):
+    answer = 0
+    return answer
+
+# ---- 입출력 코드 (코딩테스트 in 백준이 붙임) ----
+import sys as __cib_sys
+
+
+def __cib_main():
+    if 'solution' not in globals():
+        raise NameError('__cib_nosolution')
+    __cib_t = __cib_sys.stdin.buffer.read().split()
+    __cib_n = len(__cib_t)
+    __cib_P = [0]
+
+    def __cib_tok():
+        p = __cib_P[0]
+        if p >= __cib_n:
+            raise EOFError
+        __cib_P[0] = p + 1
+        return __cib_t[p]
+
+    def __cib_many(n, f):
+        p = __cib_P[0]
+        if n < 0 or p + n > __cib_n:
+            raise EOFError
+        __cib_P[0] = p + n
+        return list(map(f, __cib_t[p:p + n]))
+
+    def __cib_more():
+        return __cib_P[0] < __cib_n
+
+    def __cib_s(b):
+        return b.decode()
+
+    def __cib_f(r):
+        return str(r)
+
+    __cib_o = []
+    try:
+        __cib_v0 = int(__cib_tok())
+        __cib_v1 = int(__cib_tok())
+    except Exception:
+        raise RuntimeError('__cib_input') from None
+    __cib_o.append(__cib_f(solution(__cib_v0, __cib_v1)))
+    if __cib_o:
+        __cib_sys.stdout.write('\n'.join(__cib_o) + '\n')
+
+
+__cib_main()

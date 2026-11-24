@@ -22,27 +22,42 @@ export const UNKNOWN_REASON =
 
 const has = (exam: Exam, problemId: number) => exam.problems.some((p) => p.id === problemId);
 
-/** 제출하기 during the exam: keeps this code as the answer, replacing an earlier one. */
+/**
+ * 제출하기 during the exam: keeps this code as the answer, replacing an earlier one. In
+ * solution-function mode `code` is the program with glue and `solution` the editor's code.
+ */
 export function saveAnswer(
   exam: Exam,
   problemId: number,
   code: string,
   language: LanguageId,
   now: number,
+  solution?: string,
 ): Exam {
   if (isOver(exam, now) || !has(exam, problemId)) return exam;
   if (code.trim() === '' || code.length > MAX_CODE_LENGTH) return exam;
-  const answer: ExamAnswer = { code, language, savedAt: now };
+  const answer: ExamAnswer = {
+    code,
+    language,
+    savedAt: now,
+    ...(solution !== undefined && solution.length <= MAX_CODE_LENGTH ? { solution } : {}),
+  };
   return { ...exam, answers: { ...exam.answers, [problemId]: answer } };
 }
 
-/** True when the editor no longer holds the saved answer (only the saved one is submitted). */
+/**
+ * True when the editor no longer holds the saved answer (only the saved one is submitted).
+ * `fn`: the editor is in solution-function mode, so it compares with the saved function.
+ */
 export function answerDiffers(
   answer: ExamAnswer | undefined,
   code: string,
   language: LanguageId,
+  fn = false,
 ): boolean {
-  return answer !== undefined && (answer.code !== code || answer.language !== language);
+  if (answer === undefined) return false;
+  const saved = fn ? answer.solution : answer.solution === undefined ? answer.code : undefined;
+  return saved !== code || answer.language !== language;
 }
 
 /** Problems with a saved answer, in problem order. */

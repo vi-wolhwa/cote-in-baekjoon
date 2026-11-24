@@ -7,6 +7,7 @@ import '../ide/style.css';
 import '../ide/panels.css';
 import '../ide/sidebar.css';
 import '../ide/dialogs.css';
+import '../ide/solution.css';
 import '@/exam/setup-form.css';
 import './exam.css';
 

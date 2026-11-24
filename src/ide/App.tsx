@@ -17,6 +17,10 @@ import { Sidebar } from './Sidebar';
 import { SplitPane } from './SplitPane';
 import * as store from './storage';
 import { SubmitPanel, useSubmit } from './submit';
+import { FormatCard } from './solution/FormatCard';
+import { SolutionCaseDialog } from './solution/SolutionCaseDialog';
+import { SolutionToggle } from './solution/SolutionToggle';
+import { useSolution } from './useSolution';
 
 /** Files added by build hooks (language runtimes) are not in WXT's path types. */
 const hookFileUrl = (path: string) => (browser.runtime.getURL as (path: string) => string)(path);
@@ -75,7 +79,21 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     () => new SandboxRunner(browser.runtime.getURL('/sandbox.html'), runtimeUrl()),
     [],
   );
-  const submit = useSubmit(problem.id, () => editor.current?.getCode() ?? '', language);
+  const flushSave = () => clearTimeout(saveTimer.current);
+  const sol = useSolution({
+    problem,
+    problemId: problem.id,
+    editor,
+    language: languageRef,
+    flushSave,
+  });
+  /** The format card is open (or opened to define a format in standard I/O mode). */
+  const [formatOpen, setFormatOpen] = useState(false);
+  const submit = useSubmit(
+    problem.id,
+    () => sol.submission(editor.current?.getCode() ?? '', languageRef.current),
+    language,
+  );
   const info = languageInfo(language);
   const blockReason = runBlockReason(problem.labels);
   const note = runNote(problem.labels);
@@ -102,7 +120,8 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       store.loadLanguage(),
       store.loadTheme(),
     ]).then(async ([km, sp, cs, lang, th]) => {
-      const code = await store.loadCode(problem.id, languageInfo(lang).codeGroup);
+      const fn = await sol.load();
+      const code = await store.loadCode(problem.id, sol.group(lang, fn));
       if (disposed || !editorHost.current) return;
       setKeymap(km);
       setSplit(sp);
@@ -113,13 +132,13 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       languageRef.current = lang;
       saveMeta(lang);
       editor.current = createEditor(editorHost.current, {
-        doc: code ?? languageInfo(lang).starter,
+        doc: code ?? sol.starter(lang, fn),
         keymap: km,
         engine: languageInfo(lang).engine,
         theme: th,
         onChange: (text) => {
           clearTimeout(saveTimer.current);
-          const group = languageInfo(languageRef.current).codeGroup;
+          const group = sol.group(languageRef.current);
           saveTimer.current = setTimeout(() => {
             store.saveCode(problem.id, group, text).then(
               () => setSaveError(undefined),
@@ -142,16 +161,16 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     if (next === language) return;
     const current = editor.current?.getCode();
     clearTimeout(saveTimer.current);
-    if (current !== undefined) await store.saveCode(problem.id, info.codeGroup, current);
+    if (current !== undefined) await store.saveCode(problem.id, sol.group(language), current);
     const nextInfo = languageInfo(next);
-    const saved = await store.loadCode(problem.id, nextInfo.codeGroup);
+    const saved = await store.loadCode(problem.id, sol.group(next));
     languageRef.current = next;
     setLanguage(next);
     void store.saveLanguage(next);
     saveMeta(next);
     editor.current?.setLanguage(nextInfo.engine);
     // Python 3 and PyPy3 share code; switching between them keeps the editor as it is.
-    if (nextInfo.codeGroup !== info.codeGroup) editor.current?.setCode(saved ?? nextInfo.starter);
+    if (nextInfo.codeGroup !== info.codeGroup) editor.current?.setCode(saved ?? sol.starter(next));
     setOutput({ state: 'empty' });
   };
 
@@ -175,10 +194,12 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       return;
     }
     setRunning(true);
+    const plan = sol.runPlan(editor.current?.getCode() ?? '', language);
     const result = await runCases({
       runner,
       language,
-      code: editor.current?.getCode() ?? '',
+      code: plan.code,
+      ...(plan.transform ? { transform: plan.transform } : {}),
       cases: [...problem.samples, ...cases],
       problemLimitMs: problem.timeLimitMs,
       warmEngines: warmEngines.current,
@@ -189,8 +210,8 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   };
 
   const reset = () => {
-    editor.current?.setCode(info.starter);
-    void store.clearCode(problem.id, info.codeGroup);
+    editor.current?.setCode(sol.starter(language));
+    void store.clearCode(problem.id, sol.group(language));
     setDialog(undefined);
     setTab('run');
     setOutput({ state: 'message', text: '코드를 초기화하였습니다.' });
@@ -199,6 +220,13 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const close = () => {
     const message: CloseMessage = { type: 'cib:close' };
     window.parent.postMessage(message, '*');
+  };
+
+  const saveCases = (next: Sample[]) => {
+    setCases(next);
+    store
+      .saveCases(problem.id, next)
+      .catch((e: unknown) => setSaveError(e instanceof Error ? e.message : String(e)));
   };
 
   const saveSplit = () => setSplit((s) => (void store.saveSplit(s), s));
@@ -248,6 +276,18 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           <header class="titlebar">
             <h1 class="title">{problem.title}</h1>
             <div class="title-tools">
+              <SolutionToggle
+                on={sol.fn}
+                busy={running || !ready}
+                {...(sol.resolved.reason ? { reason: sol.resolved.reason } : {})}
+                {...(sol.resolved.reason && !blockReason
+                  ? { onDefine: () => setFormatOpen(true) }
+                  : {})}
+                onChange={(on) => {
+                  setOutput({ state: 'empty' });
+                  void sol.setMode(on);
+                }}
+              />
               <div class="keymaps" role="radiogroup" aria-label="에디터 키맵">
                 {store.KEYMAPS.map((km) => (
                   <button
@@ -295,7 +335,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
                   first={
                     <section class="code-section" aria-label="코드 편집">
                       <div class="code-header">
-                        <div class="file-tab">{info.fileName}</div>
+                        <div class="file-tab">{sol.fileName(language)}</div>
                         {saveError && (
                           <p class="save-error" role="alert">
                             코드를 자동 저장하지 못했습니다. 코드를 따로 복사해 두세요. ({saveError}
@@ -303,6 +343,20 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
                           </p>
                         )}
                       </div>
+                      {(sol.fn || formatOpen) && !blockReason && (
+                        <FormatCard
+                          problem={problem}
+                          {...(sol.format ? { format: sol.format } : {})}
+                          {...(sol.resolved.source ? { source: sol.resolved.source } : {})}
+                          {...(sol.resolved.savedInvalid
+                            ? { savedInvalid: sol.resolved.savedInvalid }
+                            : {})}
+                          open={formatOpen}
+                          onOpen={setFormatOpen}
+                          onSave={sol.saveFormat}
+                          onReset={sol.resetFormat}
+                        />
+                      )}
                       <div class="editor" ref={editorHost} />
                     </section>
                   }
@@ -400,17 +454,21 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       </div>
 
       {dialog === 'reset' && <ResetDialog onConfirm={reset} onClose={() => setDialog(undefined)} />}
-      {dialog === 'cases' && (
+      {dialog === 'cases' && sol.fn && sol.format && (
+        <SolutionCaseDialog
+          format={sol.format}
+          samples={problem.samples}
+          cases={cases}
+          onClose={() => setDialog(undefined)}
+          onSave={saveCases}
+        />
+      )}
+      {dialog === 'cases' && !sol.fn && (
         <TestCaseDialog
           samples={problem.samples}
           cases={cases}
           onClose={() => setDialog(undefined)}
-          onSave={(next) => {
-            setCases(next);
-            store
-              .saveCases(problem.id, next)
-              .catch((e: unknown) => setSaveError(e instanceof Error ? e.message : String(e)));
-          }}
+          onSave={saveCases}
         />
       )}
     </div>

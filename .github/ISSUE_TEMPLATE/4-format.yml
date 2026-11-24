@@ -1,0 +1,29 @@
+name: 입출력 형식 제안
+description: solution 함수로 풀 때 쓰는 문제의 입출력 형식을 알려 주세요. 검토한 뒤 다음 버전의 형식 데이터에 넣습니다.
+title: "[형식] "
+labels: ["type:chore", "area:runner", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        확장의 '형식 제안'으로 열었다면 문제 번호와 형식이 이미 채워져 있습니다. **문제 본문이나 코드는 붙이지 마세요.** 이 이슈는 공개됩니다.
+  - type: input
+    id: problem
+    attributes:
+      label: 백준 문제 번호
+      placeholder: "1000"
+    validations:
+      required: true
+  - type: textarea
+    id: format
+    attributes:
+      label: 입출력 형식 (JSON)
+      description: 확장의 입출력 형식 편집기에서 저장한 형식입니다.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: note
+    attributes:
+      label: 더 알려 주실 것 (선택)
+      placeholder: 예) 추론된 형식은 배열 길이가 틀렸어요.

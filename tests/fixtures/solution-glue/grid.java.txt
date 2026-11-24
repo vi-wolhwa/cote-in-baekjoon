@@ -1,0 +1,97 @@
+import java.util.*; import java.io.*;
+// java.util.*와 java.io.*는 자동으로 import됩니다.
+
+class Solution {
+    public boolean solution(int n, int m, char[][] board) {
+        boolean answer = true;
+        return answer;
+    }
+}
+
+// ---- 입출력 코드 (코딩테스트 in 백준이 붙임) ----
+public class Main {
+    static byte[] __cib_d;
+    static int __cib_p, __cib_n;
+    static RuntimeException __cib_fail() { return new RuntimeException("__cib_input"); }
+    static boolean __cib_ws(byte c) { return c == ' ' || c == '\n' || c == '\r' || c == '\t'; }
+    static boolean __cib_more() {
+        while (__cib_p < __cib_n && __cib_ws(__cib_d[__cib_p])) __cib_p++;
+        return __cib_p < __cib_n;
+    }
+    static String __cib_tok() {
+        if (!__cib_more()) throw __cib_fail();
+        int s = __cib_p;
+        while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) __cib_p++;
+        return new String(__cib_d, s, __cib_p - s, java.nio.charset.StandardCharsets.UTF_8);
+    }
+    static long __cib_ll() {
+        if (!__cib_more()) throw __cib_fail();
+        boolean neg = false;
+        if (__cib_d[__cib_p] == '-' || __cib_d[__cib_p] == '+') neg = __cib_d[__cib_p++] == '-';
+        if (__cib_p >= __cib_n || __cib_ws(__cib_d[__cib_p])) throw __cib_fail();
+        long v = 0;
+        while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) {
+            int c = __cib_d[__cib_p++] - '0';
+            if (c < 0 || c > 9) throw __cib_fail();
+            v = v * 10 - c;
+        }
+        return neg ? v : -v;
+    }
+    static int __cib_int() { return (int) __cib_ll(); }
+    static double __cib_dbl() { return Double.parseDouble(__cib_tok()); }
+    static void __cib_nl() {
+        if (__cib_p > 0 && __cib_d[__cib_p - 1] != '\n') {
+            while (__cib_p < __cib_n && __cib_d[__cib_p] != '\n') __cib_p++;
+            if (__cib_p < __cib_n) __cib_p++;
+        }
+        for (;;) {
+            int q = __cib_p;
+            while (q < __cib_n && __cib_d[q] != '\n' && __cib_ws(__cib_d[q])) q++;
+            if (q < __cib_n && __cib_d[q] == '\n') __cib_p = q + 1;
+            else break;
+        }
+    }
+    static String __cib_line() {
+        if (__cib_p >= __cib_n) throw __cib_fail();
+        int e = __cib_p;
+        while (e < __cib_n && __cib_d[e] != '\n') e++;
+        String s = new String(__cib_d, __cib_p, e - __cib_p, java.nio.charset.StandardCharsets.UTF_8);
+        __cib_p = e;
+        return s.trim();
+    }
+    static String[] __cib_rest() {
+        String s = __cib_line();
+        return s.isEmpty() ? new String[0] : s.split("\\s+");
+    }
+
+    public static void main(String[] __cib_a) throws Exception {
+        java.io.InputStream __cib_in = System.in;
+        java.io.ByteArrayOutputStream __cib_b = new java.io.ByteArrayOutputStream();
+        byte[] __cib_buf = new byte[1 << 16];
+        int __cib_k0;
+        while ((__cib_k0 = __cib_in.read(__cib_buf)) > 0) __cib_b.write(__cib_buf, 0, __cib_k0);
+        __cib_d = __cib_b.toByteArray();
+        __cib_n = __cib_d.length;
+        StringBuilder __cib_o = new StringBuilder();
+        int __cib_cases = 0;
+        int __cib_t = __cib_int();
+        for (int __cib_k = 0; __cib_k < __cib_t; __cib_k++) {
+            int __cib_v0 = 0;
+            int __cib_v1 = 0;
+            char[][] __cib_v2 = null;
+            try {
+                __cib_v0 = __cib_int();
+                __cib_v1 = __cib_int();
+                __cib_v2 = new char[(int) (__cib_v0)][]; for (int __cib_i = 0; __cib_i < __cib_v2.length; __cib_i++) __cib_v2[__cib_i] = __cib_tok().toCharArray();
+            } catch (RuntimeException __cib_e) {
+                throw __cib_fail();
+            }
+            boolean __cib_r = new Solution().solution(__cib_v0, __cib_v1, __cib_v2);
+            if (__cib_cases++ > 0) __cib_o.append('\n');
+            __cib_o.append(__cib_r ? "YES" : "NO");
+        }
+        if (__cib_cases > 0) __cib_o.append('\n');
+        System.out.print(__cib_o);
+        System.out.flush();
+    }
+}

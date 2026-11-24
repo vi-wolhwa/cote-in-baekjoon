@@ -18,6 +18,10 @@ import { RunOutput, type RunOutputProps } from '@/ide/RunOutput';
 import { SplitPane } from '@/ide/SplitPane';
 import * as store from '@/ide/storage';
 import { Warnings } from '@/ide/submit';
+import { FormatCard } from '@/ide/solution/FormatCard';
+import { SolutionCaseDialog } from '@/ide/solution/SolutionCaseDialog';
+import { SolutionToggle } from '@/ide/solution/SolutionToggle';
+import { useSolution } from '@/ide/useSolution';
 import { findBlockedPatterns } from '@/boj/waf';
 import type { SandboxRunner } from '@/runner/client';
 import { LANGUAGES, languageInfo, type LanguageId } from '@/shared/languages';
@@ -55,7 +59,8 @@ interface Props {
   onFlag: () => void;
   /** '다시 시도' after the statement could not be read. */
   onRetry: () => void;
-  onSaveAnswer: (code: string, language: LanguageId) => void;
+  /** `solution`: the editor's code when it was saved in solution-function mode. */
+  onSaveAnswer: (code: string, language: LanguageId, solution?: string) => void;
 }
 
 type Tab = 'run' | 'submit';
@@ -83,25 +88,33 @@ export function ProblemWorkspace(props: Props) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const languageRef = useRef(language);
   const info = languageInfo(language);
+  const sol = useSolution({
+    problem: body,
+    problemId: problem.id,
+    editor,
+    language: languageRef,
+    flushSave: () => clearTimeout(saveTimer.current),
+  });
+  const [formatOpen, setFormatOpen] = useState(false);
+  const differsNow = (code: string) =>
+    answerDiffers(answerRef.current, code, languageRef.current, sol.fn);
 
   // Saved code and cases, then the editor (once: this component is keyed by problem).
   useEffect(() => {
     let disposed = false;
-    void Promise.all([
-      store.loadCases(problem.id),
-      store.loadCode(problem.id, info.codeGroup),
-    ]).then(([cs, code]) => {
+    void Promise.all([store.loadCases(problem.id), sol.load()]).then(async ([cs, fn]) => {
+      const code = await store.loadCode(problem.id, sol.group(language, fn));
       if (disposed || !editorHost.current) return;
       setCases(cs);
       editor.current = createEditor(editorHost.current, {
-        doc: code ?? info.starter,
+        doc: code ?? sol.starter(language, fn),
         keymap: props.keymap,
         engine: info.engine,
         theme: props.theme,
         onChange: (text) => {
-          setDiffers(answerDiffers(answerRef.current, text, languageRef.current));
+          setDiffers(differsNow(text));
           clearTimeout(saveTimer.current);
-          const group = languageInfo(languageRef.current).codeGroup;
+          const group = sol.group(languageRef.current);
           saveTimer.current = setTimeout(() => {
             store.saveCode(problem.id, group, text).then(
               () => setSaveError(undefined),
@@ -123,7 +136,7 @@ export function ProblemWorkspace(props: Props) {
       clearTimeout(saveTimer.current);
       const code = editor.current?.getCode();
       if (code !== undefined) {
-        void store.saveCode(problem.id, languageInfo(languageRef.current).codeGroup, code);
+        void store.saveCode(problem.id, sol.group(languageRef.current), code);
       }
       editor.current?.destroy();
       editor.current = undefined;
@@ -133,23 +146,28 @@ export function ProblemWorkspace(props: Props) {
 
   useEffect(() => editor.current?.setTheme(props.theme), [props.theme]);
 
+  // The statement arrived after the editor: its format decides the mode now.
+  useEffect(() => {
+    if (body && ready) void sol.load(body, true);
+  }, [body !== undefined, ready]);
+
   // A new answer, or another language: compare again.
   useEffect(() => {
     const code = editor.current?.getCode();
-    if (code !== undefined) setDiffers(answerDiffers(props.answer, code, language));
-  }, [props.answer, language, ready]);
+    if (code !== undefined) setDiffers(answerDiffers(props.answer, code, language, sol.fn));
+  }, [props.answer, language, ready, sol.fn]);
 
   const changeLanguage = async (next: LanguageId) => {
     if (next === language) return;
     const current = editor.current?.getCode();
     clearTimeout(saveTimer.current);
-    if (current !== undefined) await store.saveCode(problem.id, info.codeGroup, current);
+    if (current !== undefined) await store.saveCode(problem.id, sol.group(language), current);
     const nextInfo = languageInfo(next);
-    const saved = await store.loadCode(problem.id, nextInfo.codeGroup);
+    const saved = await store.loadCode(problem.id, sol.group(next));
     languageRef.current = next;
     props.onLanguage(next);
     editor.current?.setLanguage(nextInfo.engine);
-    if (nextInfo.codeGroup !== info.codeGroup) editor.current?.setCode(saved ?? nextInfo.starter);
+    if (nextInfo.codeGroup !== info.codeGroup) editor.current?.setCode(saved ?? sol.starter(next));
     setOutput({ state: 'empty' });
   };
 
@@ -165,10 +183,12 @@ export function ProblemWorkspace(props: Props) {
       return;
     }
     setRunning(true);
+    const plan = sol.runPlan(editor.current?.getCode() ?? '', language);
     const result = await runCases({
       runner,
       language,
-      code: editor.current?.getCode() ?? '',
+      code: plan.code,
+      ...(plan.transform ? { transform: plan.transform } : {}),
       cases: [...body.samples, ...cases],
       problemLimitMs: body.timeLimitMs,
       warmEngines: props.warmEngines,
@@ -179,11 +199,18 @@ export function ProblemWorkspace(props: Props) {
   };
 
   const reset = () => {
-    editor.current?.setCode(info.starter);
-    void store.clearCode(problem.id, info.codeGroup);
+    editor.current?.setCode(sol.starter(language));
+    void store.clearCode(problem.id, sol.group(language));
     setDialog(undefined);
     setTab('run');
     setOutput({ state: 'message', text: '코드를 초기화하였습니다.' });
+  };
+
+  const saveCases = (next: Sample[]) => {
+    setCases(next);
+    store
+      .saveCases(problem.id, next)
+      .catch((e: unknown) => setSaveError(e instanceof Error ? e.message : String(e)));
   };
 
   const saveAnswer = () => {
@@ -195,7 +222,9 @@ export function ProblemWorkspace(props: Props) {
       return;
     }
     setAnswerError(undefined);
-    props.onSaveAnswer(code, language);
+    // Solution mode saves the program with glue (what is submitted) and the function itself.
+    if (sol.fn) props.onSaveAnswer(sol.submission(code, language), language, code);
+    else props.onSaveAnswer(code, language);
   };
 
   const note = body ? runNote(body.labels) : undefined;
@@ -207,6 +236,18 @@ export function ProblemWorkspace(props: Props) {
           {problem.title}
         </h1>
         <div class="title-tools">
+          <SolutionToggle
+            on={sol.fn}
+            busy={running || !ready}
+            {...(sol.resolved.reason ? { reason: sol.resolved.reason } : {})}
+            {...(sol.resolved.reason && body && !runBlockReason(body.labels)
+              ? { onDefine: () => setFormatOpen(true) }
+              : {})}
+            onChange={(on) => {
+              setOutput({ state: 'empty' });
+              void sol.setMode(on);
+            }}
+          />
           <button
             type="button"
             class={`flag-button${props.flagged ? ' is-on' : ''}`}
@@ -267,13 +308,27 @@ export function ProblemWorkspace(props: Props) {
               first={
                 <section class="code-section" aria-label="코드 편집">
                   <div class="code-header">
-                    <div class="file-tab">{info.fileName}</div>
+                    <div class="file-tab">{sol.fileName(language)}</div>
                     {saveError && (
                       <p class="save-error" role="alert">
                         코드를 자동 저장하지 못했습니다. 코드를 따로 복사해 두세요. ({saveError})
                       </p>
                     )}
                   </div>
+                  {body && (sol.fn || formatOpen) && (
+                    <FormatCard
+                      problem={body}
+                      {...(sol.format ? { format: sol.format } : {})}
+                      {...(sol.resolved.source ? { source: sol.resolved.source } : {})}
+                      {...(sol.resolved.savedInvalid
+                        ? { savedInvalid: sol.resolved.savedInvalid }
+                        : {})}
+                      open={formatOpen}
+                      onOpen={setFormatOpen}
+                      onSave={sol.saveFormat}
+                      onReset={sol.resetFormat}
+                    />
+                  )}
                   <div class="editor" ref={editorHost} />
                 </section>
               }
@@ -361,17 +416,21 @@ export function ProblemWorkspace(props: Props) {
       </footer>
 
       {dialog === 'reset' && <ResetDialog onConfirm={reset} onClose={() => setDialog(undefined)} />}
-      {dialog === 'cases' && (
+      {dialog === 'cases' && sol.fn && sol.format && (
+        <SolutionCaseDialog
+          format={sol.format}
+          samples={body?.samples ?? []}
+          cases={cases}
+          onClose={() => setDialog(undefined)}
+          onSave={saveCases}
+        />
+      )}
+      {dialog === 'cases' && !sol.fn && (
         <TestCaseDialog
           samples={body?.samples ?? []}
           cases={cases}
           onClose={() => setDialog(undefined)}
-          onSave={(next) => {
-            setCases(next);
-            store
-              .saveCases(problem.id, next)
-              .catch((e: unknown) => setSaveError(e instanceof Error ? e.message : String(e)));
-          }}
+          onSave={saveCases}
         />
       )}
     </div>

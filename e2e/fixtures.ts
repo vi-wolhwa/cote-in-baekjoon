@@ -11,6 +11,10 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
+declare const chrome: {
+  storage: { local: { set: (items: Record<string, unknown>) => Promise<void> } };
+};
+
 const extensionPath = path.resolve('.output/chrome-mv3');
 const SOLVED_AC = 'https://solved.ac/*';
 
@@ -54,11 +58,14 @@ function solvedAcGrantedCopy(): string {
 export const test = base.extend<{
   /** Load the extension with the solved.ac permission already granted (mock exam tests). */
   grantSolvedAc: boolean;
+  /** Leave 'solution 함수' at its default (on); otherwise tests start in standard I/O. */
+  solutionMode: boolean;
   context: BrowserContext;
   extensionId: string;
 }>({
   grantSolvedAc: [false, { option: true }],
-  context: async ({ grantSolvedAc }, use) => {
+  solutionMode: [false, { option: true }],
+  context: async ({ grantSolvedAc, solutionMode }, use) => {
     const loadPath = grantSolvedAc ? solvedAcGrantedCopy() : extensionPath;
     const context = await chromium.launchPersistentContext('', {
       channel: process.env.PW_CHANNEL ?? 'chromium',
@@ -70,6 +77,13 @@ export const test = base.extend<{
         '--host-resolver-rules=MAP acmicpc.net ~NOTFOUND, MAP *.acmicpc.net ~NOTFOUND, MAP solved.ac ~NOTFOUND, MAP *.solved.ac ~NOTFOUND',
       ],
     });
+    // Solution-function mode is on by default (ADR-0006). Tests written for standard I/O
+    // turn it off before any page opens; solution tests opt in with solutionMode: true.
+    if (!solutionMode) {
+      const [existing] = context.serviceWorkers();
+      const worker = existing ?? (await context.waitForEvent('serviceworker'));
+      await worker.evaluate(() => chrome.storage.local.set({ 'ui:solution': false }));
+    }
     await use(context);
     await context.close();
   },

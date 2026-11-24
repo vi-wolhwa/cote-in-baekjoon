@@ -1,5 +1,6 @@
 /**
- * Backup and restore of the data in `storage.local` (#42): code, test cases, judge results,
+ * Backup and restore of the data in `storage.local` (#42): code (both solution modes), test
+ * cases, solution-function formats (`format:{id}`, ADR-0006), judge results,
  * problem meta (#79), mock exams (ADR-0005) and settings. Uninstalling the extension deletes that data, so users can keep a JSON file.
  *
  * Kept free of extension APIs so the parsing and the restore plan can be unit tested. The
@@ -8,6 +9,7 @@
 import { MAX_CODE_LENGTH } from '@/boj/submit-fill';
 import { DRAFT_KEY, EXAM_KEY, isDraft, isExam } from '@/exam/model';
 import { isProblemMeta } from '@/shared/problem-meta';
+import { checkFormat } from '@/solution/dsl';
 import { isJudgeResult } from '@/shared/submission';
 import { isTheme, THEME_KEY } from '@/shared/theme';
 
@@ -46,7 +48,10 @@ export type ParseResult =
   | { ok: false; reason: string };
 
 const PROBLEM_ID = '[1-9]\\d{0,6}';
-const CODE_KEY = new RegExp(`^code:${PROBLEM_ID}:[a-z0-9]{1,20}$`);
+/** Standard I/O code, or solution-function code with `:fn` (ADR-0006). */
+const CODE_KEY = new RegExp(`^code:${PROBLEM_ID}:[a-z0-9]{1,20}(?::fn)?$`);
+/** The user's own solution-function format of a problem (ADR-0006). */
+const FORMAT_KEY = new RegExp(`^format:${PROBLEM_ID}$`);
 const CASES_KEY = new RegExp(`^cases:${PROBLEM_ID}$`);
 const JUDGE_KEY = new RegExp(`^judge:(${PROBLEM_ID})$`);
 const META_KEY = new RegExp(`^meta:${PROBLEM_ID}$`);
@@ -59,6 +64,7 @@ const SETTINGS: Record<string, (v: unknown) => boolean> = {
     isObject(v) && isPercent(v.horizontal) && isPercent(v.vertical) && Object.keys(v).length === 2,
   'ui:language': (v) => typeof v === 'string' && /^[a-z0-9]{1,20}$/.test(v),
   [THEME_KEY]: isTheme,
+  'ui:solution': (v) => typeof v === 'boolean',
   [DRAFT_KEY]: isDraft,
 };
 
@@ -75,6 +81,7 @@ export function isBackupKey(key: string): boolean {
   return (
     CODE_KEY.test(key) ||
     CASES_KEY.test(key) ||
+    FORMAT_KEY.test(key) ||
     JUDGE_KEY.test(key) ||
     META_KEY.test(key) ||
     EXAM_KEY.test(key) ||
@@ -86,6 +93,7 @@ export function isBackupKey(key: string): boolean {
 export function isValidEntry(key: string, value: unknown): boolean {
   if (CODE_KEY.test(key)) return typeof value === 'string' && value.length <= MAX_CODE_LENGTH;
   if (CASES_KEY.test(key)) return isCases(value);
+  if (FORMAT_KEY.test(key)) return checkFormat(value).ok;
   const judge = JUDGE_KEY.exec(key);
   if (judge) return isJudgeResult(value) && value.problemId === Number(judge[1]);
   if (META_KEY.test(key)) return isProblemMeta(value);

@@ -60,6 +60,8 @@ function openIde() {
   frame.id = OVERLAY_ID;
   frame.src = browser.runtime.getURL('/ide.html');
   frame.title = '코딩테스트 풀이 화면';
+  // 'AI에게 물어볼 프롬프트 복사' writes the clipboard from inside the frame (ADR-0006).
+  frame.allow = 'clipboard-write';
   Object.assign(frame.style, {
     position: 'fixed',
     inset: '0',

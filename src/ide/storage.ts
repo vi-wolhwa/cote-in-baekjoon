@@ -4,6 +4,7 @@
 import type { Sample } from '@/boj/problem';
 import { DEFAULT_LANGUAGE, isLanguageId, type LanguageId } from '@/shared/languages';
 import { makeMeta, metaKey } from '@/shared/problem-meta';
+import type { Format } from '@/solution/dsl';
 import { THEME_KEY, toTheme, type Theme } from '@/shared/theme';
 import { parseTimer, timerKey, type TimerState } from './timer';
 
@@ -19,8 +20,18 @@ export interface SplitSizes {
 
 export const DEFAULT_SPLIT: SplitSizes = { horizontal: 40, vertical: 60 };
 
-/** `group` is LanguageInfo.codeGroup (JavaScript keeps its M1 key `code:{id}:javascript`). */
+/**
+ * `group` is LanguageInfo.codeGroup (JavaScript keeps its M1 key `code:{id}:javascript`).
+ * Solution-function mode keeps its code apart, under `code:{id}:{group}:fn` (codeGroupFor).
+ */
 const codeKey = (problemId: number, group: string) => `code:${problemId}:${group}`;
+const formatKey = (problemId: number) => `format:${problemId}`;
+export const SOLUTION_KEY = 'ui:solution';
+
+/** The storage group of a language's code in a mode: standard I/O or solution function. */
+export function codeGroupFor(group: string, fn: boolean): string {
+  return fn ? `${group}:fn` : group;
+}
 const casesKey = (problemId: number) => `cases:${problemId}`;
 const KEYMAP_KEY = 'ui:keymap';
 const SPLIT_KEY = 'ui:split';
@@ -118,4 +129,27 @@ export async function loadTimer(problemId: number): Promise<TimerState | undefin
 export function saveTimer(problemId: number, state: TimerState) {
   if (problemId <= 0) return Promise.resolve();
   return browser.storage.local.set({ [timerKey(problemId)]: state });
+}
+
+/** The format the user saved for a problem (`format:{id}`), raw: validate before use. */
+export async function loadUserFormat(problemId: number): Promise<unknown> {
+  return get(formatKey(problemId));
+}
+
+export function saveUserFormat(problemId: number, format: Format) {
+  return browser.storage.local.set({ [formatKey(problemId)]: format });
+}
+
+export function clearUserFormat(problemId: number) {
+  return browser.storage.local.remove(formatKey(problemId));
+}
+
+/** 'solution 함수' on or off. Like the language, the last choice applies to every problem. */
+export async function loadSolutionMode(): Promise<boolean> {
+  const v = await get(SOLUTION_KEY);
+  return typeof v === 'boolean' ? v : true;
+}
+
+export function saveSolutionMode(on: boolean) {
+  return browser.storage.local.set({ [SOLUTION_KEY]: on });
 }
