@@ -183,7 +183,8 @@
   font-size: 12px;
 }
 .format-ret th,
-.format-cases th {
+.format-cases th,
+.format-case-out th {
   color: var(--text-strong);
   white-space: nowrap;
 }
@@ -233,6 +234,20 @@
 }
 .format-ret-options input[type='text'] {
   width: 80px;
+}
+.format-ret-options input.format-label {
+  width: 128px;
+}
+.format-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.format-table .format-check input {
+  height: auto;
+  margin: 0;
+  padding: 0;
 }
 .format-read {
   display: flex;

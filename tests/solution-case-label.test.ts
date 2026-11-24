@@ -1,8 +1,55 @@
 /** Per-case labels ("Case #1: ") and blank lines after each case (ADR-0006, ret.label/blank). */
 import { describe, expect, it } from 'vitest';
+import { defaultRet, labelFromText, labelText } from '@/ide/solution/RetOptions';
 import { checkFormat, formatToJson, type Format, type RetSpec } from '@/solution/dsl';
+import { inferFormat } from '@/solution/infer';
+import { labeledOutputs } from '@/solution/infer-ret';
 import { formatOutput, parseOutput } from '@/solution/output';
+import { setCases, toTable } from '@/solution/table';
 import { validateFormat } from '@/solution/validate';
+
+describe('inference', () => {
+  const sample = { input: '3\n1 2\n3 4\n5 5\n', output: 'Case #1: 3\nCase #2: 7\nCase #3: 10\n' };
+
+  it('takes a numbered label off every output line', () => {
+    expect(labeledOutputs([sample])).toEqual({
+      label: 'Case #{i}: ',
+      samples: [{ ...sample, output: '3\n7\n10\n' }],
+    });
+    expect(labeledOutputs([{ input: '', output: 'Case #1: 3\nCase #3: 7\n' }])).toBeUndefined();
+    expect(labeledOutputs([{ input: '', output: 'Case #1:\n3\n' }])).toBeUndefined();
+  });
+
+  it('infers a format with the label', () => {
+    const format = inferFormat({ samples: [sample], inputHtml: '', outputHtml: '' });
+    expect(format?.cases).toEqual({ count: expect.any(String) });
+    expect(format?.ret).toEqual({ type: 'int', label: 'Case #{i}: ' });
+  });
+});
+
+describe('format editor', () => {
+  it('drops the label (not the blank line) when the input has one case', () => {
+    const r = checkFormat({ ...AB, ret: { type: 'int', label: 'Case #{i}: ', blank: true } });
+    if (!r.ok) throw new Error(r.errors.join('\n'));
+    expect(setCases(toTable(r.format), null).ret).toEqual({ type: 'int', blank: true });
+  });
+
+  it('keeps label and blank when the return type changes', () => {
+    expect(defaultRet('bool', { type: 'int', label: 'Case #{i}: ', blank: true })).toEqual({
+      type: 'bool',
+      yes: 'YES',
+      no: 'NO',
+      label: 'Case #{i}: ',
+      blank: true,
+    });
+  });
+
+  it('shows a trailing newline as \\n', () => {
+    expect(labelText('Scenario #{i}:\n')).toBe('Scenario #{i}:\\n');
+    expect(labelFromText('Scenario #{i}:\\n')).toBe('Scenario #{i}:\n');
+    expect(labelFromText('Case #{i}: ')).toBe('Case #{i}: ');
+  });
+});
 
 const AB = {
   v: 1,
