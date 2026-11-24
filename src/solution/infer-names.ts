@@ -5,7 +5,7 @@
  * how well a layout matches the text, for ranking.
  */
 import { isValidName, type Cases, type ParamType } from './dsl';
-import type { DraftCount, DraftLine, DraftParam } from './infer';
+import type { DraftCount, DraftLine, DraftParam } from './infer-layout';
 import {
   arrayLetters,
   cueName,
