@@ -60,6 +60,8 @@ const BLOCKS_CODE = `function solution(names: string[], grid: string[]): string[
 const CASES_CODE = `function solution(a: number, b: number): boolean {
     return a < b;
 }`;
+// The same with a case label line and a blank line after each case.
+const LABELED = f({ ...CASES, ret: { ...CASES.ret, label: 'Case #{i}:\n', blank: true } });
 
 /** Type errors of a program, compiled as a script like Baekjoon's single file. */
 function typeErrors(source: string, options: ts.CompilerOptions): string[] {
@@ -108,6 +110,7 @@ describe('TypeScript glue compiles with tsc', { timeout: 120_000 }, () => {
         [SORT, SORT_CODE],
         [BLOCKS, BLOCKS_CODE],
         [CASES, CASES_CODE],
+        [LABELED, CASES_CODE],
       ] as const) {
         expect(typeErrors(buildProgram('ts', format, code).source, options)).toEqual([]);
       }
@@ -145,5 +148,7 @@ describe('TypeScript glue runs once types are stripped', () => {
   it('calls solution per case', async () => {
     const r = await run(CASES, CASES_CODE, '2\n1 2\n3 1\n');
     expect(r.stdout).toBe('YES\nNO\n');
+    const labeled = await run(LABELED, CASES_CODE, '2\n1 2\n3 1\n');
+    expect(labeled.stdout).toBe('Case #1:\nYES\n\nCase #2:\nNO\n\n');
   });
 });
