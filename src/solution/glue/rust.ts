@@ -460,7 +460,7 @@ const PLACEHOLDER: Record<RetType, string> = {
 export function rustStarter(format: Format): string {
   const params = format.params.map((p) => `${p.name}: ${RUST_TYPES[p.type]}`).join(', ');
   const type = RUST_TYPES[format.ret.type];
-  return `// main 함수(입출력 코드)는 자동으로 붙습니다.\n\nfn solution(${params}) -> ${type} {\n    let answer: ${type} = ${PLACEHOLDER[format.ret.type]};\n    answer\n}\n`;
+  return `fn solution(${params}) -> ${type} {\n    let answer: ${type} = ${PLACEHOLDER[format.ret.type]};\n    answer\n}\n`;
 }
 
 export const rustLanguage: GlueLanguage = {

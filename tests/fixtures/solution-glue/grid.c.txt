@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-// stdio.h, stdlib.h, string.h, stdbool.h는 자동으로 포함됩니다.
-// 문자 격자는 한 행씩 문자열로, 행 수는 이름_rows로 받습니다.
+// 자동 포함: stdio.h, stdlib.h, string.h, stdbool.h
+// 문자 격자는 행마다 문자열이고, 행 수(이름_rows)와 함께 받아요.
 
 bool solution(int n, int m, const char* board[], size_t board_rows) {
     bool answer = true;

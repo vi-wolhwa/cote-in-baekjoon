@@ -37,12 +37,12 @@ export function cppStarter(format: Format): string {
   const type = CPP_TYPES[format.ret.type];
   const answer = placeholder('cpp', format.ret.type);
   const init = answer === '{}' ? `${type} answer;` : `${type} answer = ${answer};`;
-  return `// bits/stdc++.h와 using namespace std;는 자동으로 붙습니다.\n\n${type} solution(${params}) {\n    ${init}\n    return answer;\n}\n`;
+  return `// 자동 포함: bits/stdc++.h, using namespace std\n\n${type} solution(${params}) {\n    ${init}\n    return answer;\n}\n`;
 }
 
 export function javaStarter(format: Format): string {
   const params = format.params.map((p) => `${JAVA_TYPES[p.type]} ${p.name}`).join(', ');
   const type = JAVA_TYPES[format.ret.type];
   const answer = placeholder('java', format.ret.type);
-  return `// java.util.*와 java.io.*는 자동으로 import됩니다.\n\nclass Solution {\n    public ${type} solution(${params}) {\n        ${type} answer = ${answer};\n        return answer;\n    }\n}\n`;
+  return `// 자동 포함: java.util.*, java.io.*\n\nclass Solution {\n    public ${type} solution(${params}) {\n        ${type} answer = ${answer};\n        return answer;\n    }\n}\n`;
 }

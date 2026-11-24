@@ -312,7 +312,7 @@ function placeholder(format: Format): string {
 
 export function rubyStarter(format: Format): string {
   const names = format.params.map((p) => (KEYWORDS.has(p.name) ? `${p.name}_` : p.name));
-  return `# 입력을 읽고 결과를 출력하는 코드는 자동으로 붙습니다.\n\ndef solution(${names.join(', ')})\n  answer = ${placeholder(format)}\n  return answer\nend\n`;
+  return `def solution(${names.join(', ')})\n  answer = ${placeholder(format)}\n  return answer\nend\n`;
 }
 
 export const rubyLanguage: GlueLanguage = {

@@ -465,7 +465,7 @@ export function goStarter(format: Format): string {
   const params = format.params.map((p) => `${p.name} ${GO_TYPES[p.type]}`).join(', ');
   const type = GO_TYPES[format.ret.type];
   const answer = format.ret.type === 'bool' ? 'answer := true' : `var answer ${type}`;
-  return `// package main과 main 함수(입출력 코드)는 자동으로 붙습니다. import는 맨 위에 써 주세요.\n\nfunc solution(${params}) ${type} {\n    ${answer}\n    return answer\n}\n`;
+  return `// 자동 포함: package main\n\nfunc solution(${params}) ${type} {\n    ${answer}\n    return answer\n}\n`;
 }
 
 export const goLanguage: GlueLanguage = {

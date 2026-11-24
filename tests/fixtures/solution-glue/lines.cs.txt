@@ -1,5 +1,5 @@
 using System; using System.Collections.Generic; using System.Linq; using System.Text;
-// System, System.Collections.Generic, System.Linq, System.Text는 자동으로 using됩니다.
+// 자동 포함: System, System.Collections.Generic, System.Linq, System.Text
 
 public class Solution {
     public double solution(string title, long[] nums, int k, int[][] rows) {

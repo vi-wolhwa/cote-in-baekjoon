@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-// stdio.h, stdlib.h, string.h, stdbool.h는 자동으로 포함됩니다.
-// 배열은 포인터와 길이(이름_len)로 받습니다.
-// 2차원 배열은 행 수(이름_rows)와 i번째 행의 길이(이름_cols[i])를 함께 받습니다.
+// 자동 포함: stdio.h, stdlib.h, string.h, stdbool.h
+// 배열은 길이(이름_len)와 함께 받아요.
+// 2차원 배열은 행 수(이름_rows), 행마다의 길이(이름_cols[i])와 함께 받아요.
 
 double solution(const char* title, long long nums[], size_t nums_len, int k, int** rows, size_t rows_rows, size_t rows_cols[]) {
     double answer = 0;

@@ -372,7 +372,7 @@ export function csharpStarter(format: Format): string {
     .map((p) => `${CSHARP_TYPES[p.type]} ${KEYWORDS.has(p.name) ? `@${p.name}` : p.name}`)
     .join(', ');
   const type = CSHARP_TYPES[format.ret.type];
-  return `// System, System.Collections.Generic, System.Linq, System.Text는 자동으로 using됩니다.\n\npublic class Solution {\n    public ${type} solution(${params}) {\n        ${type} answer = ${placeholder(type)};\n        return answer;\n    }\n}\n`;
+  return `// 자동 포함: System, System.Collections.Generic, System.Linq, System.Text\n\npublic class Solution {\n    public ${type} solution(${params}) {\n        ${type} answer = ${placeholder(type)};\n        return answer;\n    }\n}\n`;
 }
 
 export const csharpLanguage: GlueLanguage = {
