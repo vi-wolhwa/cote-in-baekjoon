@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.10.0...v0.11.0) (2026-11-24)
+
+
+### 기능
+
+* **ide:** 실행 결과를 매개변수로, 외국어 문제 자동 번역, 예전 시작 코드 갱신 ([#147](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/147)) ([644282f](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/644282fb4c29212ea8555830562e22edbaabafc2))
+
 ## [0.10.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.9.0...v0.10.0) (2026-11-24)
 
 
