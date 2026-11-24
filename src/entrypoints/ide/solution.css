@@ -239,7 +239,7 @@
 }
 .format-mode {
   flex: none;
-  width: 100px;
+  width: 116px;
 }
 .format-field {
   display: inline-flex;
@@ -368,4 +368,53 @@
   .format-table .format-line-head {
     display: none;
   }
+}
+
+/* Format check at the right of the card header: warning triangle or check, with a tooltip. */
+:root {
+  --format-warn-icon: #f5c542;
+}
+:root[data-theme='light'] {
+  --format-warn-icon: #e8b100;
+}
+.format-status {
+  flex: none;
+  margin-left: auto;
+}
+.format-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  cursor: help;
+}
+.format-status-icon:hover,
+.format-status-icon:focus-visible {
+  border-color: var(--select-border);
+}
+.format-tip {
+  display: none;
+  position: fixed;
+  z-index: 50;
+  max-width: min(420px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid var(--select-border);
+  border-radius: 6px;
+  background: var(--select-bg);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 30%);
+}
+.format-tip.is-shown {
+  display: block;
+}
+.format-tip ul {
+  margin: 0;
+  padding-left: 16px;
 }

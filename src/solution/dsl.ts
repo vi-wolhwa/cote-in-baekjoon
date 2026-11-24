@@ -53,14 +53,24 @@ export interface Param {
   cols?: Count;
 }
 
-/** Several lines, one element (a whole line for `line[]`, a row for 2D arrays) per line. */
-export interface RepeatLine {
-  repeat: Count;
-  of: string;
-}
+/**
+ * Several lines, one element (a whole line for `line[]`, a row for 2D arrays) per line:
+ * `repeat` lines, or until an end line (`until: "0"`, the end line is not part of the value),
+ * or until the input ends (`until: "EOF"`, only as the last line of a single-case format).
+ */
+export type RepeatLine = { repeat: Count; of: string } | { until: string; of: string };
 
 /** One input line: the parameters read from it, in order. */
 export type LineSpec = string[] | RepeatLine;
+
+/** How many lines a repeat line reads. */
+export type RepeatSize =
+  { kind: 'count'; count: Count } | { kind: 'until'; end: string } | { kind: 'eof' };
+
+export function repeatSize(line: RepeatLine): RepeatSize {
+  if ('repeat' in line) return { kind: 'count', count: line.repeat };
+  return line.until === 'EOF' ? { kind: 'eof' } : { kind: 'until', end: line.until };
+}
 
 export type Cases = null | { count: string } | { until: string };
 
@@ -207,6 +217,9 @@ export function checkFormat(value: unknown): CheckResult {
   const lines = parseLines(value.lines, byName, fail);
   const cases = parseCases(value.cases, byName, fail);
   if (params.length === 0 && cases) fail('입력이 없는 형식에는 입력 반복을 쓸 수 없어요.');
+  if (cases && lines?.some((l) => !Array.isArray(l) && 'until' in l && l.until === 'EOF')) {
+    fail('입력 끝까지 읽는 매개변수가 있으면 입력 반복을 쓸 수 없어요.');
+  }
   const ret = parseRet(value.ret, fail);
   if (errors.length || !lines || cases === undefined || !ret) {
     return { ok: false, errors: errors.length ? errors : ['형식을 읽지 못했어요.'] };
@@ -307,8 +320,13 @@ function parseLines(
       out.push(line as string[]);
       continue;
     }
-    if (!isRecord(line) || typeof line.of !== 'string' || line.repeat === undefined) {
-      fail(`${where}은(는) 파라미터 이름 배열이나 { "repeat", "of" }여야 해요.`);
+    const hasUntil = isRecord(line) && typeof line.until === 'string';
+    if (
+      !isRecord(line) ||
+      typeof line.of !== 'string' ||
+      (line.repeat === undefined && !hasUntil)
+    ) {
+      fail(`${where}은(는) 파라미터 이름 배열이나 { "repeat", "of" }, { "until", "of" }여야 해요.`);
       continue;
     }
     const p = byName.get(line.of);
@@ -320,15 +338,26 @@ function parseLines(
     if (!isArrayType(p.type) && !isRepeatOnly(p.type)) {
       fail(`여러 줄로는 배열만 읽을 수 있어요. '${p.name}'은(는) ${p.type}이에요.`);
     }
+    if (p.len !== undefined) fail(`여러 줄로 읽는 '${p.name}'에는 len을 쓰지 않아요.`);
+    if (p.cols !== undefined) checkCount(p.cols, `'${p.name}'의 열`);
+    read.add(p.name);
+    if (hasUntil) {
+      const until = (line.until as string).trim().replace(/\s+/g, ' ');
+      if (until === '' || until.length > MAX_WORD) {
+        fail(`'${p.name}'의 끝내는 줄은 "EOF"이거나 입력을 끝내는 줄(예: "0")이어야 해요.`);
+      }
+      if (until === 'EOF' && i < raw.length - 1) {
+        fail(`입력 끝까지 읽는 '${p.name}'은(는) 마지막 줄이어야 해요.`);
+      }
+      out.push({ until, of: p.name });
+      continue;
+    }
     const repeat = line.repeat;
     if (typeof repeat !== 'string' && typeof repeat !== 'number') {
       fail(`${where}의 repeat 값을 읽을 수 없어요.`);
       continue;
     }
     checkCount(repeat, `'${p.name}'`);
-    if (p.len !== undefined) fail(`repeat로 읽는 '${p.name}'에는 len 대신 repeat만 써요.`);
-    if (p.cols !== undefined) checkCount(p.cols, `'${p.name}'의 열`);
-    read.add(p.name);
     out.push({ repeat, of: p.name });
   }
   for (const name of byName.keys()) {

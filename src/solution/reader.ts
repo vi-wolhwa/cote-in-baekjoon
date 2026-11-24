@@ -10,6 +10,7 @@ import {
   isGridType,
   isLinesType,
   isRepeat,
+  repeatSize,
   parseCount,
   sentinelOf,
   type Count,
@@ -71,14 +72,33 @@ export function readInput(format: Format, text: string): ReadResult {
     for (const spec of format.lines) {
       if (isRepeat(spec)) {
         const p = byName.get(spec.of) as Param;
-        const n = count(spec.repeat, env, `'${p.name}'`, lines[at]);
+        const size = repeatSize(spec);
         const rows: Value[] = [];
-        for (let r = 0; r < n; r++) {
-          const line = next(`'${p.name}'의 ${r + 1}번째 줄`);
-          rows.push(readRow(p, line, env));
+        if (size.kind === 'count') {
+          const n = count(size.count, env, `'${p.name}'`, lines[at]);
+          for (let r = 0; r < n; r++) {
+            const line = next(`'${p.name}'의 ${r + 1}번째 줄`);
+            rows.push(readRow(p, line, env));
+          }
+        } else if (size.kind === 'until') {
+          for (;;) {
+            const line = next(`'${p.name}'을(를) 끝내는 줄 '${size.end}'`);
+            if (isEndLine(p, line, size.end)) break;
+            rows.push(readRow(p, line, env));
+          }
+        } else {
+          while (at < lines.length) rows.push(readRow(p, lines[at++] as Line, env));
         }
         keep(p, rows);
         continue;
+      }
+      // An array of length 0 alone on its line: the line may be missing (no tokens to read).
+      const only = byName.get(spec[0] as string) as Param;
+      if (spec.length === 1 && isArrayType(only.type) && only.len !== undefined) {
+        if (count(only.len, env, `'${only.name}'`, lines[at]) === 0) {
+          keep(only, []);
+          continue;
+        }
       }
       const line = next(`${spec.join(', ')}`);
       const first = byName.get(spec[0] as string) as Param;
@@ -170,6 +190,11 @@ export function readInput(format: Format, text: string): ReadResult {
     return r.value;
   }
 
+  /** The end line of an `until` repeat: whole text for line[] (" ." is data, "." ends), else tokens. */
+  function isEndLine(p: Param, line: Line, end: string): boolean {
+    return isLinesType(p.type) ? line.text === end : line.tokens.join(' ') === end;
+  }
+
   function readRow(p: Param, line: Line, env: Map<string, number>): Value {
     // line[]: the whole line, spaces kept (outer spaces trimmed, like `line`).
     if (isLinesType(p.type)) return line.text.trim();
@@ -230,7 +255,8 @@ export function writeInput(format: Format, cases: Values[]): WriteResult {
           const p = byName.get(spec.of) as Param;
           const rows = values.get(p.name);
           if (!Array.isArray(rows)) throw new ReadError(`'${p.name}' 값이 없어요`);
-          expect(spec.repeat, rows.length, `'${p.name}'`);
+          const size = repeatSize(spec);
+          if (size.kind === 'count') expect(size.count, rows.length, `'${p.name}'`);
           for (const row of rows) {
             if (isGridType(p.type) && p.cols !== undefined) {
               const len =
@@ -250,7 +276,14 @@ export function writeInput(format: Format, cases: Values[]): WriteResult {
             }
             out.push(tokenText(row));
           }
+          if (size.kind === 'until') out.push(size.end);
           continue;
+        }
+        const only = byName.get(spec[0] as string) as Param;
+        const value = values.get(only.name);
+        if (spec.length === 1 && isArrayType(only.type) && Array.isArray(value)) {
+          if (only.len !== undefined) expect(only.len, value.length, `'${only.name}'`);
+          if (only.len !== undefined && value.length === 0) continue;
         }
         const parts: string[] = [];
         for (const name of spec) {

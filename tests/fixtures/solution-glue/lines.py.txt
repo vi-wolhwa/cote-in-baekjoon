@@ -56,6 +56,9 @@ def __cib_main():
     def __cib_s(s):
         return s
 
+    __cib_has = __cib_more
+
+
     def __cib_f(r):
         return '%.2f' % r
 

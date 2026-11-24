@@ -12,6 +12,7 @@ import {
   isGridType,
   isRepeat,
   isRepeatOnly,
+  repeatSize,
   isValidName,
   MAX_PARAMS,
   type Cases,
@@ -21,13 +22,17 @@ import {
   type RetSpec,
 } from './dsl';
 
-export type RowMode = 'new' | 'same' | 'repeat';
+/** new/same: on one line. repeat: `count` lines. until: up to the end line in `count`. eof: to the end. */
+export type RowMode = 'new' | 'same' | 'repeat' | 'until' | 'eof';
+
+/** Modes that read several lines. */
+export const isMultiMode = (m: RowMode) => m === 'repeat' || m === 'until' || m === 'eof';
 
 export interface ParamRow {
   name: string;
   type: ParamType;
   mode: RowMode;
-  /** 1D array on a line: its length ('' = the rest of the line). Several lines: how many. */
+  /** 1D array on a line: its length ('' = the rest of the line). repeat: how many lines. until: the end line. */
   count: string;
   /** 2D array: columns ('' = every value of the row's line). */
   cols: string;
@@ -44,7 +49,7 @@ const countString = (c: Count | undefined) => (c === undefined ? '' : String(c))
 export function toTable(format: Format): FormatTable {
   const byName = new Map(format.params.map((p) => [p.name, p]));
   const rows: ParamRow[] = [];
-  const push = (name: string, mode: RowMode, repeat?: Count) => {
+  const push = (name: string, mode: RowMode, repeat?: Count | string) => {
     const p = byName.get(name);
     if (!p) return;
     byName.delete(name);
@@ -57,8 +62,12 @@ export function toTable(format: Format): FormatTable {
     });
   };
   for (const line of format.lines) {
-    if (isRepeat(line)) push(line.of, 'repeat', line.repeat);
-    else line.forEach((name, i) => push(name, i === 0 ? 'new' : 'same'));
+    if (isRepeat(line)) {
+      const size = repeatSize(line);
+      if (size.kind === 'count') push(line.of, 'repeat', size.count);
+      else if (size.kind === 'until') push(line.of, 'until', size.end);
+      else push(line.of, 'eof', '');
+    } else line.forEach((name, i) => push(name, i === 0 ? 'new' : 'same'));
   }
   return { rows, cases: format.cases, ret: format.ret };
 }
@@ -78,12 +87,15 @@ export function fromTable(table: FormatTable): unknown {
     const name = row.name.trim();
     const count = countValue(row.count);
     const param: Record<string, unknown> = { name, type: row.type };
-    if (isArrayType(row.type) && row.mode !== 'repeat' && count !== undefined) param.len = count;
+    const onLine = !isMultiMode(row.mode);
+    if (isArrayType(row.type) && onLine && count !== undefined) param.len = count;
     const cols = countValue(row.cols);
     if (isGridType(row.type) && cols !== undefined) param.cols = cols;
     params.push(param);
     const last = lines.at(-1);
     if (row.mode === 'repeat') lines.push({ repeat: count ?? '', of: name });
+    else if (row.mode === 'until') lines.push({ until: row.count.trim(), of: name });
+    else if (row.mode === 'eof') lines.push({ until: 'EOF', of: name });
     else if (row.mode === 'same' && Array.isArray(last)) last.push(name);
     else lines.push([name]);
   }
@@ -99,6 +111,9 @@ export function tableErrors(table: FormatTable): string[] {
     if (row.mode === 'repeat' && row.count.trim() === '') {
       errors.push(`'${label}'을(를) 몇 줄에 걸쳐 읽는지 적어 주세요.`);
     }
+    if (row.mode === 'until' && row.count.trim() === '') {
+      errors.push(`'${label}'을(를) 끝내는 줄을 적어 주세요 (예: 0).`);
+    }
   });
   return errors;
 }
@@ -107,13 +122,21 @@ export function tableErrors(table: FormatTable): string[] {
 export function modeOptions(table: FormatTable, index: number): RowMode[] {
   const row = table.rows[index];
   if (!row) return [];
-  if (isRepeatOnly(row.type)) return ['repeat'];
+  // Several lines: a count, an end line, or (last row of a single-case format) the end of input.
+  const multi: RowMode[] = ['repeat', 'until'];
+  if (index === table.rows.length - 1 && table.cases === null) multi.push('eof');
+  if (isRepeatOnly(row.type)) return multi;
   const prev = table.rows[index - 1];
-  const canShare = prev !== undefined && prev.mode !== 'repeat' && prev.type !== 'line';
+  const canShare = prev !== undefined && !isMultiMode(prev.mode) && prev.type !== 'line';
   const out: RowMode[] = ['new'];
   if (canShare && row.type !== 'line') out.push('same');
-  if (isArrayType(row.type)) out.push('repeat');
+  if (isArrayType(row.type)) out.push(...multi);
   return out;
+}
+
+/** Changes how many cases the input has, keeping every row's mode valid. */
+export function setCases(table: FormatTable, cases: Cases): FormatTable {
+  return normalize({ ...table, cases });
 }
 
 /** Keeps every row's mode one of its options (after a type change, a move or a delete). */
@@ -131,6 +154,9 @@ export function setRow(table: FormatTable, index: number, patch: Partial<ParamRo
   const old = table.rows[index];
   if (!old) return table;
   const row = { ...old, ...patch };
+  if (patch.mode !== undefined && patch.mode !== old.mode && patch.count === undefined) {
+    if (patch.mode === 'until' || old.mode === 'until' || patch.mode === 'eof') row.count = '';
+  }
   if (patch.type !== undefined && patch.type !== old.type) {
     if (!isArrayType(row.type) && !isRepeatOnly(row.type)) row.count = '';
     if (!isGridType(row.type)) row.cols = '';
@@ -147,7 +173,9 @@ export function renameRow(table: FormatTable, index: number, name: string): Form
   if (old === undefined) return table;
   const swap = (text: string) => (old && isValidName(old) ? text.replace(wordRe(old), name) : text);
   const rows = table.rows.map((r, i) =>
-    i === index ? { ...r, name } : { ...r, count: swap(r.count), cols: swap(r.cols) },
+    i === index
+      ? { ...r, name }
+      : { ...r, count: r.mode === 'until' ? r.count : swap(r.count), cols: swap(r.cols) },
   );
   return { ...table, rows };
 }
@@ -191,7 +219,7 @@ export function rowPositions(table: FormatTable): string[] {
       return;
     }
     if (line !== undefined) line++;
-    if (row.mode === 'repeat') {
+    if (isMultiMode(row.mode)) {
       out.push(line === undefined ? '그다음 줄부터' : `${line}번째 줄부터`);
       line = undefined;
       return;

@@ -60,7 +60,7 @@ test('opens in solution mode with a format inferred from the samples', async ({
   await page.evaluate(() => chrome.storage.local.set({ 'ui:theme': 'light' }));
   await page.reload();
   await page.getByRole('button', { name: '입출력 형식' }).click();
-  await expect(page.getByTestId('format-ok')).toBeVisible();
+  await expect(page.getByTestId('format-check')).toBeVisible();
   await shot(page, 'solution-light-format-card');
 });
 
@@ -102,8 +102,11 @@ test('editing the format validates it against the samples, and saving makes it t
   await page.goto(`chrome-extension://${extensionId}/ide.html`);
   await page.getByRole('button', { name: '입출력 형식' }).click();
 
-  // An edit that does not fit the samples: the error shows and saving is off.
+  // An edit that does not fit the samples: a warning icon whose tooltip says why; saving is off.
   await page.getByRole('combobox', { name: '반환 타입' }).selectOption('bool');
+  await expect(page.getByTestId('format-errors')).toBeHidden();
+  await page.getByTestId('format-warning').hover();
+  await expect(page.getByTestId('format-errors')).toBeVisible();
   await expect(page.getByTestId('format-errors')).toContainText(
     "예제 1 출력: '3'은(는) 'YES'도 'NO'도 아니에요",
   );
@@ -113,7 +116,7 @@ test('editing the format validates it against the samples, and saving makes it t
   await page.getByRole('combobox', { name: '반환 타입' }).selectOption('long');
   await page.getByRole('textbox', { name: '1번째 매개변수 이름' }).fill('x');
   await page.getByRole('textbox', { name: '1번째 매개변수 이름' }).press('Enter');
-  await expect(page.getByTestId('format-ok')).toBeVisible();
+  await expect(page.getByTestId('format-check')).toBeVisible();
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await expect(page.getByTestId('format-source')).toHaveText('직접 정의함');
   // The untouched starting code follows the new signature.
@@ -122,12 +125,12 @@ test('editing the format validates it against the samples, and saving makes it t
   // A parameter added on its own line does not fit the one-line samples; deleting it does.
   await page.getByRole('button', { name: '매개변수 추가' }).click();
   await expect(page.getByRole('textbox', { name: '3번째 매개변수 이름' })).toHaveValue('n');
-  await expect(page.getByTestId('format-errors')).toBeVisible();
+  await expect(page.getByTestId('format-warning')).toBeVisible();
   await page.getByRole('combobox', { name: '3번째 매개변수 읽는 방법' }).selectOption('same');
-  await expect(page.getByTestId('format-errors')).toBeVisible();
+  await expect(page.getByTestId('format-warning')).toBeVisible();
   await shot(page, 'solution-format-table');
   await page.getByRole('button', { name: '3번째 매개변수 삭제' }).click();
-  await expect(page.getByTestId('format-ok')).toBeVisible();
+  await expect(page.getByTestId('format-check')).toBeVisible();
   await expect(page.getByRole('button', { name: '저장', exact: true })).toBeDisabled();
 
   // 형식 초기화 goes back to the inferred format.
@@ -234,7 +237,7 @@ test('without a format the switch is off and says why, and a format can be made'
   await shot(page, 'solution-toggle-disabled');
 
   await ide.getByRole('button', { name: '형식 만들기' }).click();
-  await expect(ide.getByTestId('format-errors')).toBeVisible();
+  await expect(ide.getByTestId('format-warning')).toBeVisible();
 });
 
 test('in the mock exam, the answer keeps the function and the program with glue', async ({

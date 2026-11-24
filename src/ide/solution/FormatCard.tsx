@@ -13,6 +13,7 @@ import { fromTable, tableErrors, toTable } from '@/solution/table';
 import { validateFormat } from '@/solution/validate';
 import { describeBrowser, issueUrl } from '@/shared/report';
 import { FormatForm } from './FormatForm';
+import { FormatStatus } from './FormatStatus';
 
 interface Props {
   problem: Pick<Problem, 'id' | 'samples' | 'sections'>;
@@ -56,6 +57,13 @@ export function FormatCard(props: Props) {
   );
   const reasons = errors.length ? errors : validation && !validation.ok ? validation.reasons : [];
   const draft = validation?.ok ? validation.format : undefined;
+  // A saved format that stopped fitting, then (while editing) what the draft gets wrong.
+  const warnings = [
+    ...(props.savedInvalid
+      ? [`저장한 형식이 예제와 맞지 않아 쓰지 않았어요: ${props.savedInvalid[0] ?? ''}`]
+      : []),
+    ...(open ? reasons : []),
+  ];
   const changed =
     draft !== undefined && (!format || source !== 'user' || !sameFormat(draft, format));
 
@@ -94,28 +102,18 @@ export function FormatCard(props: Props) {
           </span>
         )}
         <code class="format-signature">{format ? signature(format) : '형식 없음'}</code>
+        {(open || warnings.length > 0) && (
+          <FormatStatus
+            messages={warnings}
+            okText={`예제 ${problem.samples.length}개를 모두 이 형식으로 읽고 다시 쓸 수 있어요.`}
+          />
+        )}
       </div>
       {open && (
         <div class="format-body">
-          {props.savedInvalid && (
-            <p class="format-warn" role="alert">
-              저장한 형식이 예제와 맞지 않아 쓰지 않았어요: {props.savedInvalid[0]}
-            </p>
-          )}
           {source === 'inferred' && (
             <p class="format-note">
               예제와 문제 설명으로 추론한 형식이에요. 틀렸다면 고쳐서 저장해 주세요.
-            </p>
-          )}
-          {reasons.length > 0 ? (
-            <ul class="format-errors" role="alert" data-testid="format-errors">
-              {reasons.slice(0, 5).map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
-          ) : (
-            <p class="format-ok" data-testid="format-ok">
-              예제 {problem.samples.length}개를 모두 이 형식으로 읽고 다시 쓸 수 있어요.
             </p>
           )}
           <FormatForm table={table} onChange={setTable} />

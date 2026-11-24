@@ -5,7 +5,17 @@
  * (int or long long, vector<int> or vector<long long>, string or vector<char> rows).
  */
 import { retSep, type ParamType, type RetSpec, type RetType } from '../dsl';
-import { quote, renderCount, type CountRef, type Plan, type Scalar, type Step } from './plan';
+import {
+  quote,
+  renderCount,
+  renderRows,
+  usesRows,
+  type CountRef,
+  type Plan,
+  type Rows,
+  type Scalar,
+  type Step,
+} from './plan';
 
 export const CPP_PREFIX = '#include <bits/stdc++.h>\nusing namespace std;\n';
 
@@ -113,6 +123,11 @@ template <class T>
 static typename std::enable_if<std::is_arithmetic<T>::value>::type __cib_put(std::string& o, T v) {
     o += std::to_string(v);
 }
+static bool __cib_has() {
+    size_t q = __cib_p;
+    while (q < __cib_d.size() && __cib_ws(__cib_d[q])) q++;
+    return q < __cib_d.size();
+}
 template <class C>
 static void __cib_join(std::string& o, const C& c, const char* sep) {
     bool first = true;
@@ -121,6 +136,48 @@ static void __cib_join(std::string& o, const C& c, const char* sep) {
         first = false;
         __cib_put(o, x);
     }
+}`;
+
+/** Counting rows ahead for end-line and end-of-input repeats (only when used). */
+const ROWS = `static bool __cib_at(const std::vector<std::string>& w) {
+    size_t s = __cib_p;
+    bool ok = true;
+    for (const auto& x : w) if (!__cib_more() || __cib_tok() != x) { ok = false; break; }
+    __cib_p = s;
+    return ok;
+}
+static int __cib_rowsTok(const std::vector<std::string>& w, long long k) {
+    size_t s = __cib_p;
+    int r = 0;
+    for (;;) {
+        if (w.empty() ? !__cib_has() : __cib_at(w)) break;
+        if (k < 1 || !__cib_has()) __cib_fail();
+        for (long long i = 0; i < k; i++) __cib_tok();
+        r++;
+    }
+    __cib_p = s;
+    return r;
+}
+static std::string __cib_raw() {
+    size_t e = __cib_d.find('\\n', __cib_p);
+    if (e == std::string::npos) e = __cib_d.size();
+    size_t s = __cib_p;
+    __cib_p = e;
+    while (e > s && __cib_ws(__cib_d[e - 1])) e--;
+    return __cib_d.substr(s, e - s);
+}
+static int __cib_rowsLine(const char* e, bool raw) {
+    size_t s = __cib_p;
+    int r = 0;
+    for (;;) {
+        __cib_nl();
+        if (!__cib_has()) { if (e) __cib_fail(); break; }
+        std::string t = raw ? __cib_raw() : __cib_line();
+        if (e && t == e) break;
+        r++;
+    }
+    __cib_p = s;
+    return r;
 }`;
 
 const CONVERT: Record<Scalar, string> = {
@@ -134,9 +191,14 @@ const variable = (v: number) => `__cib_v${v}`;
 /** The glue does not rely on `using namespace std;` for its own declarations. */
 const qualified = (type: string) => type.replace(/\b(vector|string)\b/g, 'std::$1');
 const count = (c: CountRef) => `(int)(${renderCount(c, variable)})`;
+const rows = (n: Rows) =>
+  renderRows(n, count, {
+    tok: (end, k) => `__cib_rowsTok({${end.map(quote).join(', ')}}, ${k})`,
+    line: (end, raw) => `__cib_rowsLine(${end === null ? 'nullptr' : quote(end)}, ${raw})`,
+  });
 
 function step(s: Step): string {
-  const v = variable(s.op === 'nl' ? 0 : s.v);
+  const v = variable('v' in s ? s.v : 0);
   switch (s.op) {
     case 'nl':
       return '__cib_nl();';
@@ -145,17 +207,21 @@ function step(s: Step): string {
     case 'line':
       return `${v} = __cib_line();`;
     case 'array':
-      return `${v}.assign(${count(s.n)}, {}); for (auto& __cib_x : ${v}) __cib_x = ${CONVERT[s.t]}(__cib_tok());`;
+      return `${v}.assign(${rows(s.n)}, {}); for (auto& __cib_x : ${v}) __cib_x = ${CONVERT[s.t]}(__cib_tok());`;
     case 'rest':
       return `{ ${v}.clear(); for (const auto& __cib_x : __cib_rest()) ${v}.push_back(${CONVERT[s.t]}(__cib_x)); }`;
     case 'chars':
-      return `${v}.assign(${count(s.n)}, {}); for (auto& __cib_x : ${v}) __cib_x = __cib_tok();`;
+      return `${v}.assign(${rows(s.n)}, {}); for (auto& __cib_x : ${v}) __cib_x = __cib_tok();`;
     case 'grid':
       return s.cols
-        ? `${v}.assign(${count(s.n)}, std::vector<${ELEMENT[s.t]}>(${count(s.cols)})); for (auto& __cib_r : ${v}) for (auto& __cib_x : __cib_r) __cib_x = ${CONVERT[s.t]}(__cib_tok());`
-        : `${v}.assign(${count(s.n)}, {}); for (auto& __cib_r : ${v}) { __cib_nl(); for (const auto& __cib_x : __cib_rest()) __cib_r.push_back(${CONVERT[s.t]}(__cib_x)); }`;
+        ? `${v}.assign(${rows(s.n)}, std::vector<${ELEMENT[s.t]}>(${count(s.cols)})); for (auto& __cib_r : ${v}) for (auto& __cib_x : __cib_r) __cib_x = ${CONVERT[s.t]}(__cib_tok());`
+        : `${v}.assign(${rows(s.n)}, {}); for (auto& __cib_r : ${v}) { __cib_nl(); for (const auto& __cib_x : __cib_rest()) __cib_r.push_back(${CONVERT[s.t]}(__cib_x)); }`;
     case 'lines':
-      return `${v}.assign(${count(s.n)}, {}); for (auto& __cib_x : ${v}) { __cib_nl(); __cib_x = __cib_line(); }`;
+      return `${v}.assign(${rows(s.n)}, {}); for (auto& __cib_x : ${v}) { __cib_nl(); __cib_x = __cib_line(); }`;
+    case 'endTok':
+      return Array(s.k).fill('__cib_tok();').join(' ');
+    case 'endLine':
+      return '__cib_nl(); __cib_line();';
   }
 }
 
@@ -199,7 +265,7 @@ export function cppGlue(plan: Plan, ret: RetSpec): string {
       case 'count':
         return `    int __cib_t = __cib_int(__cib_tok());\n    for (int __cib_i = 0; __cib_i < __cib_t; __cib_i++) {\n${body(8)}\n    }`;
       case 'eof':
-        return `    while (__cib_more()) {\n${body(8)}\n    }`;
+        return `    while (__cib_has()) {\n${body(8)}\n    }`;
       case 'until': {
         const words = plan.loop.tokens.map(quote).join(', ');
         return [
@@ -211,7 +277,7 @@ export function cppGlue(plan: Plan, ret: RetSpec): string {
           '        }',
           '        return true;',
           '    };',
-          `    while (__cib_more() && !__cib_stop()) {\n${body(8)}\n    }`,
+          `    while (__cib_has() && !__cib_stop()) {\n${body(8)}\n    }`,
         ].join('\n');
       }
     }
@@ -219,6 +285,7 @@ export function cppGlue(plan: Plan, ret: RetSpec): string {
   return [
     '// ---- 입출력 코드 ----',
     RUNTIME,
+    ...(usesRows(plan) ? [ROWS] : []),
     'int main() {',
     '    {',
     '        static char __cib_buf[1 << 16];',

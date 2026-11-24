@@ -17,6 +17,7 @@ import {
   removeRow,
   renameRow,
   rowPositions,
+  setCases,
   setRow,
   tableErrors,
   toTable,
@@ -101,11 +102,11 @@ describe('table model', () => {
     const t = toTable(GRID);
     expect(modeOptions(t, 0)).toEqual(['new']);
     expect(modeOptions(t, 1)).toEqual(['new', 'same']);
-    expect(modeOptions(t, 2)).toEqual(['repeat']);
+    expect(modeOptions(t, 2)).toEqual(['repeat', 'until']);
     // After a repeat row, the next one starts a new line.
     expect(modeOptions(t, 3)).toEqual(['new']);
     const asArray = setRow(t, 1, { type: 'int[]' });
-    expect(modeOptions(asArray, 1)).toEqual(['new', 'same', 'repeat']);
+    expect(modeOptions(asArray, 1)).toEqual(['new', 'same', 'repeat', 'until']);
     const scalar = setRow(t, 2, { type: 'int' });
     expect(scalar.rows[2]).toMatchObject({ mode: 'new', count: '', cols: '' });
     const line = setRow(t, 1, { type: 'line' });
@@ -234,7 +235,7 @@ describe('formats beyond one value per token', () => {
 
   it('reads line[] and 2D arrays only over several lines', () => {
     const t = setRow(toTable(ARRAY), 1, { type: 'line[]' });
-    expect(modeOptions(t, 1)).toEqual(['repeat']);
+    expect(modeOptions(t, 1)).toEqual(['repeat', 'until']);
     expect(t.rows[1]).toMatchObject({ mode: 'repeat', count: 'n' });
     const plain = {
       v: 1,
@@ -244,5 +245,84 @@ describe('formats beyond one value per token', () => {
       ret: { type: 'int' },
     };
     expect(checkFormat(plain)).toMatchObject({ ok: false });
+  });
+});
+
+describe('reading up to an end line or the end of input', () => {
+  const ok = (format: unknown, input: string, output: string) =>
+    validateFormat(format, [{ input, output }]);
+  const pairs = {
+    v: 1,
+    params: [
+      { name: 'n', type: 'int' },
+      { name: 'pairs', type: 'int[][]', cols: 2 },
+    ],
+    lines: [['n'], { until: '-1 -1', of: 'pairs' }],
+    cases: null,
+    ret: { type: 'int' },
+  };
+
+  it('reads rows until the end line, which is not part of the value', () => {
+    expect(ok(pairs, '5\n1 2\n2 3\n-1 -1\n', '2').ok).toBe(true);
+    // Without the end line the input does not fit.
+    expect(ok(pairs, '5\n1 2\n2 3\n', '2')).toMatchObject({ ok: false });
+  });
+
+  it('reads to the end of input only in the last line of a single-case format', () => {
+    const nums = {
+      v: 1,
+      params: [{ name: 'nums', type: 'int[]' }],
+      lines: [{ until: 'EOF', of: 'nums' }],
+      cases: null,
+      ret: { type: 'int[]', sep: '\n' },
+    };
+    expect(ok(nums, '50\n30\n24\n', '24\n30\n50').ok).toBe(true);
+    expect(checkFormat({ ...nums, cases: { until: 'EOF' } }).ok).toBe(false);
+    const notLast = {
+      ...nums,
+      params: [...nums.params, { name: 'k', type: 'int' }],
+      lines: [{ until: 'EOF', of: 'nums' }, ['k']],
+    };
+    expect(checkFormat(notLast).ok).toBe(false);
+  });
+
+  it('compares the whole line for line[], so " ." is data and "." ends', () => {
+    const texts = {
+      v: 1,
+      params: [{ name: 'texts', type: 'line[]' }],
+      lines: [{ until: '.', of: 'texts' }],
+      cases: null,
+      ret: { type: 'int' },
+    };
+    expect(ok(texts, 'So when I die.\n .\n.\n', '2').ok).toBe(true);
+  });
+
+  it('lets an empty array leave out its line', () => {
+    const remote = {
+      v: 1,
+      params: [
+        { name: 'n', type: 'int' },
+        { name: 'm', type: 'int' },
+        { name: 'broken', type: 'int[]', len: 'm' },
+      ],
+      lines: [['n'], ['m'], ['broken']],
+      cases: null,
+      ret: { type: 'int' },
+    };
+    expect(ok(remote, '100\n0\n', '0').ok).toBe(true);
+    expect(ok(remote, '5457\n3\n6 7 8\n', '6').ok).toBe(true);
+  });
+
+  it('shows end lines and the end of input in the table', () => {
+    const t = toTable(f(pairs));
+    expect(t.rows[1]).toMatchObject({ mode: 'until', count: '-1 -1', cols: '2' });
+    expect(modeOptions(t, 1)).toEqual(['repeat', 'until', 'eof']);
+    const eof = setRow(t, 1, { mode: 'eof' });
+    expect(fromTable(eof)).toMatchObject({ lines: [['n'], { until: 'EOF', of: 'pairs' }] });
+    // Several cases rule out reading to the end of input.
+    expect(setCases(eof, { count: 'T' }).rows[1]?.mode).toBe('repeat');
+    expect(tableErrors(setRow(t, 1, { count: ' ' }))).toEqual([
+      "'pairs'을(를) 끝내는 줄을 적어 주세요 (예: 0).",
+    ]);
   });
 });

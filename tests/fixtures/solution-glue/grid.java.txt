@@ -64,6 +64,11 @@ public class Main {
         String s = __cib_line();
         return s.isEmpty() ? new String[0] : s.split("\\s+");
     }
+    static boolean __cib_has() {
+        int q = __cib_p;
+        while (q < __cib_n && __cib_ws(__cib_d[q])) q++;
+        return q < __cib_n;
+    }
 
     public static void main(String[] __cib_a) throws Exception {
         java.io.InputStream __cib_in = System.in;
