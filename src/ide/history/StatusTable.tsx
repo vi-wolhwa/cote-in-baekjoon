@@ -11,6 +11,7 @@ import { Spinner } from '../submit';
 import { fullTime, relativeTime } from './format';
 import type { RecordRow } from './merge';
 import { ResultChip } from './result';
+import { userUrl } from '@/shared/status-page';
 
 /** Row and header heights in pixels; history.css sets the same. */
 export const ROW_PX = 36;
@@ -232,7 +233,8 @@ export const COLUMNS = {
   length: { label: '코드 길이', cls: 'col-num col-length', cell: (r) => num(r.codeLength, 'B') },
   at: {
     label: '제출',
-    cls: 'col-at',
+    // Right like the numbers: what is measured sits on the right, who and how on the left.
+    cls: 'col-num col-at',
     cell: (r, now) =>
       r.submittedAt !== undefined ? (
         <time dateTime={new Date(r.submittedAt).toISOString()} title={fullTime(r.submittedAt)}>
@@ -243,7 +245,19 @@ export const COLUMNS = {
   user: {
     label: '아이디',
     cls: 'col-user',
-    cell: (r) => <span title={r.username}>{r.username}</span>,
+    cell: (r) => (
+      <a
+        class="user-link"
+        href={userUrl(r.username)}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`${r.username}의 백준 페이지`}
+        // The row opens the code; the name opens the user's page.
+        onClick={(e) => e.stopPropagation()}
+      >
+        {r.username}
+      </a>
+    ),
   },
-  rank: { label: '순위', cls: 'col-rank', cell: (r) => r.rank ?? '' },
+  rank: { label: '순위', cls: 'col-num col-rank', cell: (r) => r.rank ?? '' },
 } satisfies Record<string, Column>;

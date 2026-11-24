@@ -243,12 +243,12 @@ function sortKeys(q: PageQuery): [string, unknown][] {
 
 /** Baekjoon's page for a submission's source, opened in a new tab by a plain link. */
 export function sourceUrl(solutionId: number): string {
-  return `https://www.acmicpc.net/source/${solutionId}`;
+  return `https://acmicpc.net/source/${solutionId}`;
 }
 
 /** Baekjoon's page of a user, opened in a new tab by a plain link. */
 export function userUrl(username: string): string {
-  return `https://www.acmicpc.net/user/${encodeURIComponent(username)}`;
+  return `https://acmicpc.net/user/${encodeURIComponent(username)}`;
 }
 
 // ---------------------------------------------------------------------------

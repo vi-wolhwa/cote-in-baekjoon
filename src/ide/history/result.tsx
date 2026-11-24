@@ -1,12 +1,12 @@
 /**
- * Judge results in the 제출 기록 tab (ADR-0012): a short label of the same width class with an
- * icon, in the run output's pass/fail colours, instead of Baekjoon's sentences of every length
- * ("맞았습니다!!", "런타임 에러 (OutOfBounds)"). Baekjoon's full text stays in the tooltip.
+ * Judge results in the 제출 기록 tab (ADR-0012): a two-letter label with an icon in a chip of
+ * one width, instead of Baekjoon's sentences of every length ("맞았습니다!!", "런타임 에러
+ * (OutOfBounds)"). Green 정답, red 오답 and 초과, yellow 에러; Baekjoon's text is the tooltip.
  */
 import type { ComponentChildren } from 'preact';
 import type { ResultCode } from '@/boj/status';
 
-export type Tone = 'pass' | 'fail' | 'partial' | 'wait' | 'none';
+export type Tone = 'pass' | 'fail' | 'error' | 'partial' | 'wait' | 'none';
 type Glyph = 'check' | 'cross' | 'clock' | 'memory' | 'output' | 'alert' | 'code' | 'dots' | 'half';
 
 export interface ResultView {
@@ -15,7 +15,11 @@ export interface ResultView {
   glyph: Glyph;
 }
 
-/** The label, colour and icon for a result; `text` is Baekjoon's wording. */
+/**
+ * The label, colour and icon for a result; `text` is Baekjoon's wording. Labels are two
+ * letters (or a short number) so every chip has the same width; the icon tells kinds apart
+ * (시간·메모리·출력 초과, 런타임·컴파일 에러) and the tooltip has Baekjoon's words.
+ */
 export function describeResult(code: ResultCode | undefined, text = ''): ResultView {
   const percent = /(\d{1,3})\s*%/.exec(text)?.[1];
   const points = /(\d{1,3}(?:\.\d+)?)\s*점/.exec(text)?.[1];
@@ -23,31 +27,31 @@ export function describeResult(code: ResultCode | undefined, text = ''): ResultV
     case 'ac':
       return { label: '정답', tone: 'pass', glyph: 'check' };
     case 'pac':
-      return { label: points ? `${points}점` : '부분 점수', tone: 'partial', glyph: 'half' };
+      return { label: points ? `${points}점` : '부분', tone: 'partial', glyph: 'half' };
     case 'wa':
       return { label: '오답', tone: 'fail', glyph: 'cross' };
     case 'pe':
-      return { label: '출력 형식', tone: 'fail', glyph: 'output' };
+      return { label: '형식', tone: 'fail', glyph: 'output' };
     case 'tle':
-      return { label: '시간 초과', tone: 'fail', glyph: 'clock' };
+      return { label: '초과', tone: 'fail', glyph: 'clock' };
     case 'mle':
-      return { label: '메모리 초과', tone: 'fail', glyph: 'memory' };
+      return { label: '초과', tone: 'fail', glyph: 'memory' };
     case 'ole':
-      return { label: '출력 초과', tone: 'fail', glyph: 'output' };
+      return { label: '초과', tone: 'fail', glyph: 'output' };
     case 'rte':
-      return { label: '런타임 에러', tone: 'fail', glyph: 'alert' };
+      return { label: '에러', tone: 'error', glyph: 'alert' };
     case 'ce':
-      return { label: '컴파일 에러', tone: 'fail', glyph: 'code' };
+      return { label: '에러', tone: 'error', glyph: 'code' };
     case 'wait':
     case 'rejudge-wait':
-      return { label: '기다리는 중', tone: 'wait', glyph: 'dots' };
+      return { label: '대기', tone: 'wait', glyph: 'dots' };
     case 'compile':
     case 'judging':
-      return { label: percent ? `채점 ${percent}%` : '채점 중', tone: 'wait', glyph: 'dots' };
+      return { label: percent ? `${percent}%` : '채점', tone: 'wait', glyph: 'dots' };
     case 'del':
-      return { label: '채점 불가', tone: 'none', glyph: 'cross' };
+      return { label: '불가', tone: 'none', glyph: 'cross' };
     default:
-      return { label: '결과 없음', tone: 'none', glyph: 'dots' };
+      return { label: '없음', tone: 'none', glyph: 'dots' };
   }
 }
 

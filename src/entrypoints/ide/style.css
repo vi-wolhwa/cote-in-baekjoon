@@ -78,17 +78,21 @@
   --text-strong: #263747;
   --link: #0053f4;
 
+  /*
+   * Controls need edges on white: outlines a step darker than the dividers, and the chosen
+   * option filled dark (like the dark theme's lighter fill) so it reads at a glance.
+   */
   --chip-text: #263747;
   --chip-bg: #ffffff;
-  --chip-border: #d7e2eb;
-  --chip-active-text: #263747;
-  --chip-active-bg: #e9ecf3;
-  --chip-active-border: #e9ecf3;
+  --chip-border: #b9c5d2;
+  --chip-active-text: #ffffff;
+  --chip-active-bg: #44576c;
+  --chip-active-border: #44576c;
   --select-text: #263747;
-  --select-bg: #e9ecf3;
-  --select-border: #e9ecf3;
+  --select-bg: #ffffff;
+  --select-border: #b9c5d2;
 
-  --handle: #d7e2eb;
+  --handle: #b3c0cd;
   --handle-hover: #98a8b9;
 
   --inline-code-text: #44576c;

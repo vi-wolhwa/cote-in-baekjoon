@@ -5,7 +5,7 @@
  * opens (your own always, someone else's when they shared it).
  */
 import { useEffect, useState } from 'preact/hooks';
-import { sourceUrl } from '@/shared/status-page';
+import { sourceUrl, userUrl } from '@/shared/status-page';
 import type { Theme } from '@/shared/theme';
 import { ChevronIcon, CopyIcon, ExternalIcon, ImportIcon } from '../icons';
 import { Spinner } from '../submit';
@@ -83,7 +83,17 @@ export function SourceView({ row, theme, now, showUser, onBack, onLoad }: Props)
         <div class="source-title">
           <ResultChip code={row.resultCode} text={row.resultText} />
           <span class="source-lang">{row.language}</span>
-          {showUser && row.username && <span class="source-user">{row.username}</span>}
+          {showUser && row.username && (
+            <a
+              class="source-user user-link"
+              href={userUrl(row.username)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`${row.username}의 백준 페이지`}
+            >
+              {row.username}
+            </a>
+          )}
         </div>
         <div class="source-actions">
           {loadable && (
