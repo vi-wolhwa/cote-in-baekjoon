@@ -14,7 +14,7 @@ import {
   NO_SOLUTION_MESSAGE,
 } from '@/solution/program';
 import { solutionFileName, starterCode } from '@/solution/starter';
-import type { EngineId } from '@/shared/languages';
+import type { GlueId } from '@/solution/glue';
 
 const f = (x: unknown): Format => {
   const r = checkFormat(x);
@@ -58,8 +58,9 @@ const LINES = f({
   ret: { type: 'double', digits: 2 },
 });
 
-const ENGINES: EngineId[] = ['js', 'python', 'cpp', 'java'];
-const EXT: Record<EngineId, string> = { js: 'js', python: 'py', cpp: 'cpp', java: 'java' };
+/** Golden file extension per glue language. */
+const EXT = { js: 'js', python: 'py', cpp: 'cpp', c: 'c', java: 'java' } as const;
+const ENGINES = Object.keys(EXT) as (keyof typeof EXT)[];
 
 describe('generated programs (golden files)', () => {
   for (const engine of ENGINES) {
@@ -94,10 +95,14 @@ describe('buildProgram', () => {
     expect(java.source.split('\n')[1]).toBe('       class Solution {}');
     expect(java.source).toContain('public class Main {');
     expect(java.prefixLines).toBe(1);
+
+    const c = buildProgram('c', AB, 'int solution(int a, int b) {\n  return a + b;\n}\n');
+    expect(c.source).toMatch(/^#include <stdio.h>\n(#include <\w+\.h>\n){3}int solution/);
+    expect(c).toMatchObject({ prefixLines: 4, userLines: 3 });
   });
 
   it('prefixes every name the glue declares where user code could see it with __cib_', () => {
-    const top = (engine: EngineId, pattern: RegExp) => {
+    const top = (engine: GlueId, pattern: RegExp) => {
       const { source } = buildProgram(engine, LINES, '');
       const names = source.split('\n').flatMap((l) => {
         const m = pattern.exec(l);
@@ -108,6 +113,7 @@ describe('buildProgram', () => {
     };
     for (const name of top('cpp', /^static [^(=;]*?(\w+)\s*[(=;[]/))
       expect(name).toMatch(/^__cib_/);
+    for (const name of top('c', /^static [^(=;]*?(\w+)\s*[(=;[]/)) expect(name).toMatch(/^__cib_/);
     for (const name of top('java', /^ {4}static [^(=;]*?(\w+)\s*[(=;,]/))
       expect(name).toMatch(/^__cib_/);
     for (const name of top('python', /^(?:def (\w+)|import \w+ as (\w+))/))
@@ -139,6 +145,10 @@ describe('starterCode', () => {
       'public boolean solution(int n, int m, char[][] board) {',
     );
     expect(solutionFileName('java')).toBe('Solution.java');
+    expect(starterCode('c', LINES)).toContain(
+      'double solution(const char* title, long long nums[], size_t nums_len, int k, int** rows, size_t rows_rows, size_t rows_cols[]) {',
+    );
+    expect(solutionFileName('c')).toBe('solution.c');
   });
 });
 
@@ -154,6 +164,19 @@ describe('mapRunMessages', () => {
     expect(out.compileError).toBe(
       "solution.cpp:2:14: error: use of undeclared identifier 'c'\n    2 |   return a + c;\n      |              ^",
     );
+  });
+
+  it('moves C line numbers back to the user code', () => {
+    const c = buildProgram('c', AB, 'int solution(int a, int b) {\n  return a + c;\n}\n');
+    const out = mapRunMessages('cpp', c, {
+      compileError: `solution.c:6:14: error: use of undeclared identifier 'c'\n    6 |   return a + c;\n      |              ^\nsolution.c:${c.prefixLines + c.userLines + 30}:9: error: too many arguments`,
+      stderr: '',
+    });
+    expect(out.compileError).toContain(
+      "solution.c:2:14: error: use of undeclared identifier 'c'\n    2 |   return a + c;",
+    );
+    expect(out.compileError).toContain('solution.c(입출력 코드): error: too many arguments');
+    expect(out.compileError).toContain(GLUE_COMPILE_NOTE);
   });
 
   it('marks errors inside the glue and explains them in Korean', () => {

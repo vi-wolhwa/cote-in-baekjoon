@@ -4,6 +4,7 @@
  */
 import { maskNonCode } from '@/runner/java/preprocess';
 import { cppStarter, javaStarter, jsStarter, pythonStarter } from './base-starters';
+import { cLanguage } from './c';
 import { CPP_PREFIX, cppGlue } from './cpp';
 import { JAVA_PREFIX, javaGlue, unpublicSolution } from './java';
 import { jsGlue } from './js';
@@ -17,6 +18,7 @@ export const GLUES: Partial<Record<GlueId, GlueLanguage>> = {
   js: { prefix: '', glue: jsGlue, starter: jsStarter, fileName: 'solution.js' },
   ts: tsLanguage,
   python: { prefix: '', glue: pythonGlue, starter: pythonStarter, fileName: 'solution.py' },
+  c: cLanguage,
   cpp: { prefix: CPP_PREFIX, glue: cppGlue, starter: cppStarter, fileName: 'solution.cpp' },
   java: {
     prefix: JAVA_PREFIX,

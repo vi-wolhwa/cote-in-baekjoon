@@ -66,8 +66,9 @@ export function mapLines(
   let out = text;
   if (engine === 'cpp') {
     out = out
-      .replace(/solution\.cpp:(\d+):(\d+):/g, (_, n: string, col: string) =>
-        fix(n, (k) => `solution.cpp:${k}:${col}:`, 'solution.cpp(입출력 코드):'),
+      // C and C++ both compile with clang: solution.c or solution.cpp.
+      .replace(/solution\.(cpp|c):(\d+):(\d+):/g, (_, ext: string, n: string, col: string) =>
+        fix(n, (k) => `solution.${ext}:${k}:${col}:`, `solution.${ext}(입출력 코드):`),
       )
       .replace(/^(\s*)(\d+)( \| )/gm, (_, sp: string, n: string, bar: string) =>
         fix(
