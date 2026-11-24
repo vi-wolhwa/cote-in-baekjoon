@@ -6,8 +6,6 @@ import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
 import { parseProblem, parseProblemId } from '@/boj/problem';
 import { PRACTICE_HASH } from '@/exam/routes';
 import { rememberHandle } from '@/shared/handle';
-import { createHistoryGate, fetchBojHistory } from '@/boj/status-history';
-import { isBojHistoryRequest, type BojHistoryAnswer } from '@/shared/boj-history';
 import {
   isCloseMessage,
   isOpenIdeMessage,
@@ -17,14 +15,13 @@ import {
 } from '@/shared/messages';
 
 const OVERLAY_ID = 'cib-ide-overlay';
-/** '백준 기록 불러오기' (ADR-0012): one request at a time, a few seconds apart. */
-const historyGate = createHistoryGate();
 
 export default defineContentScript({
   matches: ['https://acmicpc.net/problem/*', 'https://www.acmicpc.net/problem/*'],
   runAt: 'document_idle',
   async main() {
-    // The logged-in Baekjoon id, for the mock exam's '이미 푼 문제 빼기' (ADR-0005).
+    // The logged-in Baekjoon id, for the mock exam's '이미 푼 문제 빼기' (ADR-0005) and the
+    // user's own rows in '제출 기록' (ADR-0012).
     void rememberHandle(document);
     // A background tab the mock exam opened to read this problem: read it, add nothing.
     const capture = await askCapture();
@@ -88,13 +85,6 @@ function openIde() {
     if (event.source !== frame.contentWindow) return;
     if (isReadyMessage(event.data)) {
       sendProblem();
-    } else if (isBojHistoryRequest(event.data)) {
-      // Only when the user pressed '백준 기록 불러오기' in the IDE: one status page.
-      const { nonce } = event.data;
-      void historyGate(() => fetchBojHistory(document, problem.id)).then((result) => {
-        const answer: BojHistoryAnswer = { type: 'cib:boj-history-result', nonce, result };
-        frame.contentWindow?.postMessage(answer, ideOrigin);
-      });
     } else if (isCloseMessage(event.data)) {
       window.removeEventListener('message', onMessage);
       frame.remove();

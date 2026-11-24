@@ -32,7 +32,7 @@ describe('selectSpecs', () => {
     expect(selectSpecs(['public/formats/1.json', 'scripts/formats/formats-reviewed.json'])).toEqual(
       ['exam', 'solution'],
     );
-    expect(selectSpecs(['src/ide/history/HistoryPane.tsx', 'src/shared/boj-history.ts'])).toEqual([
+    expect(selectSpecs(['src/ide/history/HistoryPane.tsx', 'src/shared/status-page.ts'])).toEqual([
       'history',
     ]);
     expect(selectSpecs(['public/icon/16.png', 'third_party/licenses/LLVM.txt'])).toBe('none');

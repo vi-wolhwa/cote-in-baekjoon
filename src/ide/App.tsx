@@ -17,7 +17,7 @@ import { ideReportUrl } from './report-link';
 import { runCases } from './run-cases';
 import { RunOutput, type RunOutputProps } from './RunOutput';
 import { Sidebar } from './Sidebar';
-import { SplitPane } from './SplitPane';
+import { EDITOR_MIN_PX, PROBLEM_MIN_PX, SplitPane } from './SplitPane';
 import * as store from './storage';
 import { SubmitPanel, useSubmit } from './submit';
 import { FormatCard } from './solution/FormatCard';
@@ -333,6 +333,9 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
             <SplitPane
               direction="horizontal"
               size={split.horizontal}
+              // The problem and history tables stay readable; the editor keeps some room too.
+              minFirstPx={PROBLEM_MIN_PX}
+              minPx={EDITOR_MIN_PX}
               onResize={(h) => setSplit((s) => ({ ...s, horizontal: h }))}
               onResizeEnd={saveSplit}
               first={

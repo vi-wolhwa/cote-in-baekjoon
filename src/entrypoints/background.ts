@@ -36,10 +36,23 @@ import {
   isWatchQueryMessage,
 } from '@/shared/submission';
 
+import {
+  handleStatusCaptureQuery,
+  handleStatusCaptureResult,
+  handleStatusPageRequest,
+  handleStatusTabRemoved,
+} from '@/boj/status-capture';
+import {
+  isStatusCaptureQuery,
+  isStatusCaptureResult,
+  isStatusPageRequest,
+} from '@/shared/status-page';
+
 export default defineBackground(() => {
   // A background tab closed early: a submission (ADR-0002) or a mock exam problem being
-  // read (ADR-0005) did not finish.
+  // read (ADR-0005) or a status page being read (ADR-0012) did not finish.
   browser.tabs.onRemoved.addListener((tabId) => {
+    handleStatusTabRemoved(tabId);
     handleSubmitTabRemoved(tabId).catch((error: unknown) =>
       console.error('[cib] submit tab cleanup failed', error),
     );
@@ -72,5 +85,8 @@ function route(message: unknown, sender: Browser.runtime.MessageSender): Promise
   if (isCaptureCancelMessage(message)) return handleCaptureCancel(message, sender);
   if (isCaptureQueryMessage(message)) return handleCaptureQuery(sender);
   if (isCaptureResultMessage(message)) return handleCaptureResult(message, sender);
+  if (isStatusPageRequest(message)) return handleStatusPageRequest(message, sender);
+  if (isStatusCaptureQuery(message)) return handleStatusCaptureQuery(sender);
+  if (isStatusCaptureResult(message)) return handleStatusCaptureResult(message, sender);
   return null;
 }
