@@ -1,0 +1,74 @@
+function solution(title, nums, k, rows) {
+    let answer = 0;
+    return answer;
+}
+
+// ---- 입출력 코드 (코딩테스트 in 백준이 붙임) ----
+(() => {
+  const __cib_d = require('fs').readFileSync('/dev/stdin').toString();
+  const __cib_n = __cib_d.length;
+  let __cib_p = 0;
+  const __cib_ws = (c) => c === 32 || c === 10 || c === 13 || c === 9;
+  const __cib_fail = () => { throw new Error('__cib_input'); };
+  const __cib_skip = () => { while (__cib_p < __cib_n && __cib_ws(__cib_d.charCodeAt(__cib_p))) __cib_p++; };
+  const __cib_more = () => { __cib_skip(); return __cib_p < __cib_n; };
+  const __cib_tok = () => {
+    __cib_skip();
+    if (__cib_p >= __cib_n) __cib_fail();
+    const s = __cib_p;
+    while (__cib_p < __cib_n && !__cib_ws(__cib_d.charCodeAt(__cib_p))) __cib_p++;
+    return __cib_d.slice(s, __cib_p);
+  };
+  const __cib_nl = () => {
+    if (__cib_p > 0 && __cib_d.charCodeAt(__cib_p - 1) !== 10) {
+      const e = __cib_d.indexOf('\n', __cib_p);
+      __cib_p = e < 0 ? __cib_n : e + 1;
+    }
+    for (;;) {
+      let q = __cib_p;
+      while (q < __cib_n && __cib_ws(__cib_d.charCodeAt(q)) && __cib_d.charCodeAt(q) !== 10) q++;
+      if (q < __cib_n && __cib_d.charCodeAt(q) === 10) __cib_p = q + 1;
+      else break;
+    }
+  };
+  const __cib_line = () => {
+    if (__cib_p >= __cib_n) __cib_fail();
+    const e = __cib_d.indexOf('\n', __cib_p);
+    const end = e < 0 ? __cib_n : e;
+    const s = __cib_d.slice(__cib_p, end).trim();
+    __cib_p = end;
+    return s;
+  };
+  const __cib_rest = () => { const s = __cib_line(); return s === '' ? [] : s.split(/\s+/); };
+  const __cib_int = (s) => { const n = +s; if (n !== n || !/^[+-]?\d+$/.test(s)) __cib_fail(); return n; };
+  const __cib_long = (s) => { const n = __cib_int(s); return Number.isSafeInteger(n) ? n : BigInt(s); };
+  const __cib_dbl = (s) => { const n = +s; if (n !== n) __cib_fail(); return n; };
+  const __cib_str = (s) => s;
+  const __cib_rep = (n, f) => { const a = new Array(n); for (let i = 0; i < n; i++) a[i] = f(); return a; };
+  if (typeof solution !== 'function') throw new Error('__cib_nosolution');
+  const __cib_f = (r) => Number(r).toFixed(2);
+  const __cib_o = [];
+  const __cib_end = ["0", "0"];
+  const __cib_stop = () => {
+    const s = __cib_p;
+    for (const w of __cib_end) {
+      if (!__cib_more() || __cib_tok() !== w) { __cib_p = s; return false; }
+    }
+    return true;
+  };
+  while (__cib_more() && !__cib_stop()) {
+    let __cib_v0, __cib_v1, __cib_v2, __cib_v3;
+    try {
+      __cib_nl();
+      __cib_v0 = __cib_line();
+      __cib_nl();
+      __cib_v1 = __cib_rest().map(__cib_long);
+      __cib_v2 = __cib_int(__cib_tok());
+      __cib_v3 = __cib_rep(Number(__cib_v2), () => { __cib_nl(); return __cib_rest().map(__cib_int); });
+    } catch (e) {
+      throw new Error('__cib_input');
+    }
+    __cib_o.push(__cib_f(solution(__cib_v0, __cib_v1, __cib_v2, __cib_v3)));
+  }
+  if (__cib_o.length) console.log(__cib_o.join('\n'));
+})();
