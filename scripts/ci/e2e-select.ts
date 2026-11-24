@@ -49,7 +49,7 @@ export const RULES: [RegExp, Target][] = [
   [/^vendor\/teavm-javac\//, ['java']],
   // Submission history tab (ADR-0012).
   [
-    /^src\/(ide\/history\/|boj\/(history-service|status-page|status-capture)\.ts|shared\/(status-page|submission-history)\.ts|entrypoints\/ide\/history\.css)/,
+    /^src\/(ide\/history\/|boj\/(history-service|status-page|status-capture|capture-answer)\.ts|shared\/(status-page|submission-history)\.ts|entrypoints\/(ide\/history\.css|boj-capture\.content\.ts))/,
     ['history'],
   ],
   [/^src\/ide\/useSolution\.ts$/, ['solution', 'exam', 'languages']],

@@ -1,0 +1,65 @@
+<!doctype html>
+<!--
+  Synthetic page that mimics the structure of Baekjoon's short-coding ranking
+  (`/short/status/1000/1001/1`): a statistics table, then the ranking with a language link to
+  the source when the viewer may read it. Not real data.
+-->
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>1000번 숏코딩 (테스트용)</title>
+  </head>
+  <body>
+    <ul class="loginbar">
+      <li><a href="/user/tester" class="username">tester</a></li>
+    </ul>
+    <table class="table table-hover" id="statics">
+      <tbody>
+        <tr>
+          <th>제출</th>
+          <td>100</td>
+        </tr>
+      </tbody>
+    </table>
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>등수</th>
+          <th>제출 번호</th>
+          <th>아이디</th>
+          <th>메모리</th>
+          <th>시간</th>
+          <th>언어</th>
+          <th>코드 길이</th>
+          <th>제출한 시간</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>8001</td>
+          <td><a href="/user/alice">alice</a></td>
+          <td>1116<span class="kb-text"></span></td>
+          <td>0<span class="ms-text"></span></td>
+          <td><a href="/source/8001">C++14</a></td>
+          <td>62<span class="b-text"></span></td>
+          <td><a class="real-time-update show-date" data-timestamp="1700000000">1년 전</a></td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>8002</td>
+          <td><a href="/user/bob">bob</a></td>
+          <td>2020<span class="kb-text"></span></td>
+          <td>4<span class="ms-text"></span></td>
+          <td>C++17</td>
+          <td>70<span class="b-text"></span></td>
+          <td><a class="real-time-update show-date" data-timestamp="1700000100">1년 전</a></td>
+        </tr>
+      </tbody>
+    </table>
+    <ul class="pagination">
+      <li><a href="/short/status/1000/1001/1">1</a></li>
+      <li><a href="/short/status/1000/1001/2">2</a></li>
+    </ul>
+  </body>
+</html>

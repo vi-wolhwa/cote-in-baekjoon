@@ -60,7 +60,8 @@ const LEGACY: Partial<Record<SyntaxId, Parameters<typeof StreamLanguage.define>[
   ruby,
 };
 
-function languageExtension(syntax: SyntaxId): Extension {
+/** Syntax colours for `syntax` (also used by the read-only code view of 제출 기록). */
+export function languageExtension(syntax: SyntaxId): Extension {
   const legacy = LEGACY[syntax];
   if (legacy) return StreamLanguage.define(legacy);
   if (syntax === 'python') return python();

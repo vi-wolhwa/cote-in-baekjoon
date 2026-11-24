@@ -84,3 +84,52 @@ export const HourglassIcon = () => (
     <path d="M7 3h10M7 21h10M8 3c0 4 4 6 4 9s-4 5-4 9M16 3c0 4-4 6-4 9s4 5 4 9" />
   </Icon>
 );
+
+/** '새로 고침' in the 제출 기록 tab. */
+export const RefreshIcon = ({ size = 16 }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" />
+  </Icon>
+);
+
+/** Opens a page on Baekjoon in a new tab. */
+export const ExternalIcon = ({ size = 16 }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+  </Icon>
+);
+
+export const ChevronIcon = ({ size = 16, left = false }: { size?: number; left?: boolean }) => (
+  <Icon size={size}>
+    <path d={left ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} />
+  </Icon>
+);
+
+/** A source the viewer cannot open. */
+export const LockIcon = ({ size = 14 }: { size?: number }) => (
+  <Icon size={size}>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </Icon>
+);
+
+/** A source the viewer can open. */
+export const CodeIcon = ({ size = 14 }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M9 7l-5 5 5 5M15 7l5 5-5 5" />
+  </Icon>
+);
+
+export const CopyIcon = ({ size = 16 }: { size?: number }) => (
+  <Icon size={size}>
+    <rect x="8" y="8" width="12" height="12" rx="2" />
+    <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
+  </Icon>
+);
+
+/** '편집기로 불러오기'. */
+export const ImportIcon = ({ size = 16 }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+  </Icon>
+);

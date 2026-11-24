@@ -20,6 +20,10 @@ export interface RecordRow {
   language: string;
   codeLength?: number;
   submittedAt?: number;
+  /** Baekjoon lets the viewer open the source. */
+  sourceOpen?: boolean;
+  /** Place in the short-coding ranking. */
+  rank?: number;
   /** The IDE submission with its code, when it was made in the IDE. */
   entry?: HistoryEntry;
 }
@@ -36,6 +40,8 @@ export function statusRow(row: StatusPageRow, entry?: HistoryEntry): RecordRow {
     language: row.language,
     ...(row.codeLength !== undefined ? { codeLength: row.codeLength } : {}),
     ...(row.submittedAt !== undefined ? { submittedAt: row.submittedAt } : {}),
+    ...(row.sourceOpen !== undefined ? { sourceOpen: row.sourceOpen } : {}),
+    ...(row.rank !== undefined ? { rank: row.rank } : {}),
     ...(entry ? { entry } : {}),
   };
 }

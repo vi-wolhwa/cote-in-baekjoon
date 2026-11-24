@@ -342,6 +342,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
                 <LeftPane
                   problem={problem}
                   format={sol.fn ? sol.format : undefined}
+                  theme={theme}
                   onLoad={history.load}
                 />
               }

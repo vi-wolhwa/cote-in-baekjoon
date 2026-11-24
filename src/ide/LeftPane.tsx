@@ -5,6 +5,7 @@
 import { useState } from 'preact/hooks';
 import type { Problem } from '@/boj/problem';
 import type { HistoryEntry } from '@/shared/submission-history';
+import type { Theme } from '@/shared/theme';
 import type { Format } from '@/solution/dsl';
 import { HistoryPane } from './history/HistoryPane';
 import { ProblemPane } from './ProblemPane';
@@ -14,6 +15,8 @@ type Tab = 'problem' | 'history';
 export function LeftPane(props: {
   problem: Problem;
   format: Format | undefined;
+  /** For the code view of 제출 기록. */
+  theme: Theme;
   onLoad: (entry: HistoryEntry) => void;
 }) {
   const [tab, setTab] = useState<Tab>('problem');
@@ -46,7 +49,7 @@ export function LeftPane(props: {
       </div>
       {history && tab === 'history' && (
         <div class="left-body" role="tabpanel">
-          <HistoryPane problemId={props.problem.id} onLoad={props.onLoad} />
+          <HistoryPane problemId={props.problem.id} theme={props.theme} onLoad={props.onLoad} />
         </div>
       )}
     </div>

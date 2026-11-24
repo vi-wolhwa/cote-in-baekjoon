@@ -1,11 +1,13 @@
 /**
- * Background side of reading a Baekjoon status page for the '제출 기록' tab (ADR-0012).
- * Baekjoon answers scripted requests with an empty page, so the page is opened in an
- * inactive tab next to the problem, its content script parses it and the tab is closed.
+ * Background side of reading a Baekjoon page for the '제출 기록' tab (ADR-0012): a status
+ * list, short-coding ranking or source page. Baekjoon answers scripted requests with an empty
+ * page, so the page is opened in an inactive tab next to the problem, its content script
+ * parses it and the tab is closed.
  *
- * - Only pages of this extension (the IDE) may ask, and only for status pages.
+ * - Only pages of this extension (the IDE) may ask, and only for those pages.
  * - One page at a time, at least MIN_GAP_MS apart; later requests wait their turn.
- * - Only the tab opened for the request, on that status page, may answer.
+ * - Only the tab opened for the request, on that page (or the login page Baekjoon sent it
+ *   to), may answer.
  * - A page that does not answer in STATUS_CAPTURE_TIMEOUT_MS is given up and closed.
  *
  * The state lives in this worker only: a request lasts seconds and the IDE is waiting on
@@ -15,11 +17,11 @@ import {
   STATUS_CAPTURE_TIMEOUT_MS,
   queryOfUrl,
   sameQuery,
-  statusPageUrl,
+  pageUrl,
   type StatusCaptureResult,
   type StatusPageRequest,
-  type StatusPageResult,
-  type StatusQuery,
+  type PageResult,
+  type PageQuery,
 } from '@/shared/status-page';
 import { bojPath, isExtensionPage } from './sender';
 
@@ -29,9 +31,9 @@ type Sender = Browser.runtime.MessageSender;
 export const MIN_GAP_MS = 1000;
 
 interface Pending {
-  query: StatusQuery;
+  query: PageQuery;
   tabId?: number;
-  finish: (result: StatusPageResult) => void;
+  finish: (result: PageResult) => void;
 }
 
 let pending: Pending | undefined;
@@ -41,17 +43,17 @@ let lastEnd = -Infinity;
 export async function handleStatusPageRequest(
   message: StatusPageRequest,
   sender: Sender,
-): Promise<StatusPageResult> {
+): Promise<PageResult> {
   if (!isExtensionPage(sender)) return { ok: false, reason: 'denied' };
   const run = queue.then(() => capture(message.query, sender));
   queue = run.catch(() => undefined);
   return run;
 }
 
-async function capture(query: StatusQuery, sender: Sender): Promise<StatusPageResult> {
+async function capture(query: PageQuery, sender: Sender): Promise<PageResult> {
   const wait = lastEnd + MIN_GAP_MS - Date.now();
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  const result = await new Promise<StatusPageResult>((resolve) => {
+  const result = await new Promise<PageResult>((resolve) => {
     const entry: Pending = {
       query,
       finish: (r) => {
@@ -71,7 +73,7 @@ async function capture(query: StatusQuery, sender: Sender): Promise<StatusPageRe
     // Inactive, next to the problem: the user stays where they are.
     browser.tabs
       .create({
-        url: statusPageUrl(query),
+        url: pageUrl(query),
         active: false,
         ...(from?.windowId !== undefined ? { windowId: from.windowId } : {}),
         ...(from?.index !== undefined ? { index: from.index + 1 } : {}),
@@ -95,12 +97,13 @@ async function capture(query: StatusQuery, sender: Sender): Promise<StatusPageRe
 function pendingFor(sender: Sender): Pending | undefined {
   const tabId = sender.tab?.id;
   if (!pending || tabId === undefined || pending.tabId !== tabId) return undefined;
-  if (bojPath(sender) !== '/status' || !sender.url) return undefined;
+  // queryOfUrl only knows the pages this reads (and the login page of a source).
+  if (bojPath(sender) === undefined || !sender.url) return undefined;
   const query = queryOfUrl(sender.url);
   return query && sameQuery(query, pending.query) ? pending : undefined;
 }
 
-/** The status page content script asks whether its tab was opened to be read. */
+/** The content script asks whether its tab was opened to be read. */
 export async function handleStatusCaptureQuery(sender: Sender): Promise<{ capture: boolean }> {
   return { capture: pendingFor(sender) !== undefined };
 }
@@ -112,8 +115,17 @@ export async function handleStatusCaptureResult(
 ): Promise<{ ok: boolean }> {
   const entry = pendingFor(sender);
   if (!entry) return { ok: false };
-  entry.finish(message.page ? { ok: true, page: message.page } : { ok: false, reason: 'layout' });
+  entry.finish(resultOf(message, entry.query));
   return { ok: true };
+}
+
+/** The answer for `query`: only the kind of content it asked for counts. */
+function resultOf(message: StatusCaptureResult, query: PageQuery): PageResult {
+  if (message.login) return { ok: false, reason: 'login' };
+  if (query.kind === 'source') {
+    return message.source ? { ok: true, source: message.source } : { ok: false, reason: 'layout' };
+  }
+  return message.page ? { ok: true, page: message.page } : { ok: false, reason: 'layout' };
 }
 
 /** The user (or anything else) closed the tab before it was read. */

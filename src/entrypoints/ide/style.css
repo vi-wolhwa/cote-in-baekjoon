@@ -17,7 +17,7 @@
   --line: #172334;
   --text: #b2c0cc;
   --text-strong: #ffffff;
-  --link: #0078ff;
+  --link: #5aa9ff;
 
   --chip-text: #b2c0cc;
   --chip-bg: transparent;
@@ -42,15 +42,15 @@
 
   --tab-text: #4f6b81;
   --out-bg: transparent;
-  --out-text: #78909c;
-  --out-hint: #5f7f90;
+  --out-text: #9db0bf;
+  --out-hint: #8aa1b3;
   --out-heading: #98a8b9;
   --out-label: #44576c;
-  --pass: #0078ff;
-  --fail: #d32f2f;
-  --fail-summary: #b71c1c;
+  --pass: #4ea1ff;
+  --fail: #ff7373;
+  --fail-summary: #ff8a8a;
   --warn: #f0a63a;
-  --error-title: #d13134;
+  --error-title: #ff6b6b;
 
   --footer-line: #172334;
   --btn-text: #ffffff;
@@ -107,6 +107,10 @@
   --out-label: #5f7f90;
   /* Darker than the dark theme's so they keep 4.5:1 on #FBFBFD. */
   --pass: #0053f4;
+  /* Dark mode brightens these for contrast; light keeps the original reds. */
+  --fail: #d32f2f;
+  --fail-summary: #b71c1c;
+  --error-title: #d13134;
   --warn: #a15c00;
 
   --footer-line: #cdd8dd;

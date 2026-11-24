@@ -1,21 +1,24 @@
 /**
- * A status-list table like Baekjoon's 채점 현황 (ADR-0012, ide-spec §7.3): fixed-height rows,
- * as many per page as fit in the section without a scroll bar, and '이전 페이지' /
- * '다음 페이지' like Baekjoon's. Pages past the loaded rows are asked for with `onMore`.
+ * A submission list in the 제출 기록 tab (ADR-0012, ide-spec §7.3): fixed-height rows, as many
+ * per page as fit in the view without a scroll bar, and '이전' / '다음'. Pages past the loaded
+ * rows are asked for with `onMore`. A row whose code can be shown opens on click (or Enter);
+ * its last cell says so with a code icon, and a lock marks code its author did not share.
  */
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { ChevronIcon, CodeIcon, LockIcon } from '../icons';
 import { Spinner } from '../submit';
-import { absoluteTime, relativeTime, resultTone } from './format';
+import { absoluteTime, relativeTime } from './format';
 import type { RecordRow } from './merge';
+import { ResultChip } from './result';
 
 /** Row and header heights in pixels; history.css sets the same. */
-export const ROW_PX = 30;
-const HEAD_PX = 30;
+export const ROW_PX = 36;
+const HEAD_PX = 32;
 
 export interface Column {
   label: string;
-  /** Class on the header and cells; history.css hides some columns in narrow panes. */
+  /** Class on the header and cells; history.css sizes them and hides some when narrow. */
   cls: string;
   cell: (row: RecordRow, now: number) => ComponentChildren;
 }
@@ -24,6 +27,9 @@ export interface Column {
 export function rowsThatFit(height: number): number {
   return Math.max(1, Math.floor((height - HEAD_PX) / ROW_PX));
 }
+
+/** Whether a row's code can be shown: yes, no (not shared), or nothing to say. */
+export type Access = 'open' | 'locked' | 'none';
 
 interface Props {
   label: string;
@@ -37,10 +43,10 @@ interface Props {
   /** The first page is being (re)loaded: rows already on hand are not shown meanwhile. */
   reloading: boolean;
   onMore: () => void;
-  /** Opens a row that has IDE code. */
-  onOpen?: (row: RecordRow) => void;
+  access: (row: RecordRow) => Access;
+  onOpen: (row: RecordRow) => void;
   empty: ComponentChildren;
-  /** Changing it goes back to the first page (another problem, '새로 고침'). */
+  /** Changing it goes back to the first page (another problem, filter or '새로 고침'). */
   resetKey: string;
 }
 
@@ -103,24 +109,50 @@ export function StatusTable(props: Props) {
                   {c.label}
                 </th>
               ))}
+              <th class="col-open" scope="col">
+                <span class="visually-hidden">코드</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {(waiting ? [] : shown).map((row) => {
-              const open = row.entry && props.onOpen;
+              const access = props.access(row);
+              const open = access === 'open';
               return (
                 <tr
                   key={row.key}
-                  class={open ? 'is-ide' : undefined}
+                  class={open ? 'is-open' : undefined}
                   data-testid={`${props.testId}-row`}
-                  onClick={open ? () => props.onOpen?.(row) : undefined}
-                  title={open ? '풀이 화면에서 낸 제출이에요. 눌러서 코드를 봐요.' : undefined}
+                  tabIndex={open ? 0 : undefined}
+                  onClick={open ? () => props.onOpen(row) : undefined}
+                  onKeyDown={
+                    open
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            props.onOpen(row);
+                          }
+                        }
+                      : undefined
+                  }
                 >
                   {props.columns.map((c) => (
                     <td key={c.label} class={c.cls}>
                       {c.cell(row, props.now)}
                     </td>
                   ))}
+                  <td class="col-open">
+                    {open && (
+                      <span class="row-open" title="코드 보기">
+                        <CodeIcon />
+                      </span>
+                    )}
+                    {access === 'locked' && (
+                      <span class="row-locked" title="코드가 공개되지 않았어요">
+                        <LockIcon size={13} />
+                      </span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -129,7 +161,7 @@ export function StatusTable(props: Props) {
         {waiting && (
           <p class="out-busy history-busy" role="status">
             <Spinner />
-            백준 채점 현황을 불러오는 중
+            백준에서 불러오는 중
           </p>
         )}
         {!loading && rows.length === 0 && (
@@ -140,20 +172,22 @@ export function StatusTable(props: Props) {
         <nav class="status-pager" aria-label={`${props.label} 페이지`}>
           <button
             type="button"
-            class="out-button"
+            class="pager-button"
             disabled={start === 0}
             onClick={() => setStart(Math.max(0, start - size))}
           >
-            이전 페이지
+            <ChevronIcon left size={14} />
+            이전
           </button>
-          <span class="status-page-no">{Math.floor(start / size) + 1}쪽</span>
+          <span class="status-page-no">{Math.floor(start / size) + 1}</span>
           <button
             type="button"
-            class="out-button"
+            class="pager-button"
             disabled={!hasNext || (loading && rows.length <= start + size)}
             onClick={next}
           >
-            다음 페이지
+            다음
+            <ChevronIcon size={14} />
           </button>
         </nav>
       )}
@@ -162,27 +196,46 @@ export function StatusTable(props: Props) {
 }
 
 // ---------------------------------------------------------------------------
-// Cells, as Baekjoon's 채점 현황 shows them
+// Cells
 
-export function ResultCell({ row }: { row: RecordRow }) {
-  return (
-    <span class={`status-result is-${resultTone(row.resultCode)}`} title={row.resultText}>
-      {row.resultText}
-    </span>
+const num = (v: number | undefined, unit: string) =>
+  v !== undefined ? (
+    <>
+      {v.toLocaleString()}
+      <span class="unit">{unit}</span>
+    </>
+  ) : (
+    <span class="muted">—</span>
   );
-}
 
-export const memoryCell = (row: RecordRow) =>
-  row.memoryKb !== undefined ? `${row.memoryKb} KB` : '';
-export const timeCell = (row: RecordRow) => (row.timeMs !== undefined ? `${row.timeMs} ms` : '');
-export const lengthCell = (row: RecordRow) =>
-  row.codeLength !== undefined ? `${row.codeLength} B` : '';
-
-export function TimeCell({ at, now }: { at: number | undefined; now: number }) {
-  if (at === undefined) return null;
-  return (
-    <time dateTime={new Date(at).toISOString()} title={absoluteTime(at)}>
-      {relativeTime(at, now)}
-    </time>
-  );
-}
+export const COLUMNS = {
+  result: {
+    label: '결과',
+    cls: 'col-result',
+    cell: (r) => <ResultChip code={r.resultCode} text={r.resultText} />,
+  },
+  language: {
+    label: '언어',
+    cls: 'col-lang',
+    cell: (r) => <span title={r.language}>{r.language}</span>,
+  },
+  memory: { label: '메모리', cls: 'col-num col-memory', cell: (r) => num(r.memoryKb, 'KB') },
+  time: { label: '시간', cls: 'col-num col-time', cell: (r) => num(r.timeMs, 'ms') },
+  length: { label: '코드 길이', cls: 'col-num col-length', cell: (r) => num(r.codeLength, 'B') },
+  at: {
+    label: '제출',
+    cls: 'col-at',
+    cell: (r, now) =>
+      r.submittedAt !== undefined ? (
+        <time dateTime={new Date(r.submittedAt).toISOString()} title={absoluteTime(r.submittedAt)}>
+          {relativeTime(r.submittedAt, now)}
+        </time>
+      ) : null,
+  },
+  user: {
+    label: '아이디',
+    cls: 'col-user',
+    cell: (r) => <span title={r.username}>{r.username}</span>,
+  },
+  rank: { label: '순위', cls: 'col-rank', cell: (r) => r.rank ?? '' },
+} satisfies Record<string, Column>;
