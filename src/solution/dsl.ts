@@ -84,8 +84,9 @@ export interface RetSpec {
   /** double: digits after the decimal point. */
   digits?: number;
   /**
-   * double: the error the judge allows (1e-6 for "10^-6까지 허용"). Printing still uses `digits`;
-   * samples and run results are compared within it.
+   * The error the judge allows for real numbers (1e-6 for "10^-6까지 허용"). A double still prints
+   * with `digits`; samples and run results are compared within it, number by number, so it also
+   * fits answers made of several reals (`string`, `line[]`). Not for `bool`.
    */
   tol?: number;
 }
@@ -450,7 +451,7 @@ function parseRet(raw: unknown, fail: (e: string) => void): RetSpec | undefined 
   }
   if (raw.tol !== undefined) {
     const t = raw.tol;
-    if (type !== 'double') fail('허용 오차(tol)는 double 반환값에만 써요.');
+    if (type === 'bool') fail('허용 오차(tol)는 참거짓 반환값에는 쓰지 않아요.');
     else if (typeof t !== 'number' || !(t >= 1e-15 && t <= 1)) {
       fail('허용 오차(tol)는 1e-15~1 사이 수여야 해요.');
     } else ret.tol = t;

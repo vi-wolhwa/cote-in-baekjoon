@@ -46,7 +46,7 @@ function positiveInt(name: string, raw: string, max: number): number {
   return n;
 }
 
-const top = positiveInt('top', values.top, 30000);
+const top = positiveInt('top', values.top, 50000);
 const bojLimit = positiveInt('boj', values.boj, 100);
 /** Problems handled at once by the blog sources (each request keeps its own pacing). */
 const concurrency = Math.max(1, positiveInt('concurrency', values.concurrency, 16));

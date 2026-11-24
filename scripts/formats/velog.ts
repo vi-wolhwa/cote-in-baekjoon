@@ -98,8 +98,8 @@ export async function fetchFromVelog(
       const parsed = parseReadme(markPlainHeadings(body));
       const url = `https://velog.io/@${ref.user.username}/${encodeURIComponent(ref.url_slug)}`;
       const part = {
-        input: parsed.input,
-        output: parsed.output,
+        input: withoutCode(parsed.input),
+        output: withoutCode(parsed.output),
         samples: parsed.samples,
         ...(parsed.constraints ? { constraints: parsed.constraints } : {}),
       };
@@ -116,4 +116,16 @@ export async function fetchFromVelog(
     if (++done % 25 === 0) console.log(`velog ${done}문제 확인, ${filled}문제 채움`);
   });
   return filled;
+}
+
+/**
+ * A section with any code blocks removed: blog posts often put the solution right after the
+ * output description, and solution code is never read (ADR-0006). Empty when only code was left.
+ */
+export function withoutCode(text: string | null): string | null {
+  if (text === null) return null;
+  return text
+    .replace(/(^|\n)[ \t]*(```|~~~)[\s\S]*?(\n[ \t]*\2[^\n]*|$)/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }

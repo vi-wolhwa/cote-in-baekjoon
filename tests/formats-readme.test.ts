@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { htmlToText, normalizeSample } from '../scripts/formats/lib/html-text.ts';
+import { markPlainHeadings, titleHasId, withoutCode } from '../scripts/formats/velog.ts';
 import {
   classifyHeading,
   extractBlock,
@@ -165,5 +166,26 @@ describe('normalizeSample', () => {
     expect(normalizeSample('    3\u200B\n    1\u00A02\n\n    4')).toBe('3\n1 2\n\n4');
     expect(normalizeSample('  *\n ***', false)).toBe('  *\n ***');
     expect(normalizeSample('7\u200B', false)).toBe('7\u200B');
+  });
+});
+
+describe('blog sections', () => {
+  it('finds the problem number in a post title as a whole number', () => {
+    expect(titleHasId('[백준 1000] A+B', 1000)).toBe(true);
+    expect(titleHasId('BOJ 10000 풀이', 1000)).toBe(false);
+  });
+
+  it('turns plain section-name lines into headings', () => {
+    expect(markPlainHeadings('입력\n둘째 줄\n예제 입력 1:\n1 2')).toBe(
+      '### 입력\n둘째 줄\n### 예제 입력 1\n1 2',
+    );
+  });
+
+  it('drops code blocks from a description, keeping the text around them', () => {
+    expect(withoutCode('첫째 줄에 답을 출력한다.\n\n```cpp\nint main() {}\n```\n\n풀이')).toBe(
+      '첫째 줄에 답을 출력한다.\n\n풀이',
+    );
+    expect(withoutCode('```\ncode only\n```')).toBe('');
+    expect(withoutCode(null)).toBeNull();
   });
 });
