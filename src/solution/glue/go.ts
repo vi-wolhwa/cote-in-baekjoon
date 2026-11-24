@@ -12,7 +12,10 @@ import {
   type RetSpec,
   type RetType,
 } from '../dsl';
+import { GO_ROWS, GO_RUNTIME } from './go-runtime';
 import {
+  allSteps,
+  planVar,
   renderCount,
   renderRows,
   usesRows,
@@ -67,239 +70,6 @@ export function dropPackage(code: string): string {
   return code.replace(/^[ \t]*package[ \t]+main[ \t]*;?[ \t]*$/m, '');
 }
 
-const RUNTIME = `var __cib_d []byte
-var __cib_p int
-
-func __cib_fail() {
-	__cib_os.Stderr.WriteString("__cib_input\\n")
-	__cib_os.Exit(1)
-}
-func __cib_ws(c byte) bool { return c == ' ' || c == '\\n' || c == '\\r' || c == '\\t' }
-func __cib_more() bool {
-	for __cib_p < len(__cib_d) && __cib_ws(__cib_d[__cib_p]) {
-		__cib_p++
-	}
-	return __cib_p < len(__cib_d)
-}
-func __cib_word() []byte {
-	if !__cib_more() {
-		__cib_fail()
-	}
-	s := __cib_p
-	for __cib_p < len(__cib_d) && !__cib_ws(__cib_d[__cib_p]) {
-		__cib_p++
-	}
-	return __cib_d[s:__cib_p]
-}
-func __cib_tok() string { return string(__cib_word()) }
-func __cib_ll(b []byte) int64 {
-	i, neg := 0, false
-	if i < len(b) && (b[i] == '-' || b[i] == '+') {
-		neg = b[i] == '-'
-		i++
-	}
-	if i >= len(b) {
-		__cib_fail()
-	}
-	var v int64
-	for ; i < len(b); i++ {
-		c := int64(b[i]) - '0'
-		if c < 0 || c > 9 {
-			__cib_fail()
-		}
-		v = v*10 - c
-	}
-	if neg {
-		return v
-	}
-	return -v
-}
-func __cib_dbl(b []byte) float64 {
-	v, err := __cib_strconv.ParseFloat(string(b), 64)
-	if err != nil {
-		__cib_fail()
-	}
-	return v
-}
-func __cib_cnt(x int64) int {
-	if x < 0 {
-		__cib_fail()
-	}
-	return int(x)
-}
-func __cib_nl() {
-	n := len(__cib_d)
-	if __cib_p > 0 && __cib_d[__cib_p-1] != '\\n' {
-		for __cib_p < n && __cib_d[__cib_p] != '\\n' {
-			__cib_p++
-		}
-		if __cib_p < n {
-			__cib_p++
-		}
-	}
-	for {
-		q := __cib_p
-		for q < n && __cib_d[q] != '\\n' && __cib_ws(__cib_d[q]) {
-			q++
-		}
-		if q < n && __cib_d[q] == '\\n' {
-			__cib_p = q + 1
-		} else {
-			break
-		}
-	}
-}
-func __cib_end() int {
-	if __cib_p >= len(__cib_d) {
-		__cib_fail()
-	}
-	e := __cib_p
-	for e < len(__cib_d) && __cib_d[e] != '\\n' {
-		e++
-	}
-	return e
-}
-func __cib_line() string {
-	e := __cib_end()
-	s := __cib_p
-	__cib_p = e
-	for s < e && __cib_ws(__cib_d[s]) {
-		s++
-	}
-	for e > s && __cib_ws(__cib_d[e-1]) {
-		e--
-	}
-	return string(__cib_d[s:e])
-}
-func __cib_rest() [][]byte {
-	e := __cib_end()
-	var r [][]byte
-	i := __cib_p
-	__cib_p = e
-	for i < e {
-		for i < e && __cib_ws(__cib_d[i]) {
-			i++
-		}
-		s := i
-		for i < e && !__cib_ws(__cib_d[i]) {
-			i++
-		}
-		if i > s {
-			r = append(r, __cib_d[s:i])
-		}
-	}
-	return r
-}
-func __cib_has() bool {
-	q := __cib_p
-	for q < len(__cib_d) && __cib_ws(__cib_d[q]) {
-		q++
-	}
-	return q < len(__cib_d)
-}
-func __cib_put(o []byte, x interface{}) []byte {
-	switch v := x.(type) {
-	case int:
-		return __cib_strconv.AppendInt(o, int64(v), 10)
-	case int64:
-		return __cib_strconv.AppendInt(o, v, 10)
-	case int32:
-		return __cib_strconv.AppendInt(o, int64(v), 10)
-	case int16:
-		return __cib_strconv.AppendInt(o, int64(v), 10)
-	case int8:
-		return __cib_strconv.AppendInt(o, int64(v), 10)
-	case uint:
-		return __cib_strconv.AppendUint(o, uint64(v), 10)
-	case uint64:
-		return __cib_strconv.AppendUint(o, v, 10)
-	case uint32:
-		return __cib_strconv.AppendUint(o, uint64(v), 10)
-	case uint16:
-		return __cib_strconv.AppendUint(o, uint64(v), 10)
-	case uint8:
-		return __cib_strconv.AppendUint(o, uint64(v), 10)
-	case float64:
-		return __cib_strconv.AppendFloat(o, v, 'f', -1, 64)
-	case float32:
-		return __cib_strconv.AppendFloat(o, float64(v), 'f', -1, 32)
-	case string:
-		return append(o, v...)
-	case bool:
-		return __cib_strconv.AppendBool(o, v)
-	}
-	return o
-}`;
-
-/** Counting rows ahead for end-line and end-of-input repeats (only when used). */
-const ROWS = `func __cib_at(w []string) bool {
-	s := __cib_p
-	ok := true
-	for _, x := range w {
-		if !__cib_more() || __cib_tok() != x {
-			ok = false
-			break
-		}
-	}
-	__cib_p = s
-	return ok
-}
-func __cib_rowsTok(w []string, k int) int {
-	s := __cib_p
-	r := 0
-	for {
-		if len(w) == 0 && !__cib_has() || len(w) > 0 && __cib_at(w) {
-			break
-		}
-		if k < 1 || !__cib_has() {
-			__cib_fail()
-		}
-		for i := 0; i < k; i++ {
-			__cib_word()
-		}
-		r++
-	}
-	__cib_p = s
-	return r
-}
-func __cib_raw() string {
-	e := __cib_p
-	for e < len(__cib_d) && __cib_d[e] != '\\n' {
-		e++
-	}
-	s := __cib_p
-	__cib_p = e
-	for e > s && __cib_ws(__cib_d[e-1]) {
-		e--
-	}
-	return string(__cib_d[s:e])
-}
-func __cib_rowsLine(e string, until bool, raw bool) int {
-	s := __cib_p
-	r := 0
-	for {
-		__cib_nl()
-		if !__cib_has() {
-			if until {
-				__cib_fail()
-			}
-			break
-		}
-		var t string
-		if raw {
-			t = __cib_raw()
-		} else {
-			t = __cib_line()
-		}
-		if until && t == e {
-			break
-		}
-		r++
-	}
-	__cib_p = s
-	return r
-}`;
-
 const ELEMENT: Record<Scalar, string> = {
   int: 'int',
   long: 'int64',
@@ -320,13 +90,55 @@ const count = (c: CountRef) => `__cib_cnt(${renderCount(c, (v) => `int64(${varia
 const rows = (n: Rows) =>
   renderRows(n, count, {
     tok: (end, k) => `__cib_rowsTok([]string{${end.map(goQuote).join(', ')}}, ${k})`,
-    line: (end, raw) =>
-      `__cib_rowsLine(${end === null ? '"", false' : `${goQuote(end)}, true`}, ${raw})`,
+    line: (end, text) => `__cib_rowsLine(${end.mode}, ${goQuote(end.text)}, ${text})`,
+    phys: (end) => `__cib_rowsPhys(${end.mode}, ${goQuote(end.text)})`,
   });
 
-function step(s: Step): string {
+/** The ROWS helpers: rows counted ahead, end lines and raw lines (rawl, also for counted raw lines). */
+const needsRows = (plan: Plan) =>
+  usesRows(plan) || allSteps(plan.steps).some((s) => s.op === 'rawLines');
+
+/** A block: its lists start empty; each pass reads the block's variables and appends them. */
+function block(plan: Plan, s: Extract<Step, { op: 'block' }>): string[] {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return `for __cib_b, __cib_bn := 0, ${count(s.loop.n)}; __cib_b < __cib_bn; __cib_b++ {`;
+      case 'eof':
+        return 'for __cib_has() {';
+      case 'tok':
+        return `for !__cib_at([]string{${s.loop.end.map(goQuote).join(', ')}}) {`;
+      case 'line':
+        return `for !__cib_endl(${s.loop.end.mode}, ${goQuote(s.loop.end.text)}) {`;
+    }
+  })();
+  return [
+    ...s.items.map((x) => `${variable(x.list)} = ${GO_TYPES[planVar(plan, x.list).type]}{}`),
+    head,
+    ...s.items.map((x) => `    var ${variable(x.item)} ${GO_TYPES[planVar(plan, x.item).type]}`),
+    ...s.steps.flatMap((x) => step(plan, x)).map((l) => `    ${l}`),
+    ...s.items.map(
+      (x) => `    ${variable(x.list)} = append(${variable(x.list)}, ${variable(x.item)})`,
+    ),
+    '}',
+  ];
+}
+
+/** The lines of one step. */
+function step(plan: Plan, s: Step): string[] {
+  if (s.op === 'block') return block(plan, s);
+  return [stepLine(s)];
+}
+
+function stepLine(s: Exclude<Step, { op: 'block' }>): string {
   const v = variable('v' in s ? s.v : 0);
   switch (s.op) {
+    case 'raw':
+      return `${v} = __cib_rawl()`;
+    case 'rawLines':
+      return `${v} = make([]string, ${rows(s.n)}); for __cib_i := range ${v} { ${v}[__cib_i] = __cib_rawl() }`;
+    case 'endRaw':
+      return '__cib_rawl()';
     case 'nl':
       return '__cib_nl()';
     case 'scalar':
@@ -409,7 +221,7 @@ export function goGlue(plan: Plan, ret: RetSpec): string {
   const body = (n: number) =>
     [
       ...decls,
-      ...plan.steps.map(step),
+      ...plan.steps.flatMap((s) => step(plan, s)),
       `__cib_r := solution(${vars.join(', ')})`,
       'if __cib_cases > 0 {',
       "    __cib_o = append(__cib_o, '\\n')",
@@ -435,6 +247,10 @@ export function goGlue(plan: Plan, ret: RetSpec): string {
         return `    __cib_t := int(__cib_ll(__cib_word()))\n    for __cib_k := 0; __cib_k < __cib_t; __cib_k++ {\n${body(8)}\n    }`;
       case 'eof':
         return `    for __cib_has() {\n${body(8)}\n    }`;
+      case 'line': {
+        const { mode, text } = plan.loop.end;
+        return `    for __cib_has() && !__cib_endl(${mode}, ${goQuote(text)}) {\n${body(8)}\n    }`;
+      }
       case 'until': {
         const words = plan.loop.tokens.map(goQuote).join(', ');
         return [
@@ -460,8 +276,8 @@ export function goGlue(plan: Plan, ret: RetSpec): string {
   })();
   return [
     '// ---- 입출력 코드 ----',
-    RUNTIME,
-    ...(usesRows(plan) ? [ROWS] : []),
+    GO_RUNTIME,
+    ...(needsRows(plan) ? [GO_ROWS] : []),
     '',
     'func main() {',
     '    __cib_d, _ = __cib_io.ReadAll(__cib_os.Stdin)',

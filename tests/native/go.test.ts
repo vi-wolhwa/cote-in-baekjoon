@@ -119,5 +119,57 @@ func solution(n int, pairs [][]int, names []string) []string {
     scenario: `func solution(n int, arr []int) []int {
     return arr
 }`,
+    exprFlow: `func solution(n int, arr []int, g [][]int) int64 {
+    var s int64
+    for _, x := range arr {
+        s += int64(x)
+    }
+    return s*100 + int64(len(g))*10 + int64(len(g[0]))
+}`,
+    blockCount: `import "strconv"
+
+func solution(n int, k []int, name []string, items [][]int) []string {
+    r := make([]string, len(name))
+    for i, s := range name {
+        t := 0
+        for _, x := range items[i] {
+            t += x
+        }
+        r[i] = s + ":" + strconv.Itoa(t)
+    }
+    return r
+}`,
+    blockUntil: `func solution(m []int, vals [][]int, x []int, y []int) []int {
+    var r []int
+    for _, v := range vals {
+        b := v[0]
+        for _, a := range v {
+            if a > b {
+                b = a
+            }
+        }
+        r = append(r, b)
+    }
+    for i := range x {
+        r = append(r, x[i]*y[i])
+    }
+    return r
+}`,
+    endConds: `func solution(n int, words []string, p []int) int64 {
+    var s int64
+    for _, x := range p {
+        s += int64(x)
+    }
+    return int64(n) + int64(len(words))*10 + s*100
+}`,
+    rawLines: `func solution(t string, n int, ls []string, mid []string, rest []string) []string {
+    r := []string{"[" + t + "]"}
+    for _, v := range [][]string{ls, mid, rest} {
+        for _, s := range v {
+            r = append(r, "["+s+"]")
+        }
+    }
+    return r
+}`,
   },
 );

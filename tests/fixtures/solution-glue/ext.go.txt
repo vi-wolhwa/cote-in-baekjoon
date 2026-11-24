@@ -1,0 +1,440 @@
+package main
+import (__cib_io "io"; __cib_os "os"; __cib_strconv "strconv")
+// 자동 포함: package main
+
+func solution(n int, arr []int, k []int, name []string, items [][]int, m []int64, vals [][]float64, words []string, p []int) int64 {
+    var answer int64
+    return answer
+}
+
+
+// ---- 입출력 코드 ----
+var __cib_d []byte
+var __cib_p int
+
+func __cib_fail() {
+	__cib_os.Stderr.WriteString("__cib_input\n")
+	__cib_os.Exit(1)
+}
+func __cib_ws(c byte) bool { return c == ' ' || c == '\n' || c == '\r' || c == '\t' }
+func __cib_more() bool {
+	for __cib_p < len(__cib_d) && __cib_ws(__cib_d[__cib_p]) {
+		__cib_p++
+	}
+	return __cib_p < len(__cib_d)
+}
+func __cib_word() []byte {
+	if !__cib_more() {
+		__cib_fail()
+	}
+	s := __cib_p
+	for __cib_p < len(__cib_d) && !__cib_ws(__cib_d[__cib_p]) {
+		__cib_p++
+	}
+	return __cib_d[s:__cib_p]
+}
+func __cib_tok() string { return string(__cib_word()) }
+func __cib_ll(b []byte) int64 {
+	i, neg := 0, false
+	if i < len(b) && (b[i] == '-' || b[i] == '+') {
+		neg = b[i] == '-'
+		i++
+	}
+	if i >= len(b) {
+		__cib_fail()
+	}
+	var v int64
+	for ; i < len(b); i++ {
+		c := int64(b[i]) - '0'
+		if c < 0 || c > 9 {
+			__cib_fail()
+		}
+		v = v*10 - c
+	}
+	if neg {
+		return v
+	}
+	return -v
+}
+func __cib_dbl(b []byte) float64 {
+	v, err := __cib_strconv.ParseFloat(string(b), 64)
+	if err != nil {
+		__cib_fail()
+	}
+	return v
+}
+func __cib_cnt(x int64) int {
+	if x < 0 {
+		__cib_fail()
+	}
+	return int(x)
+}
+func __cib_nl() {
+	n := len(__cib_d)
+	if __cib_p > 0 && __cib_d[__cib_p-1] != '\n' {
+		for __cib_p < n && __cib_d[__cib_p] != '\n' {
+			__cib_p++
+		}
+		if __cib_p < n {
+			__cib_p++
+		}
+	}
+	for {
+		q := __cib_p
+		for q < n && __cib_d[q] != '\n' && __cib_ws(__cib_d[q]) {
+			q++
+		}
+		if q < n && __cib_d[q] == '\n' {
+			__cib_p = q + 1
+		} else {
+			break
+		}
+	}
+}
+func __cib_end() int {
+	if __cib_p >= len(__cib_d) {
+		__cib_fail()
+	}
+	e := __cib_p
+	for e < len(__cib_d) && __cib_d[e] != '\n' {
+		e++
+	}
+	return e
+}
+func __cib_line() string {
+	e := __cib_end()
+	s := __cib_p
+	__cib_p = e
+	for s < e && __cib_ws(__cib_d[s]) {
+		s++
+	}
+	for e > s && __cib_ws(__cib_d[e-1]) {
+		e--
+	}
+	return string(__cib_d[s:e])
+}
+func __cib_rest() [][]byte {
+	e := __cib_end()
+	var r [][]byte
+	i := __cib_p
+	__cib_p = e
+	for i < e {
+		for i < e && __cib_ws(__cib_d[i]) {
+			i++
+		}
+		s := i
+		for i < e && !__cib_ws(__cib_d[i]) {
+			i++
+		}
+		if i > s {
+			r = append(r, __cib_d[s:i])
+		}
+	}
+	return r
+}
+func __cib_has() bool {
+	q := __cib_p
+	for q < len(__cib_d) && __cib_ws(__cib_d[q]) {
+		q++
+	}
+	return q < len(__cib_d)
+}
+func __cib_put(o []byte, x interface{}) []byte {
+	switch v := x.(type) {
+	case int:
+		return __cib_strconv.AppendInt(o, int64(v), 10)
+	case int64:
+		return __cib_strconv.AppendInt(o, v, 10)
+	case int32:
+		return __cib_strconv.AppendInt(o, int64(v), 10)
+	case int16:
+		return __cib_strconv.AppendInt(o, int64(v), 10)
+	case int8:
+		return __cib_strconv.AppendInt(o, int64(v), 10)
+	case uint:
+		return __cib_strconv.AppendUint(o, uint64(v), 10)
+	case uint64:
+		return __cib_strconv.AppendUint(o, v, 10)
+	case uint32:
+		return __cib_strconv.AppendUint(o, uint64(v), 10)
+	case uint16:
+		return __cib_strconv.AppendUint(o, uint64(v), 10)
+	case uint8:
+		return __cib_strconv.AppendUint(o, uint64(v), 10)
+	case float64:
+		return __cib_strconv.AppendFloat(o, v, 'f', -1, 64)
+	case float32:
+		return __cib_strconv.AppendFloat(o, float64(v), 'f', -1, 32)
+	case string:
+		return append(o, v...)
+	case bool:
+		return __cib_strconv.AppendBool(o, v)
+	}
+	return o
+}
+func __cib_at(w []string) bool {
+	s := __cib_p
+	ok := true
+	for _, x := range w {
+		if !__cib_more() || __cib_tok() != x {
+			ok = false
+			break
+		}
+	}
+	__cib_p = s
+	return ok
+}
+func __cib_rowsTok(w []string, k int) int {
+	s := __cib_p
+	r := 0
+	for {
+		if len(w) == 0 && !__cib_has() || len(w) > 0 && __cib_at(w) {
+			break
+		}
+		if k < 1 || !__cib_has() {
+			__cib_fail()
+		}
+		for i := 0; i < k; i++ {
+			__cib_word()
+		}
+		r++
+	}
+	__cib_p = s
+	return r
+}
+func __cib_raw() string {
+	e := __cib_p
+	for e < len(__cib_d) && __cib_d[e] != '\n' {
+		e++
+	}
+	s := __cib_p
+	__cib_p = e
+	for e > s && __cib_ws(__cib_d[e-1]) {
+		e--
+	}
+	return string(__cib_d[s:e])
+}
+
+// A decimal number token: [+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?
+func __cib_num(b string) bool {
+	n, i, d := len(b), 0, 0
+	if i < n && (b[i] == '+' || b[i] == '-') {
+		i++
+	}
+	for i < n && b[i] >= '0' && b[i] <= '9' {
+		i++
+		d++
+	}
+	if i < n && b[i] == '.' {
+		i++
+		for i < n && b[i] >= '0' && b[i] <= '9' {
+			i++
+			d++
+		}
+	}
+	if d == 0 {
+		return false
+	}
+	if i < n && (b[i] == 'e' || b[i] == 'E') {
+		i++
+		if i < n && (b[i] == '+' || b[i] == '-') {
+			i++
+		}
+		s := i
+		for i < n && b[i] >= '0' && b[i] <= '9' {
+			i++
+		}
+		if i == s {
+			return false
+		}
+	}
+	return i == n
+}
+
+// Whether line text t is an end line: m 1 it is e, 2 its first token is a number < 0,
+// 3 a number <= 0, 4 it starts with e.
+func __cib_isEnd(t string, m int, e string) bool {
+	switch m {
+	case 1:
+		return t == e
+	case 4:
+		return len(t) >= len(e) && t[:len(e)] == e
+	case 2, 3:
+		i := 0
+		for i < len(t) && __cib_ws(t[i]) {
+			i++
+		}
+		j := i
+		for j < len(t) && !__cib_ws(t[j]) {
+			j++
+		}
+		if !__cib_num(t[i:j]) {
+			return false
+		}
+		// Out of range is still a number (±Inf), as in JavaScript.
+		v, _ := __cib_strconv.ParseFloat(t[i:j], 64)
+		if m == 2 {
+			return v < 0
+		}
+		return v <= 0
+	}
+	return false
+}
+func __cib_rowsLine(m int, e string, text bool) int {
+	s := __cib_p
+	r := 0
+	for {
+		__cib_nl()
+		if !__cib_has() {
+			if m != 0 {
+				__cib_fail()
+			}
+			break
+		}
+		var t string
+		if text {
+			t = __cib_raw()
+		} else {
+			t = __cib_line()
+		}
+		if m != 0 && __cib_isEnd(t, m, e) {
+			break
+		}
+		r++
+	}
+	__cib_p = s
+	return r
+}
+
+// Whether the next line is an end line; it is then read.
+func __cib_endl(m int, e string) bool {
+	s := __cib_p
+	__cib_nl()
+	if __cib_has() && __cib_isEnd(__cib_line(), m, e) {
+		return true
+	}
+	__cib_p = s
+	return false
+}
+
+// To the start of the next physical line unless already at one.
+func __cib_bol() {
+	n := len(__cib_d)
+	if __cib_p > 0 && __cib_d[__cib_p-1] != '\n' {
+		for __cib_p < n && __cib_d[__cib_p] != '\n' {
+			__cib_p++
+		}
+		if __cib_p < n {
+			__cib_p++
+		}
+	}
+}
+
+// The next physical line as it is (only a trailing "\r" dropped), blank or not.
+func __cib_rawl() string {
+	__cib_bol()
+	n := len(__cib_d)
+	if __cib_p >= n {
+		__cib_fail()
+	}
+	s := __cib_p
+	e := s
+	for e < n && __cib_d[e] != '\n' {
+		e++
+	}
+	if e < n {
+		__cib_p = e + 1
+	} else {
+		__cib_p = n
+	}
+	if e > s && __cib_d[e-1] == '\r' {
+		e--
+	}
+	return string(__cib_d[s:e])
+}
+func __cib_rowsPhys(m int, e string) int {
+	s := __cib_p
+	r := 0
+	__cib_bol()
+	for {
+		if __cib_p >= len(__cib_d) {
+			if m != 0 {
+				__cib_fail()
+			}
+			break
+		}
+		t := __cib_rawl()
+		k := len(t)
+		for k > 0 && __cib_ws(t[k-1]) {
+			k--
+		}
+		if m != 0 && __cib_isEnd(t[:k], m, e) {
+			break
+		}
+		r++
+	}
+	__cib_p = s
+	return r
+}
+
+func main() {
+    __cib_d, _ = __cib_io.ReadAll(__cib_os.Stdin)
+    __cib_o := make([]byte, 0, 1<<16)
+    __cib_cases := 0
+    for __cib_has() && !__cib_endl(2, "") {
+        var __cib_v0 int
+        var __cib_v1 []int
+        var __cib_v2 []int
+        var __cib_v3 []string
+        var __cib_v4 [][]int
+        var __cib_v5 []int64
+        var __cib_v6 [][]float64
+        var __cib_v7 []string
+        var __cib_v8 []int
+        __cib_v0 = int(__cib_ll(__cib_word()))
+        __cib_v1 = make([]int, __cib_cnt(2 * int64(__cib_v0) - 1)); for __cib_i := range __cib_v1 { __cib_v1[__cib_i] = int(__cib_ll(__cib_word())) }
+        __cib_v2 = []int{}
+        __cib_v3 = []string{}
+        __cib_v4 = [][]int{}
+        for __cib_b, __cib_bn := 0, __cib_cnt(int64(__cib_v0) - 1); __cib_b < __cib_bn; __cib_b++ {
+            var __cib_v9 int
+            var __cib_v10 string
+            var __cib_v11 []int
+            __cib_v9 = int(__cib_ll(__cib_word()))
+            __cib_v10 = string(__cib_word())
+            __cib_v11 = make([]int, __cib_cnt(int64(__cib_v9))); for __cib_i := range __cib_v11 { __cib_v11[__cib_i] = int(__cib_ll(__cib_word())) }
+            __cib_v2 = append(__cib_v2, __cib_v9)
+            __cib_v3 = append(__cib_v3, __cib_v10)
+            __cib_v4 = append(__cib_v4, __cib_v11)
+        }
+        __cib_v5 = []int64{}
+        __cib_v6 = [][]float64{}
+        for !__cib_at([]string{"0"}) {
+            var __cib_v12 int64
+            var __cib_v13 []float64
+            __cib_v12 = __cib_ll(__cib_word())
+            __cib_v13 = make([]float64, __cib_cnt(int64(__cib_v12))); for __cib_i := range __cib_v13 { __cib_v13[__cib_i] = __cib_dbl(__cib_word()) }
+            __cib_v5 = append(__cib_v5, __cib_v12)
+            __cib_v6 = append(__cib_v6, __cib_v13)
+        }
+        __cib_word()
+        __cib_v7 = make([]string, __cib_rowsLine(4, "#", true)); for __cib_i := range __cib_v7 { __cib_nl(); __cib_v7[__cib_i] = __cib_line() }
+        __cib_nl(); __cib_line()
+        __cib_v8 = []int{}
+        for !__cib_endl(3, "") {
+            var __cib_v14 int
+            __cib_v14 = int(__cib_ll(__cib_word()))
+            __cib_v8 = append(__cib_v8, __cib_v14)
+        }
+        __cib_r := solution(__cib_v0, __cib_v1, __cib_v2, __cib_v3, __cib_v4, __cib_v5, __cib_v6, __cib_v7, __cib_v8)
+        if __cib_cases > 0 {
+            __cib_o = append(__cib_o, '\n')
+        }
+        __cib_cases++
+        __cib_o = __cib_put(__cib_o, __cib_r)
+    }
+    if __cib_cases > 0 {
+        __cib_o = append(__cib_o, '\n')
+    }
+    __cib_os.Stdout.Write(__cib_o)
+}
