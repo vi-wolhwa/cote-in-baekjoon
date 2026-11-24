@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.19.0...v0.19.1) (2026-11-24)
+
+
+### 버그 수정
+
+* **history:** 제출 기록을 백준 채점 현황 표로 — 자동 불러오기, 합치기, 다른 사람 기록, 왼쪽 최소 너비 ([#174](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/174)) ([73520c3](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/73520c38bf7612df1cb6a008b53fb54a71c54f99))
+
 ## [0.19.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.18.0...v0.19.0) (2026-11-24)
 
 
