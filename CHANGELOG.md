@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.15.0...v0.16.0) (2026-11-24)
+
+
+### 기능
+
+* **formats:** BaekjoonHub 저장소에서 모은 6,167문제 형식 추가 ([#163](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/163)) ([f3d36a8](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/f3d36a8b00dc20873d7b62ec377f4a415bed93fd))
+
 ## [0.15.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.14.0...v0.15.0) (2026-11-24)
 
 
