@@ -98,17 +98,16 @@ function TranslationBar(props: {
   const name = languageName(status.source);
   return (
     <div class="translate-bar" data-testid="translate-bar">
-      {status.kind === 'unsupported' && (
-        <span class="translate-note">
-          {name} 문제예요. 이 브라우저는 내장 번역을 지원하지 않아 원문으로 보여요.
-        </span>
-      )}
       {status.kind === 'ready' && (
         <>
           <button type="button" class="translate-button" onClick={props.onTranslate}>
             한국어로 번역
           </button>
-          <span class="translate-note">{name} 문제예요. 처음에는 번역 모델을 내려받아요.</span>
+          <span class="translate-note">
+            {status.engine === 'device'
+              ? `${name} 문제예요. 처음에는 번역 모델을 내려받아요.`
+              : `${name} 문제예요.`}
+          </span>
         </>
       )}
       {status.kind === 'working' && (

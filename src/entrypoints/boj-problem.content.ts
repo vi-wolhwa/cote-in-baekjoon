@@ -61,7 +61,7 @@ function openIde() {
   frame.src = browser.runtime.getURL('/ide.html');
   frame.title = '코딩테스트 풀이 화면';
   // The built-in translator (ADR-0010) works in a cross-origin frame only when allowed.
-  frame.allow = 'translator; language-detector';
+  frame.allow = 'translator';
   Object.assign(frame.style, {
     position: 'fixed',
     inset: '0',

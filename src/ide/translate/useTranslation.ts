@@ -1,34 +1,32 @@
 /**
  * Automatic translation of a foreign-language statement into Korean (ADR-0010). The language is
- * detected from the statement text; when the browser's translator is ready the statement is
- * translated right away, when its model must be downloaded first the user starts it with a
- * click. The user can switch between the translation and the original; that choice is kept.
+ * guessed from the statement's scripts, so Korean problems are never sent anywhere. Foreign ones
+ * are translated with web translation (works in Chrome, Edge and Whale); when that fails, the
+ * browser's on-device translator is used where there is one. The user can switch between the
+ * translation and the original, and that choice is kept.
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ProblemSections } from '@/boj/problem';
-import {
-  createTranslator,
-  detectLanguage,
-  translatorAvailability,
-  type Availability,
-} from './browser';
-import { guessLanguage, statementText, translateHtml } from './html';
+import { createTranslator, translatorAvailability } from './browser';
+import { guessLanguage, statementText, translateHtml, type TranslateMany } from './html';
+import { webTranslate } from './web';
+
+export type Engine = 'web' | 'device';
 
 export type TranslationStatus =
   | { kind: 'native' }
-  | { kind: 'unsupported'; source: string }
-  | { kind: 'ready'; source: string }
+  /** Waits for a click: the original was chosen, or the on-device model must be downloaded. */
+  | { kind: 'ready'; source: string; engine: Engine }
   | { kind: 'working'; source: string; progress?: number }
   | { kind: 'done'; source: string }
   | { kind: 'error'; source: string };
 
 const PREF_KEY = 'ui:translate';
-const cache = new Map<number, ProblemSections>();
+const cache = new Map<number, { sections: ProblemSections; source: string }>();
 
 async function loadShowOriginal(): Promise<boolean> {
   try {
-    const v = (await browser.storage.local.get(PREF_KEY))[PREF_KEY];
-    return v === 'original';
+    return (await browser.storage.local.get(PREF_KEY))[PREF_KEY] === 'original';
   } catch {
     return false;
   }
@@ -36,15 +34,15 @@ async function loadShowOriginal(): Promise<boolean> {
 
 async function translateSections(
   sections: ProblemSections,
-  translate: (text: string) => Promise<string>,
+  many: TranslateMany,
 ): Promise<ProblemSections> {
   const out: ProblemSections = {
-    description: await translateHtml(sections.description, translate),
-    input: await translateHtml(sections.input, translate),
-    output: await translateHtml(sections.output, translate),
+    description: await translateHtml(sections.description, many),
+    input: await translateHtml(sections.input, many),
+    output: await translateHtml(sections.output, many),
   };
-  if (sections.limit !== undefined) out.limit = await translateHtml(sections.limit, translate);
-  if (sections.hint !== undefined) out.hint = await translateHtml(sections.hint, translate);
+  if (sections.limit !== undefined) out.limit = await translateHtml(sections.limit, many);
+  if (sections.hint !== undefined) out.hint = await translateHtml(sections.hint, many);
   return out;
 }
 
@@ -54,19 +52,55 @@ export function useTranslation(problemId: number, sections: ProblemSections) {
   const [showOriginal, setShowOriginal] = useState(false);
   const current = useRef(0);
 
-  const run = async (source: string, token: number) => {
+  const finish = (token: number, result: ProblemSections, source: string) => {
+    if (problemId > 0) cache.set(problemId, { sections: result, source });
+    if (current.current !== token) return;
+    setTranslated(result);
+    setStatus({ kind: 'done', source });
+  };
+
+  /** On-device translation; downloading the model needs a click (`clicked`). */
+  const runDevice = async (source: string, token: number, clicked: boolean) => {
+    const availability = await translatorAvailability(source);
+    if (current.current !== token) return;
+    if (availability !== 'available' && !(clicked && availability !== 'unavailable')) {
+      setStatus(
+        availability === 'unavailable' || availability === 'unsupported'
+          ? { kind: 'error', source }
+          : { kind: 'ready', source, engine: 'device' },
+      );
+      return;
+    }
     setStatus({ kind: 'working', source });
     try {
       const translate = await createTranslator(source, (progress) => {
         if (current.current === token) setStatus({ kind: 'working', source, progress });
       });
-      const result = await translateSections(sections, translate);
-      if (problemId > 0) cache.set(problemId, result);
-      if (current.current !== token) return;
-      setTranslated(result);
-      setStatus({ kind: 'done', source });
+      const many: TranslateMany = async (texts) => {
+        const out: string[] = [];
+        for (const t of texts) out.push(await translate(t));
+        return out;
+      };
+      finish(token, await translateSections(sections, many), source);
     } catch {
       if (current.current === token) setStatus({ kind: 'error', source });
+    }
+  };
+
+  const runWeb = async (guess: string, token: number) => {
+    setStatus({ kind: 'working', source: guess });
+    let detected: string | undefined;
+    try {
+      const many: TranslateMany = async (texts) => {
+        const r = await webTranslate(texts);
+        detected ??= r.detected;
+        return r.texts;
+      };
+      const result = await translateSections(sections, many);
+      finish(token, result, detected ?? guess);
+    } catch {
+      // Offline or blocked: the browser's own translator, where there is one.
+      if (current.current === token) await runDevice(guess, token, false);
     }
   };
 
@@ -79,22 +113,16 @@ export function useTranslation(problemId: number, sections: ProblemSections) {
       if (current.current !== token) return;
       setShowOriginal(original);
       const text = statementText(`${sections.description} ${sections.input} ${sections.output}`);
-      const source = (await detectLanguage(text)) ?? guessLanguage(text);
-      if (current.current !== token || !source || source.startsWith('ko')) return;
+      const guess = guessLanguage(text);
+      if (!guess || guess === 'ko') return;
       const cached = cache.get(problemId);
       if (cached) {
-        setTranslated(cached);
-        setStatus({ kind: 'done', source });
-        return;
-      }
-      const availability: Availability = await translatorAvailability(source);
-      if (current.current !== token) return;
-      if (availability === 'unsupported' || availability === 'unavailable') {
-        setStatus({ kind: 'unsupported', source });
-      } else if (availability === 'available' && !original) {
-        await run(source, token);
+        setTranslated(cached.sections);
+        setStatus({ kind: 'done', source: cached.source });
+      } else if (original) {
+        setStatus({ kind: 'ready', source: guess, engine: 'web' });
       } else {
-        setStatus({ kind: 'ready', source });
+        await runWeb(guess, token);
       }
     })();
   }, [problemId, sections]);
@@ -109,11 +137,14 @@ export function useTranslation(problemId: number, sections: ProblemSections) {
     /** The sections to show: the translation, unless the original is chosen or not translated yet. */
     shown: translated && !showOriginal ? translated : sections,
     showOriginal,
-    /** Starts translating (a click: the model may need to be downloaded). */
+    /** Starts translating on a click (the on-device model may need to be downloaded). */
     translate: () => {
       if (status.kind !== 'ready' && status.kind !== 'error') return;
       choose(false);
-      void run(status.source, current.current);
+      const token = current.current;
+      if (status.kind === 'ready' && status.engine === 'device') {
+        void runDevice(status.source, token, true);
+      } else void runWeb(status.source, token);
     },
     choose,
   };
