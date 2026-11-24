@@ -12,7 +12,7 @@ import { run } from './solution-run-shared';
 
 type ExtName = keyof typeof EXT_CASES;
 
-const CODE: Record<ExtName, Partial<Record<GlueId, string>>> = {
+export const EXT_CODE: Record<ExtName, Partial<Record<GlueId, string>>> = {
   exprFlow: {
     js: 'function solution(n, arr, g) {\n  return arr.reduce((a, b) => a + b, 0) * 100 + g.length * 10 + g[0].length;\n}',
     python: 'def solution(n, arr, g):\n    return sum(arr) * 100 + len(g) * 10 + len(g[0])',
@@ -53,7 +53,7 @@ export function runExtCases(glues: readonly GlueId[]): void {
   describe('DSL extension programs run', { timeout: 180_000 }, () => {
     for (const [name, c] of Object.entries(EXT_CASES) as [ExtName, (typeof EXT_CASES)[ExtName]][]) {
       for (const glue of glues) {
-        const code = glue === 'c' ? C_EXT[name] : CODE[name][glue];
+        const code = glue === 'c' ? C_EXT[name] : EXT_CODE[name][glue];
         if (code === undefined) continue;
         it(`${name}: ${glue}`, async () => {
           const program = buildProgram(glue, c.format, code);
