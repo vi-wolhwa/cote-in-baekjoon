@@ -23,6 +23,7 @@ import {
   type SubmitLanguage,
 } from '@/shared/submission';
 import { StatusLink } from '@/shared/StatusLink';
+import { LONG_WAIT_NOTE, useLongWait, waitingSince } from '@/shared/judge-wait';
 
 export interface SubmitInfo {
   /** When the submission being shown was asked for (this session, or a tab still running). */
@@ -159,6 +160,7 @@ export function SubmitPanel({
               <span class="out-muted"> · {view.judge.resultText}</span>
             )}
           </p>
+          <LongWaitNote judge={view.judge} />
           {view.tab && <FocusButton onFocus={onFocus} />}
         </div>
       );
@@ -185,6 +187,16 @@ export function SubmitPanel({
         </>
       );
   }
+}
+
+/** After a long "기다리는 중": the wait is Baekjoon's judge queue, not the extension. */
+function LongWaitNote({ judge }: { judge: JudgeResult | undefined }) {
+  if (!useLongWait(waitingSince(judge))) return null;
+  return (
+    <p class="out-note" data-testid="judge-wait-note">
+      {LONG_WAIT_NOTE}
+    </p>
+  );
 }
 
 function FocusButton({ onFocus, emphasized }: { onFocus: () => void; emphasized?: boolean }) {
