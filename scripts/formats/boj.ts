@@ -39,8 +39,8 @@ export function partFromProblemHtml(html: string, url: string): PartialRecord | 
       output: htmlToText(problem.sections.output) || null,
       constraints: limit || null,
       samples: problem.samples.map((s) => ({
-        input: normalizeSample(s.input),
-        output: normalizeSample(s.output),
+        input: normalizeSample(s.input, false),
+        output: normalizeSample(s.output, false),
       })),
       labels: problem.labels,
     };

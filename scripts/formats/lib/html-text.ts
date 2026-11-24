@@ -71,11 +71,22 @@ export function normalizeLines(text: string): string {
  * HTML sources (`<pre>`) must be decoded with `decodeEntities` first; Markdown
  * code fences are literal and must not be.
  */
-export function normalizeSample(text: string): string {
-  return text
+export function normalizeSample(text: string, copied = true): string {
+  const lines = (
+    copied
+      ? // Blog editors leave zero-width spaces and no-break spaces in copied samples.
+        text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\u00A0/g, ' ')
+      : text
+  )
     .replace(/\r\n?/g, '\n')
     .split('\n')
-    .map((line) => line.replace(/[ \t]+$/, ''))
+    .map((line) => line.replace(/[ \t]+$/, ''));
+  // Copied code blocks indented as a whole: drop the indent every line shares. Samples read
+  // from Baekjoon itself (`copied` false) are kept as they are.
+  const indents = lines.filter((l) => l !== '').map((l) => /^[ \t]*/.exec(l)?.[0].length ?? 0);
+  const common = copied && indents.length > 0 ? Math.min(...indents) : 0;
+  return lines
+    .map((l) => l.slice(common))
     .join('\n')
     .replace(/^\n+/, '')
     .replace(/\n+$/, '');
