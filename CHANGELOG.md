@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.7.1...v0.8.0) (2026-11-24)
+
+
+### 기능
+
+* **solution:** 끝내는 줄·입력 끝까지 반복과 형식 경고 아이콘 ([#136](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/136)) ([bfcd429](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/bfcd429b54761734c4d69bb8699a8147114667cc))
+
 ## [0.7.1](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.7.0...v0.7.1) (2026-11-24)
 
 
