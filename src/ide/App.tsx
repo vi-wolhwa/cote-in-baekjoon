@@ -89,6 +89,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     editor,
     language: languageRef,
     flushSave,
+    draftMaxAgeMs: store.DRAFT_TTL_MS,
   });
   /** The format card is open (or opened to define a format in standard I/O mode). */
   const [formatOpen, setFormatOpen] = useState(false);
@@ -127,7 +128,8 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       store.loadTheme(),
     ]).then(async ([km, sp, cs, lang, th]) => {
       const fn = await sol.load();
-      const code = await store.loadCode(problem.id, sol.group(lang, fn));
+      // A draft only comes back for a while (a tab closed by mistake), not days later.
+      const code = await store.loadCode(problem.id, sol.group(lang, fn), store.DRAFT_TTL_MS);
       if (disposed || !editorHost.current) return;
       setKeymap(km);
       setSplit(sp);
@@ -169,7 +171,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     clearTimeout(saveTimer.current);
     if (current !== undefined) await store.saveCode(problem.id, sol.group(language), current);
     const nextInfo = languageInfo(next);
-    const saved = await store.loadCode(problem.id, sol.group(next));
+    const saved = await store.loadCode(problem.id, sol.group(next), store.DRAFT_TTL_MS);
     languageRef.current = next;
     setLanguage(next);
     void store.saveLanguage(next);
@@ -343,6 +345,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
                   problem={problem}
                   format={sol.fn ? sol.format : undefined}
                   theme={theme}
+                  language={language}
                   onLoad={history.load}
                 />
               }

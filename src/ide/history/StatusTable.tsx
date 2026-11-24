@@ -8,7 +8,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { ChevronIcon, CodeIcon, LockIcon } from '../icons';
 import { Spinner } from '../submit';
-import { absoluteTime, relativeTime } from './format';
+import { fullTime, relativeTime } from './format';
 import type { RecordRow } from './merge';
 import { ResultChip } from './result';
 
@@ -43,6 +43,8 @@ interface Props {
   /** The first page is being (re)loaded: rows already on hand are not shown meanwhile. */
   reloading: boolean;
   onMore: () => void;
+  /** The last page asked for could not be read: do not ask again by itself. */
+  failed: boolean;
   access: (row: RecordRow) => Access;
   onOpen: (row: RecordRow) => void;
   empty: ComponentChildren;
@@ -97,6 +99,12 @@ export function StatusTable(props: Props) {
   // While the first page loads, or a page that is not full waits for the next one, only the
   // loading line shows: rows on hand would be drawn under it and change order once it lands.
   const waiting = loading && (props.reloading || shown.length < size);
+  // A tall screen fits more rows than one Baekjoon page (20): read the next pages until the
+  // shown page is full, one at a time.
+  const { failed, onMore } = props;
+  useEffect(() => {
+    if (!loading && !failed && hasMore && rows.length < start + size) onMore();
+  }, [loading, failed, hasMore, rows.length, start, size]);
 
   return (
     <div class="status-table-wrap">
@@ -227,7 +235,7 @@ export const COLUMNS = {
     cls: 'col-at',
     cell: (r, now) =>
       r.submittedAt !== undefined ? (
-        <time dateTime={new Date(r.submittedAt).toISOString()} title={absoluteTime(r.submittedAt)}>
+        <time dateTime={new Date(r.submittedAt).toISOString()} title={fullTime(r.submittedAt)}>
           {relativeTime(r.submittedAt, now)}
         </time>
       ) : null,

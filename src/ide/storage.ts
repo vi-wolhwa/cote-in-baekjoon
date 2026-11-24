@@ -41,13 +41,44 @@ async function get(key: string): Promise<unknown> {
   return items[key];
 }
 
-export async function loadCode(problemId: number, language: string): Promise<string | undefined> {
-  const v = await get(codeKey(problemId, language));
-  return typeof v === 'string' ? v : undefined;
+/**
+ * How long the practice IDE restores a draft after its last save: enough to come back from a
+ * tab closed by mistake, not to keep old code around (ADR-0012 개정 3, product owner
+ * 2026-11-25). The mock exam keeps its drafts for the whole exam.
+ */
+export const DRAFT_TTL_MS = 3 * 60 * 60 * 1000;
+
+/** A saved draft: the code and when it was saved. Older versions saved the plain string. */
+interface Draft {
+  code: string;
+  savedAt: number;
 }
 
-export function saveCode(problemId: number, language: string, code: string) {
-  return browser.storage.local.set({ [codeKey(problemId, language)]: code });
+function isDraft(v: unknown): v is Draft {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as Draft).code === 'string' &&
+    typeof (v as Draft).savedAt === 'number'
+  );
+}
+
+/** The draft of a language group, if one was saved within `maxAgeMs` (any age without it). */
+export async function loadCode(
+  problemId: number,
+  language: string,
+  maxAgeMs?: number,
+  now = Date.now(),
+): Promise<string | undefined> {
+  const v = await get(codeKey(problemId, language));
+  if (typeof v === 'string') return maxAgeMs === undefined ? v : undefined;
+  if (!isDraft(v)) return undefined;
+  return maxAgeMs === undefined || now - v.savedAt <= maxAgeMs ? v.code : undefined;
+}
+
+export function saveCode(problemId: number, language: string, code: string, now = Date.now()) {
+  const draft: Draft = { code, savedAt: now };
+  return browser.storage.local.set({ [codeKey(problemId, language)]: draft });
 }
 
 export function clearCode(problemId: number, language: string) {

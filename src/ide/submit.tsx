@@ -4,6 +4,7 @@
  * spinner meanwhile, with '직접 확인' to bring that tab to the front, and '결과 다시 확인'
  * when the tab closed before the result came.
  */
+import { clearStatusCache } from './history/useStatusList';
 import { useEffect, useState } from 'preact/hooks';
 import { findBlockedPatterns } from '@/boj/waf';
 import {
@@ -81,6 +82,8 @@ export function useSubmit(
     const res = await requestSubmit({ problemId, language, ...source, autoSubmit: true });
     setOpening(false);
     if (!res.ok) setError(res.reason);
+    // 내 제출 shows the new submission the next time it is opened, not a list read before it.
+    else clearStatusCache();
     return res.ok;
   };
 

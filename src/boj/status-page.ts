@@ -4,8 +4,8 @@
  * cut to length and checked again by the receiver.
  *
  * Status columns (2026-11-25): 제출 번호, 아이디, 문제, 결과, 메모리, 시간, 채점 서버, 언어,
- * 코드 길이, 제출한 시간. Short-coding columns: 등수, 제출 번호, 아이디, 메모리, 시간, 언어,
- * 코드 길이, 제출한 시간. Cells are found by their header names, not by position (Baekjoon
+ * 코드 길이, 제출한 시간. Ranking columns (맞힌 사람, 숏코딩): 등수, 제출 번호, (시도,) 아이디,
+ * 메모리, 시간, 언어, 코드 길이, 제출한 시간. Cells are found by their header names, not by position (Baekjoon
  * added 채점 서버 in 2026-11). When the viewer may read a source, Baekjoon links the language
  * to `/source/{제출 번호}`.
  */
@@ -29,9 +29,9 @@ export function parsePage(
     return source && { source };
   }
   const page =
-    query.kind === 'short'
-      ? parseShortPage(doc, query.page ?? 1)
-      : parseStatusPage(doc, { problemId: query.problemId, userId: query.userId });
+    query.kind === 'status'
+      ? parseStatusPage(doc, { problemId: query.problemId, userId: query.userId })
+      : parseRankingPage(doc, query.page ?? 1);
   return page && { page };
 }
 
@@ -83,8 +83,11 @@ export function parseStatusPage(
   return { rows, ...(next !== undefined ? { next } : {}) };
 }
 
-/** A short-coding ranking page: every row is an accepted submission. */
-export function parseShortPage(doc: Document, page: number): StatusPage | undefined {
+/**
+ * A ranking page (맞힌 사람 or 숏코딩): every row is an accepted submission. 맞힌 사람 has one
+ * more column, 시도, which is not read.
+ */
+export function parseRankingPage(doc: Document, page: number): StatusPage | undefined {
   const table = [...doc.querySelectorAll('table')].find((t) => headersOf(t).includes('등수'));
   if (!table) return undefined;
   const h = headersOf(table);
@@ -131,9 +134,9 @@ export function parseShortPage(doc: Document, page: number): StatusPage | undefi
   }
   // A link to the next page number means there is one.
   const nextPage = page + 1;
-  const hasNext = [...doc.querySelectorAll('a[href^="/short/status/"]')].some((a) =>
-    new RegExp(`/${nextPage}$`).test(a.getAttribute('href') ?? ''),
-  );
+  const hasNext = [
+    ...doc.querySelectorAll('a[href^="/short/status/"], a[href^="/problem/status/"]'),
+  ].some((a) => new RegExp(`/${nextPage}$`).test(a.getAttribute('href') ?? ''));
   return { rows, ...(hasNext && rows.length === MAX_STATUS_ROWS ? { next: nextPage } : {}) };
 }
 

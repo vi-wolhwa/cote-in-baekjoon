@@ -1,5 +1,5 @@
 /**
- * Short-coding ranking and source pages, and the login page a source page sends a logged-out
+ * Ranking (맞힌 사람, 숏코딩) and source pages, and the login page a source page sends a logged-out
  * user to: in a tab the background opened to read them for the 제출 기록 tab (ADR-0012), parse
  * the page and hand it over. Anywhere else this does nothing.
  */
@@ -9,6 +9,8 @@ export default defineContentScript({
   matches: [
     'https://acmicpc.net/short/status/*',
     'https://www.acmicpc.net/short/status/*',
+    'https://acmicpc.net/problem/status/*',
+    'https://www.acmicpc.net/problem/status/*',
     'https://acmicpc.net/source/*',
     'https://www.acmicpc.net/source/*',
     'https://acmicpc.net/login*',

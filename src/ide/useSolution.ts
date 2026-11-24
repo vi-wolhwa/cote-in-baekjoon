@@ -26,6 +26,8 @@ export interface SolutionDeps {
   language: { current: LanguageId };
   /** Called before code is swapped, so a pending autosave does not write to the wrong key. */
   flushSave: () => void;
+  /** Drafts older than this are not restored (the practice IDE, ADR-0012 개정 3). */
+  draftMaxAgeMs?: number;
 }
 
 export interface RunPlan {
@@ -95,7 +97,7 @@ export function useSolution(deps: SolutionDeps) {
     const current = deps.editor.current?.getCode();
     deps.flushSave();
     if (current !== undefined) await store.saveCode(deps.problemId, group(lang), current);
-    const saved = await store.loadCode(deps.problemId, group(lang, on));
+    const saved = await store.loadCode(deps.problemId, group(lang, on), deps.draftMaxAgeMs);
     fnRef.current = on;
     formatRef.current = format;
     deps.editor.current?.setCode(codeOr(saved, lang, on, format));

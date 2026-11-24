@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { parsePage, parseShortPage, parseSourcePage, parseStatusPage } from '@/boj/status-page';
+import { parsePage, parseRankingPage, parseSourcePage, parseStatusPage } from '@/boj/status-page';
 import {
   MIN_GAP_MS,
   handleStatusCaptureQuery,
@@ -82,7 +82,7 @@ describe('parseStatusPage', () => {
 
 describe('short-coding and source pages', () => {
   it('reads the ranking with ranks, open sources and the next page', () => {
-    const page = parseShortPage(doc(shortHtml), 1);
+    const page = parseRankingPage(doc(shortHtml), 1);
     expect(page?.rows).toHaveLength(2);
     expect(page?.rows[0]).toEqual({
       solutionId: 8001,

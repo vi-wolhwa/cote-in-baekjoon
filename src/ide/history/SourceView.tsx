@@ -1,46 +1,40 @@
 /**
  * One submission in the 제출 기록 tab (ADR-0012, ide-spec §7.3): its result and numbers on
  * top, '편집기로 불러오기', copy and Baekjoon's page as actions, and the code below with the
- * editor's colours. Code made in the IDE comes from the extension's record; any other code is
- * read from its Baekjoon source page when the view opens.
+ * editor's colours. The code is read from the submission's Baekjoon source page when the view
+ * opens (your own always, someone else's when they shared it).
  */
 import { useEffect, useState } from 'preact/hooks';
-import { languageInfo } from '@/shared/languages';
 import { sourceUrl } from '@/shared/status-page';
-import type { HistoryEntry } from '@/shared/submission-history';
 import type { Theme } from '@/shared/theme';
 import { ChevronIcon, CopyIcon, ExternalIcon, ImportIcon } from '../icons';
 import { Spinner } from '../submit';
 import { CodeView } from './CodeView';
-import { absoluteTime, relativeTime } from './format';
+import { fullTime, relativeTime } from './format';
 import { submitLanguageOfName, syntaxOfName } from './languages';
 import type { RecordRow } from './merge';
 import { ResultChip } from './result';
+import type { LoadableCode } from './useHistoryLoad';
 import { requestSource } from './useStatusList';
 
 interface Props {
   row: RecordRow;
-  problemId: number;
   theme: Theme;
   now: number;
   /** Shows whose code it is (other people's submissions). */
   showUser: boolean;
   onBack: () => void;
-  onLoad: (entry: HistoryEntry) => void;
+  onLoad: (code: LoadableCode) => void;
 }
 
 type Code =
   { kind: 'loading' } | { kind: 'ready'; code: string } | { kind: 'error'; message: string };
 
-export function SourceView({ row, problemId, theme, now, showUser, onBack, onLoad }: Props) {
-  const entry = row.entry;
-  const [code, setCode] = useState<Code>(() =>
-    entry ? { kind: 'ready', code: entry.fnCode ?? entry.code } : { kind: 'loading' },
-  );
+export function SourceView({ row, theme, now, showUser, onBack, onLoad }: Props) {
+  const [code, setCode] = useState<Code>({ kind: 'loading' });
   const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
 
   useEffect(() => {
-    if (entry || row.solutionId === undefined) return;
     let live = true;
     void requestSource(row.solutionId).then((r) => {
       if (!live) return;
@@ -49,15 +43,13 @@ export function SourceView({ row, problemId, theme, now, showUser, onBack, onLoa
     return () => {
       live = false;
     };
-  }, [entry, row.solutionId]);
+  }, [row.solutionId]);
 
-  const language = entry?.language ?? submitLanguageOfName(row.language);
-  const syntax = entry ? languageInfo(entry.language).syntax : syntaxOfName(row.language);
-  const loadable: HistoryEntry | undefined =
-    entry ??
-    (language && code.kind === 'ready'
-      ? { problemId, language, code: code.code, submittedAt: row.submittedAt ?? now }
-      : undefined);
+  // Baekjoon's language name decides the editor language (node.js → JavaScript, …).
+  const language = submitLanguageOfName(row.language);
+  const syntax = syntaxOfName(row.language);
+  const loadable: LoadableCode | undefined =
+    language && code.kind === 'ready' ? { language, code: code.code } : undefined;
 
   const copy = async () => {
     if (code.kind !== 'ready') return;
@@ -92,7 +84,6 @@ export function SourceView({ row, problemId, theme, now, showUser, onBack, onLoa
           <ResultChip code={row.resultCode} text={row.resultText} />
           <span class="source-lang">{row.language}</span>
           {showUser && row.username && <span class="source-user">{row.username}</span>}
-          {entry?.fnCode !== undefined && <span class="source-tag">solution 함수</span>}
         </div>
         <div class="source-actions">
           {loadable && (
@@ -133,22 +124,12 @@ export function SourceView({ row, problemId, theme, now, showUser, onBack, onLoa
         {stats.map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>
-            <dd
-              title={
-                label === '제출' && row.submittedAt ? absoluteTime(row.submittedAt) : undefined
-              }
-            >
+            <dd title={label === '제출' && row.submittedAt ? fullTime(row.submittedAt) : undefined}>
               {value}
             </dd>
           </div>
         ))}
       </dl>
-      {entry && !entry.result && (
-        <p class="history-note">
-          채점 결과를 받지 못한 제출이에요. 제출이 취소됐거나 결과를 읽기 전에 제출 탭이 닫혔을 수
-          있어요.
-        </p>
-      )}
       {copied === 'failed' && (
         <p class="history-note" role="status">
           복사하지 못했어요. 코드를 드래그해 선택한 뒤 Ctrl+C로 복사해 주세요.

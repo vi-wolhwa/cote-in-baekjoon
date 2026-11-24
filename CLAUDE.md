@@ -37,9 +37,10 @@ milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
     at a time in a background tab to read them. When the exam ends, its saved answers are
     submitted one at a time through the official submit window
   - Submission history tab (ADR-0012, product owner decision 2026-11-25): when the user
-    opens one of its views (내 제출, 채점 현황, 숏코딩), the first page of that list is
-    opened in a background tab to read it; later pages only when the user pages on, and a
-    source page only when the user opens a submission. One at a time, at least 1 s apart,
+    opens one of its views (내 제출, 맞힌 사람, 숏코딩), the first page of that list is
+    opened in a background tab to read it (and the next ones while a tall view is not full);
+    later pages only when the user pages on, and a source page only when the user opens a
+    submission. One at a time, at least 1 s apart,
     a list read within a minute is not read again
   - Format data for solution mode (ADR-0006), a development-time job, not the extension:
     problems found nowhere else on the public web may be opened on acmicpc.net in a

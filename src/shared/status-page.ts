@@ -1,6 +1,6 @@
 /**
  * Reading Baekjoon pages for the '제출 기록' tab (ADR-0012): a page of the status list
- * (`/status`), of the short-coding ranking (`/short/status`) or a submission's source
+ * (`/status`), of a ranking (맞힌 사람 `/problem/status`, 숏코딩 `/short/status`) or a submission's source
  * (`/source`). Baekjoon answers scripted requests with an empty page, so the background opens
  * the page in an inactive tab, the page's content script parses it and the background closes
  * the tab. Everything that comes back is page data: it is checked here, on both sides, and
@@ -21,13 +21,22 @@ export interface StatusQuery {
   top?: number;
 }
 
-/** A page (from 1) of the problem's short-coding ranking. */
-export interface ShortQuery {
-  kind: 'short';
+/**
+ * A page (from 1) of one of the problem's rankings: '맞힌 사람' (`/problem/status`, fastest
+ * first) or '숏코딩' (`/short/status`, shortest first). Both pages are built the same way.
+ */
+export interface RankingQuery {
+  kind: 'accepted' | 'short';
   problemId: number;
   languageId?: number;
   page?: number;
 }
+
+/** Where each ranking lives on Baekjoon. */
+export const RANKING_PATH: Record<RankingQuery['kind'], string> = {
+  accepted: '/problem/status',
+  short: '/short/status',
+};
 
 /** A submission's source page. */
 export interface SourceQuery {
@@ -35,7 +44,7 @@ export interface SourceQuery {
   solutionId: number;
 }
 
-export type ListQuery = StatusQuery | ShortQuery;
+export type ListQuery = StatusQuery | RankingQuery;
 export type PageQuery = ListQuery | SourceQuery;
 
 /** One row of a status or short-coding list. */
@@ -54,7 +63,7 @@ export interface StatusPageRow {
   submittedAt?: number;
   /** The viewer may open the source (Baekjoon links the language to it). */
   sourceOpen?: boolean;
-  /** Place in the short-coding ranking. */
+  /** Place in a ranking (맞힌 사람, 숏코딩). */
   rank?: number;
 }
 
@@ -144,15 +153,12 @@ const ORIGIN = 'https://acmicpc.net';
 
 export function pageUrl(query: PageQuery): string {
   if (query.kind === 'source') return `${ORIGIN}/source/${query.solutionId}`;
-  if (query.kind === 'short') {
+  if (query.kind !== 'status') {
+    const base = `${ORIGIN}${RANKING_PATH[query.kind]}/${query.problemId}`;
     const page = query.page ?? 1;
     const language = query.languageId ?? -1;
-    if (language === -1) {
-      return page === 1
-        ? `${ORIGIN}/short/status/${query.problemId}`
-        : `${ORIGIN}/short/status/${query.problemId}/${page}`;
-    }
-    return `${ORIGIN}/short/status/${query.problemId}/${language}/${page}`;
+    if (language === -1) return page === 1 ? base : `${base}/${page}`;
+    return `${base}/${language}/${page}`;
   }
   const params = new URLSearchParams({ problem_id: String(query.problemId) });
   if (query.userId !== undefined) params.set('user_id', query.userId);
@@ -187,16 +193,21 @@ export function queryOfUrl(url: string): PageQuery | undefined {
     if (next) query = { kind: 'source', solutionId: Number(next[1]) };
   } else {
     const source = /^\/source\/(\d{1,12})$/.exec(path);
-    const short = /^\/short\/status\/(\d{1,7})(?:\/(-?\d{1,5}))?(?:\/(\d{1,7}))?$/.exec(path);
+    const ranking = /^\/(short|problem)\/status\/(\d{1,7})(?:\/(-?\d{1,5}))?(?:\/(\d{1,7}))?$/.exec(
+      path,
+    );
     if (source) query = { kind: 'source', solutionId: Number(source[1]) };
-    else if (short) {
-      const q: ShortQuery = { kind: 'short', problemId: Number(short[1]) };
+    else if (ranking) {
+      const q: RankingQuery = {
+        kind: ranking[1] === 'short' ? 'short' : 'accepted',
+        problemId: Number(ranking[2]),
+      };
       // Two numbers: all languages and a page; three: a language and a page.
-      if (short[3] !== undefined) {
-        q.languageId = Number(short[2]);
-        q.page = Number(short[3]);
-      } else if (short[2] !== undefined) {
-        q.page = Number(short[2]);
+      if (ranking[4] !== undefined) {
+        q.languageId = Number(ranking[3]);
+        q.page = Number(ranking[4]);
+      } else if (ranking[3] !== undefined) {
+        q.page = Number(ranking[3]);
       }
       query = q;
     }
@@ -206,7 +217,7 @@ export function queryOfUrl(url: string): PageQuery | undefined {
 
 /** The same query in one spelling: no default language or first page. */
 function normalize(q: PageQuery): PageQuery {
-  if (q.kind === 'short') {
+  if (q.kind === 'short' || q.kind === 'accepted') {
     const { languageId, page, ...rest } = q;
     return {
       ...rest,
@@ -250,7 +261,7 @@ const isProblemId = (v: unknown) => isPositiveInt(v) && v < 1_000_000;
 export function isPageQuery(v: unknown): v is PageQuery {
   if (!isObject(v)) return false;
   if (v.kind === 'source') return isPositiveInt(v.solutionId);
-  if (v.kind === 'short') {
+  if (v.kind === 'short' || v.kind === 'accepted') {
     return (
       isProblemId(v.problemId) &&
       (v.languageId === undefined || isLanguageId(v.languageId)) &&

@@ -1,30 +1,34 @@
 /**
- * '제출 기록' tab of the problem pane (M7, ADR-0012, ide-spec §7.3), three views:
+ * '제출 기록' tab of the problem pane (M7, ADR-0012, ide-spec §7.3), three views of Baekjoon:
  *
- * - 내 제출: submissions made in the IDE merged with the user's Baekjoon status list.
- * - 채점 현황: everyone's submissions for the problem, as on Baekjoon.
- * - 숏코딩: Baekjoon's short-coding ranking for the problem.
+ * - 내 제출: the user's own submissions for the problem (`/status?…&user_id=`).
+ * - 맞힌 사람: everyone's accepted submissions, fastest first (`/problem/status`).
+ * - 숏코딩: the same, shortest first (`/short/status`).
  *
- * A view loads its first page when it is first opened and later pages as the user pages on;
- * 채점 현황 and 숏코딩 filter by language. A row whose code can be shown opens SourceView.
+ * A view loads its first page when it is first opened and later pages as the user pages on
+ * (or as a tall screen needs them); 맞힌 사람 and 숏코딩 filter by language. A row whose code
+ * can be shown opens SourceView, which reads the code from Baekjoon.
  */
 import { useEffect, useState } from 'preact/hooks';
+import { BOJ_LANGUAGES } from '@/boj/languages';
 import { loadHandle } from '@/shared/handle';
+import { languageInfo, type LanguageId } from '@/shared/languages';
 import { LANGUAGE_FILTERS, pageUrl, type ListQuery } from '@/shared/status-page';
-import { watchHistory, type HistoryEntry } from '@/shared/submission-history';
 import type { Theme } from '@/shared/theme';
 import { ExternalIcon, RefreshIcon } from '../icons';
-import { mergeRecords, statusRow, type RecordRow } from './merge';
+import { statusRow, type RecordRow } from './merge';
 import { useNow } from './parts';
 import { SourceView } from './SourceView';
 import { COLUMNS, StatusTable, type Access, type Column } from './StatusTable';
+import type { LoadableCode } from './useHistoryLoad';
 import { useStatusList, type ListBase, type StatusList } from './useStatusList';
 
-type View = 'mine' | 'all' | 'short';
+type View = 'mine' | 'accepted' | 'short';
+type Ranked = Exclude<View, 'mine'>;
 
 const VIEWS: { id: View; label: string }[] = [
   { id: 'mine', label: '내 제출' },
-  { id: 'all', label: '채점 현황' },
+  { id: 'accepted', label: '맞힌 사람' },
   { id: 'short', label: '숏코딩' },
 ];
 
@@ -37,12 +41,13 @@ const COLUMNS_OF: Record<View, Column[]> = {
     COLUMNS.length,
     COLUMNS.at,
   ],
-  all: [
+  // Fastest first, so time leads the numbers.
+  accepted: [
+    COLUMNS.rank,
     COLUMNS.user,
-    COLUMNS.result,
     COLUMNS.language,
-    COLUMNS.memory,
     COLUMNS.time,
+    COLUMNS.memory,
     COLUMNS.length,
     COLUMNS.at,
   ],
@@ -59,43 +64,44 @@ const COLUMNS_OF: Record<View, Column[]> = {
 
 const EMPTY_TEXT: Record<View, string> = {
   mine: '아직 이 문제에 낸 제출이 없어요.',
-  all: '이 조건의 제출이 없어요.',
+  accepted: '이 조건으로 맞힌 사람이 없어요.',
   short: '이 조건의 숏코딩 기록이 없어요.',
 };
 
 /** Your own code always opens; someone else's only when Baekjoon links it. */
-const mineAccess = (row: RecordRow): Access =>
-  row.entry || row.solutionId !== undefined ? 'open' : 'none';
+const mineAccess = (): Access => 'open';
 const otherAccess = (row: RecordRow): Access => (row.sourceOpen ? 'open' : 'locked');
 
-/** Baekjoon's own order: newest first, or the short-coding ranking. */
-const toRows = (list: StatusList): RecordRow[] => list.rows.map((r) => statusRow(r));
+/** Baekjoon's own order: newest first, or the ranking. */
+const toRows = (list: StatusList): RecordRow[] => list.rows.map(statusRow);
 
-/** -1 is Baekjoon's '모든 언어'. */
-const withLanguage = (languageId: number) => (languageId === -1 ? {} : { languageId });
+/** Filter choices: every language, the editor's language, or one of LANGUAGE_FILTERS. */
+type Filter = 'all' | 'current' | number;
+
+/** The filter list after '모든 언어' and '현재 언어', in alphabetical order. */
+const SORTED_FILTERS = [...LANGUAGE_FILTERS].sort((a, b) =>
+  a.name.localeCompare(b.name, 'en', { sensitivity: 'base', numeric: true }),
+);
 
 interface Props {
   problemId: number;
+  /** The editor's language, for the '현재 언어' filter. */
+  language: LanguageId;
   theme: Theme;
   /** '편집기로 불러오기'; the IDE asks before replacing code. */
-  onLoad: (entry: HistoryEntry) => void;
+  onLoad: (code: LoadableCode) => void;
 }
 
-export function HistoryPane({ problemId, theme, onLoad }: Props) {
+export function HistoryPane({ problemId, language, theme, onLoad }: Props) {
   const [view, setView] = useState<View>('mine');
   const [visited, setVisited] = useState<Set<View>>(() => new Set(['mine']));
   const [selected, setSelected] = useState<{ row: RecordRow; view: View }>();
-  const [entries, setEntries] = useState<HistoryEntry[]>();
   /** undefined while loading, null when unknown. */
   const [handle, setHandle] = useState<string | null>();
-  const [language, setLanguage] = useState<Record<'all' | 'short', number>>({
-    all: -1,
-    short: -1,
-  });
-  const [resets, setResets] = useState<Record<View, number>>({ mine: 0, all: 0, short: 0 });
+  const [filter, setFilter] = useState<Record<Ranked, Filter>>({ accepted: 'all', short: 'all' });
+  const [resets, setResets] = useState<Record<View, number>>({ mine: 0, accepted: 0, short: 0 });
   const now = useNow();
 
-  useEffect(() => watchHistory(problemId, setEntries), [problemId]);
   useEffect(() => {
     let live = true;
     void loadHandle().then((h) => live && setHandle(h ?? null));
@@ -104,28 +110,24 @@ export function HistoryPane({ problemId, theme, onLoad }: Props) {
     };
   }, []);
 
+  // Baekjoon judges the editor's language under its own id (JavaScript is node.js, …).
+  const current = languageInfo(language);
+  const currentName =
+    BOJ_LANGUAGES[current.id as keyof typeof BOJ_LANGUAGES]?.name ?? current.label;
+  const languageIdOf = (f: Filter): { languageId?: number } =>
+    f === 'all' ? {} : { languageId: f === 'current' ? current.bojId : f };
+
+  const ranked = (kind: Ranked): ListBase | undefined =>
+    visited.has(kind) ? { kind, problemId, ...languageIdOf(filter[kind]) } : undefined;
   const bases: Record<View, ListBase | undefined> = {
     mine: handle ? { kind: 'status', problemId, userId: handle } : undefined,
-    all: visited.has('all')
-      ? { kind: 'status', problemId, ...withLanguage(language.all) }
-      : undefined,
-    short: visited.has('short')
-      ? { kind: 'short', problemId, ...withLanguage(language.short) }
-      : undefined,
+    accepted: ranked('accepted'),
+    short: ranked('short'),
   };
   const lists = {
     mine: useStatusList(bases.mine),
-    all: useStatusList(bases.all),
+    accepted: useStatusList(bases.accepted),
     short: useStatusList(bases.short),
-  };
-
-  const mine = lists.mine.list;
-  // Until Baekjoon's rows arrive (or when they cannot), every IDE submission shows.
-  const complete = !handle || !mine.loaded || mine.next === undefined;
-  const rowsOf: Record<View, RecordRow[]> = {
-    mine: mergeRecords(entries ?? [], mine.rows, complete),
-    all: toRows(lists.all.list),
-    short: toRows(lists.short.list),
   };
 
   const open = (v: View) => {
@@ -137,7 +139,7 @@ export function HistoryPane({ problemId, theme, onLoad }: Props) {
     lists[view].reload();
   };
   const linkOf = (v: View): string => {
-    const base = bases[v] ?? { kind: v === 'short' ? 'short' : 'status', problemId };
+    const base = bases[v] ?? { kind: v === 'mine' ? 'status' : v, problemId };
     return pageUrl(base as ListQuery).replace('https://acmicpc.net', 'https://www.acmicpc.net');
   };
 
@@ -145,7 +147,6 @@ export function HistoryPane({ problemId, theme, onLoad }: Props) {
     return (
       <SourceView
         row={selected.row}
-        problemId={problemId}
         theme={theme}
         now={now}
         showUser={selected.view !== 'mine'}
@@ -178,15 +179,17 @@ export function HistoryPane({ problemId, theme, onLoad }: Props) {
             <select
               class="history-filter"
               aria-label="언어"
-              value={language[view]}
+              value={String(filter[view])}
               onChange={(e) => {
-                const id = Number((e.target as HTMLSelectElement).value);
-                setLanguage((l) => ({ ...l, [view]: id }));
+                const v = (e.target as HTMLSelectElement).value;
+                const next: Filter = v === 'all' || v === 'current' ? v : Number(v);
+                setFilter((f) => ({ ...f, [view]: next }));
               }}
             >
-              <option value={-1}>모든 언어</option>
-              {LANGUAGE_FILTERS.map((l) => (
-                <option key={l.id} value={l.id}>
+              <option value="all">모든 언어</option>
+              <option value="current">현재 언어 ({currentName})</option>
+              {SORTED_FILTERS.map((l) => (
+                <option key={l.id} value={String(l.id)}>
                   {l.name}
                 </option>
               ))}
@@ -216,7 +219,8 @@ export function HistoryPane({ problemId, theme, onLoad }: Props) {
       </div>
       {VIEWS.filter((v) => visited.has(v.id)).map(({ id, label }) => {
         const list = lists[id].list;
-        const mineWaiting = id === 'mine' && (entries === undefined || handle === undefined);
+        const mineWaiting = id === 'mine' && handle === undefined;
+        const filterKey = id === 'mine' ? '' : JSON.stringify(languageIdOf(filter[id]));
         return (
           <section
             key={id}
@@ -227,8 +231,8 @@ export function HistoryPane({ problemId, theme, onLoad }: Props) {
           >
             {id === 'mine' && handle === null && (
               <p class="history-note">
-                백준 아이디를 몰라 풀이 화면에서 낸 제출만 보여요. 백준에 로그인한 뒤 문제 페이지를
-                새로고침하면 백준에서 낸 제출도 함께 보여요.
+                백준 아이디를 몰라 내 제출을 불러오지 못했어요. 백준에 로그인한 뒤 문제 페이지를
+                새로고침해 주세요.
               </p>
             )}
             {list.error && (
@@ -240,17 +244,16 @@ export function HistoryPane({ problemId, theme, onLoad }: Props) {
               label={label}
               testId={`${id}-status`}
               columns={COLUMNS_OF[id]}
-              rows={rowsOf[id]}
+              rows={toRows(list)}
               now={now}
-              hasMore={list.next !== undefined && (id !== 'mine' || !!handle)}
-              loading={
-                list.loading || mineWaiting || (id !== 'mine' && !list.loaded && !list.error)
-              }
+              hasMore={list.next !== undefined}
+              loading={list.loading || mineWaiting || (!list.loaded && !list.error && !!bases[id])}
               reloading={mineWaiting || (list.loading && list.rows.length === 0)}
               onMore={lists[id].more}
+              failed={list.error !== undefined}
               access={id === 'mine' ? mineAccess : otherAccess}
               onOpen={(row) => setSelected({ row, view: id })}
-              resetKey={`${problemId}:${resets[id]}:${id === 'mine' ? '' : language[id]}`}
+              resetKey={`${problemId}:${resets[id]}:${filterKey}`}
               empty={EMPTY_TEXT[id]}
             />
           </section>
