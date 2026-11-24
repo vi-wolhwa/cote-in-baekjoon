@@ -99,7 +99,7 @@ export const MAX_COUNT = 1_000_000;
 const MAX_NAME = 20;
 const MAX_WORD = 40;
 
-/** Names that are keywords (or awkward) in JavaScript, Python, C++ or Java. */
+/** Names that are keywords (or awkward) in a language with solution-mode glue. */
 const RESERVED = new Set(
   (
     'abstract and as assert async auto await bool boolean break byte case catch char class const ' +
@@ -108,7 +108,14 @@ const RESERVED = new Set(
     'is lambda let long main namespace native new none nonlocal not null or package pass private ' +
     'protected public raise return short signed sizeof solution static std string struct super ' +
     'switch synchronized template this throw throws transient true try typedef typeof union unsigned ' +
-    'using var vector void volatile while with yield list dict set map len input print'
+    'using var vector void volatile while with yield list dict set map len input print' +
+    // C, Kotlin, Rust, Go, Swift, C# and Ruby (ADR-0008).
+    ' extern register inline restrict fun val when object typealias companion data sealed fn mut' +
+    ' impl match loop ref self mod crate trait move type pub use where dyn func go chan defer' +
+    ' select range fallthrough guard repeat inout init deinit extension protocol subscript' +
+    ' operator internal fileprivate out params base checked decimal delegate event explicit' +
+    ' fixed implicit lock readonly sbyte stackalloc uint ulong unchecked ushort virtual def end' +
+    ' elsif unless until begin rescue ensure nil then redo retry undef alias defined module'
   ).split(' '),
 );
 
