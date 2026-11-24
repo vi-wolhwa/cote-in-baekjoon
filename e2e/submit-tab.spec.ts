@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { BrowserContext, FrameLocator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { serveBaekjoon, submitTabInfo } from './exam-helpers';
@@ -105,6 +106,52 @@ test('closing the tab early offers 결과 다시 확인, which reads the status 
   await expect(ide.getByTestId('submit-judging')).toContainText('채점 중');
   await closed;
   await expect(ide.getByTestId('judge')).toContainText('맞았습니다!!');
+});
+
+test('a long 기다리는 중 explains that the wait is Baekjoon judge servers', async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(45_000);
+  await serveBaekjoon(context);
+  // Our submission waits in Baekjoon's queue for 12 seconds, then judging starts.
+  await context.route(/^https:\/\/(www\.)?acmicpc\.net\/status/, (route) =>
+    route.fulfill({
+      contentType: 'text/html; charset=utf-8',
+      body: readFileSync('tests/fixtures/status-sample.html', 'utf8').replace(
+        '</body>',
+        `<script>
+    const row = document.getElementById('solution-5004');
+    row.querySelector('[data-timestamp]').setAttribute('data-timestamp', String(Math.floor(Date.now() / 1000)));
+    const span = row.querySelector('span.result-text');
+    const show = (code, text) => {
+      span.className = 'result-text result-' + code;
+      span.setAttribute('data-color', code);
+      span.textContent = text;
+    };
+    show('wait', '기다리는 중');
+    setTimeout(() => show('judging', '채점 중 (20%)'), 12000);
+  </script></body>`,
+      ),
+    }),
+  );
+  const ide = await openIde(page);
+  await typeCode(page, ide, 'console.log(3);');
+  const tab = await submit(context, ide);
+  await tab.goto('https://acmicpc.net/submit/1000');
+  await expect(tab.getByText('잠시 뒤 자동으로 제출합니다')).toBeVisible();
+  await tab.goto('https://acmicpc.net/status?from_mine=1&problem_id=1000&user_id=tester');
+
+  const judging = ide.getByTestId('submit-judging');
+  await expect(judging).toContainText('기다리는 중');
+  const note = ide.getByTestId('judge-wait-note');
+  await expect(note).toHaveCount(0);
+  await expect(note).toHaveText('기다리는 시간은 백준 채점 서버 상황에 따라 달라져요.', {
+    timeout: 15_000,
+  });
+  // Judging moves on: the note goes.
+  await expect(judging).toContainText('채점 중 (20%)', { timeout: 10_000 });
+  await expect(note).toHaveCount(0);
 });
 
 test('a submission that needs the user says so, with 직접 확인 emphasized', async ({

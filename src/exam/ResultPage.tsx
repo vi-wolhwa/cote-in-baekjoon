@@ -25,6 +25,7 @@ import { tierName } from './solvedac';
 import { useBatchSubmit } from './useBatch';
 import { useExamRecord, useNow } from './useExam';
 import { StatusLink } from '@/shared/StatusLink';
+import { LONG_WAIT_NOTE, useLongWait, waitingSince } from '@/shared/judge-wait';
 
 export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => void }) {
   const { state, update } = useExamRecord(id);
@@ -115,6 +116,7 @@ export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => voi
           채점이 끝나지 않은 제출이 있습니다. 결과가 들어오면 바로 반영됩니다.
         </p>
       )}
+      {over && <LongWaitNote since={queuedSince(summary.rows, tabs)} />}
 
       <ol class="result-rows" aria-label="문제별 결과">
         {summary.rows.map((row) => (
@@ -179,6 +181,27 @@ function liveState(row: ProblemRow, tab: SubmitTab | undefined): Live {
   if (view.kind === 'judging' && !view.tab && row.stage === 'submitted') return 'lost';
   if (view.kind === 'lost') return row.stage === 'submitted' ? 'lost' : 'submitting';
   return view.kind;
+}
+
+/** Since when the longest-waiting submission still being judged sits in Baekjoon's queue. */
+function queuedSince(
+  rows: readonly ProblemRow[],
+  tabs: ReadonlyMap<number, SubmitTab>,
+): number | undefined {
+  const times = rows
+    .filter((row) => liveState(row, tabs.get(row.problem.id)) === 'judging')
+    .flatMap((row) => waitingSince(row.judge) ?? []);
+  return times.length > 0 ? Math.min(...times) : undefined;
+}
+
+/** After a long "기다리는 중": the wait is Baekjoon's judge queue, not the extension. */
+function LongWaitNote({ since }: { since: number | undefined }) {
+  if (!useLongWait(since)) return null;
+  return (
+    <p class="result-note" data-testid="judge-wait-note">
+      {LONG_WAIT_NOTE}
+    </p>
+  );
 }
 
 const LIVE_TEXT: Record<NonNullable<Live>, string> = {
