@@ -72,6 +72,21 @@ data/boj-cache/
 
 `input`·`output`은 HTML을 걷어 낸 일반 텍스트다(`<sup>`은 `^`, `<sub>`은 `_`, 목록은 `- `). 예제는 줄 끝 공백과 앞뒤 빈 줄만 지운다.
 
+## 형식 데이터 만들기
+
+캐시가 모이면 확장의 추론기와 검증기로 형식을 만든다. 문제 본문은 읽기만 하고, 결과에는 문제 번호와 형식만 남는다.
+
+```bash
+npm run formats:build                                      # src/data/formats.json, 캐시에 build-report.json
+npm run formats:build -- --review data/boj-cache/review    # 검토용 시트(문제 100개씩, 로컬)
+npm run formats:check -- data/boj-cache/review/out-01.json # 검토한 형식을 예제로 검증(아무것도 쓰지 않음)
+```
+
+- `formats-reviewed.json`(커밋): Claude가 검토한 형식. 추론이 맞으면 그대로, 틀리면 고친 형식, DSL로 표현할 수 없으면 `null`. 문제 번호와 형식만 담는다.
+- 한 문제의 형식은 검토한 형식 → 추론 순으로 정하고, 확장의 예제 검증을 통과한 것만 넣는다. `null`인 문제는 넣지 않는다(확장에서 표준 입출력).
+- 확장 코드(`@/` 경로)를 쓰므로 `run-ts.mjs`(jiti)로 실행한다.
+- `build-report.json`에는 결과별 수와 추론·검토 일치율이 남는다.
+
 ## 테스트
 
 `tests/formats-readme.test.ts`, `tests/formats-collect.test.ts`가 README·HTML 해석, 경로 → 번호, 병합, 통계, 백준 접근 규칙을 확인한다. 예시는 모두 직접 지어낸 것이다.
