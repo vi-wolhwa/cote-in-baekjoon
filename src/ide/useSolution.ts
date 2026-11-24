@@ -7,7 +7,7 @@
 import { useRef, useState } from 'preact/hooks';
 import type { Problem } from '@/boj/problem';
 import type { RunResponse } from '@/shared/messages';
-import { languageInfo, type LanguageId } from '@/shared/languages';
+import { languageInfo, solutionLanguageReason, type LanguageId } from '@/shared/languages';
 import { sameFormat, type Format } from '@/solution/dsl';
 import { buildProgram, mapRunMessages } from '@/solution/program';
 import { resolveFormat, type Resolved } from '@/solution/source';
@@ -35,16 +35,22 @@ export interface RunPlan {
 export function useSolution(deps: SolutionDeps) {
   const [pref, setPref] = useState(true);
   const [resolved, setResolved] = useState<Resolved>({});
+  /** The mode is on for the problem; a language without glue still uses standard I/O. */
   const fnRef = useRef(false);
   const formatRef = useRef<Format | undefined>(undefined);
-  const fn = pref && resolved.format !== undefined;
-  fnRef.current = fn;
+  const modeOn = pref && resolved.format !== undefined;
+  fnRef.current = modeOn;
   formatRef.current = resolved.format;
+  const languageReason = solutionLanguageReason(deps.language.current);
 
-  const group = (lang: LanguageId, on = fnRef.current) =>
-    store.codeGroupFor(languageInfo(lang).codeGroup, on);
-  const starter = (lang: LanguageId, on = fnRef.current, format = formatRef.current) =>
-    on && format ? starterCode(languageInfo(lang).engine, format) : languageInfo(lang).starter;
+  /** The glue family when solution mode applies to this language. */
+  const glueFor = (lang: LanguageId, mode: boolean) => (mode ? languageInfo(lang).glue : undefined);
+  const group = (lang: LanguageId, mode = fnRef.current) =>
+    store.codeGroupFor(languageInfo(lang).codeGroup, glueFor(lang, mode) !== undefined);
+  const starter = (lang: LanguageId, mode = fnRef.current, format = formatRef.current) => {
+    const glue = glueFor(lang, mode);
+    return glue && format ? starterCode(glue, format) : languageInfo(lang).starter;
+  };
 
   /**
    * Loads the choice and the format; returns whether solution mode is on. With an editor
@@ -115,8 +121,8 @@ export function useSolution(deps: SolutionDeps) {
   /** What runs: the code itself, or the code with glue and messages mapped back to it. */
   const runPlan = (code: string, lang: LanguageId): RunPlan => {
     const format = formatRef.current;
-    if (!fnRef.current || !format) return { code };
-    const engine = languageInfo(lang).engine;
+    const engine = glueFor(lang, fnRef.current);
+    if (!engine || !format) return { code };
     const program = buildProgram(engine, format, code);
     return {
       code: program.source,
@@ -132,8 +138,13 @@ export function useSolution(deps: SolutionDeps) {
   };
 
   return {
-    fn,
+    /** Solution mode is in effect for the current language. */
+    fn: modeOn && !languageReason,
     resolved,
+    /** Why the switch is off: the language, else the problem's format. */
+    reason: languageReason ?? resolved.reason,
+    /** '형식 만들기' applies: the problem has no format and the language has glue. */
+    canDefine: !languageReason && resolved.reason !== undefined,
     format: resolved.format,
     load,
     group,
@@ -144,8 +155,10 @@ export function useSolution(deps: SolutionDeps) {
     runPlan,
     /** The source to submit: the code, with glue in solution mode. */
     submission: (code: string, lang: LanguageId) => runPlan(code, lang).code,
-    fileName: (lang: LanguageId) =>
-      fnRef.current ? solutionFileName(languageInfo(lang).engine) : languageInfo(lang).fileName,
+    fileName: (lang: LanguageId) => {
+      const glue = glueFor(lang, fnRef.current);
+      return glue ? solutionFileName(glue) : languageInfo(lang).fileName;
+    },
   };
 }
 

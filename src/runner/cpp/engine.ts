@@ -10,7 +10,7 @@ import type { CppWorkerMessage, CppWorkerRequest } from './worker';
 export function createCppEngine(): Engine {
   let worker: Worker | undefined;
   return {
-    run({ code, stdin, runtimeBase }, { onRunStart }) {
+    run({ code, stdin, runtimeBase, build }, { onRunStart }) {
       return new Promise<EngineResult>((resolve) => {
         const w = (worker ??= new CppWorker());
         w.onmessage = (event: MessageEvent<CppWorkerMessage>) => {
@@ -31,6 +31,7 @@ export function createCppEngine(): Engine {
           });
         };
         const request: CppWorkerRequest = { code, stdin, runtimeBase };
+        if (build?.kind === 'clang') request.options = { lang: build.lang, std: build.std };
         w.postMessage(request);
       });
     },

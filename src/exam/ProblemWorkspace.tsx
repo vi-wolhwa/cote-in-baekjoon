@@ -24,7 +24,8 @@ import { SolutionToggle } from '@/ide/solution/SolutionToggle';
 import { useSolution } from '@/ide/useSolution';
 import { findBlockedPatterns } from '@/boj/waf';
 import type { SandboxRunner } from '@/runner/client';
-import { LANGUAGES, languageInfo, type LanguageId } from '@/shared/languages';
+import { LanguageSelect, RunButton, SubmitOnlyNote } from '@/ide/language-controls';
+import { languageInfo, type LanguageId } from '@/shared/languages';
 import type { Theme } from '@/shared/theme';
 import type { ExamAnswer } from './answers';
 import { answerDiffers } from './batch';
@@ -109,7 +110,7 @@ export function ProblemWorkspace(props: Props) {
       editor.current = createEditor(editorHost.current, {
         doc: code ?? sol.starter(language, fn),
         keymap: props.keymap,
-        engine: info.engine,
+        syntax: info.syntax,
         theme: props.theme,
         onChange: (text) => {
           setDiffers(differsNow(text));
@@ -166,8 +167,10 @@ export function ProblemWorkspace(props: Props) {
     const saved = await store.loadCode(problem.id, sol.group(next));
     languageRef.current = next;
     props.onLanguage(next);
-    editor.current?.setLanguage(nextInfo.engine);
-    if (nextInfo.codeGroup !== info.codeGroup) editor.current?.setCode(saved ?? sol.starter(next));
+    editor.current?.setLanguage(nextInfo.syntax);
+    if (sol.group(next) !== sol.group(language)) {
+      editor.current?.setCode(saved ?? sol.starter(next));
+    }
     setOutput({ state: 'empty' });
   };
 
@@ -239,8 +242,8 @@ export function ProblemWorkspace(props: Props) {
           <SolutionToggle
             on={sol.fn}
             busy={running || !ready}
-            {...(sol.resolved.reason ? { reason: sol.resolved.reason } : {})}
-            {...(sol.resolved.reason && body && !runBlockReason(body.labels)
+            {...(sol.reason ? { reason: sol.reason } : {})}
+            {...(sol.canDefine && body && !runBlockReason(body.labels)
               ? { onDefine: () => setFormatOpen(true) }
               : {})}
             onChange={(on) => {
@@ -257,19 +260,11 @@ export function ProblemWorkspace(props: Props) {
             <FlagIcon />
             다시 볼 문제
           </button>
-          <select
-            class="language"
+          <LanguageSelect
             value={language}
-            aria-label="언어"
             disabled={running || !ready}
-            onChange={(e) => void changeLanguage(e.currentTarget.value as LanguageId)}
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.label}
-              </option>
-            ))}
-          </select>
+            onChange={(next) => void changeLanguage(next)}
+          />
         </div>
       </header>
 
@@ -356,6 +351,7 @@ export function ProblemWorkspace(props: Props) {
                     {tab === 'run' ? (
                       <>
                         {note && <p class="out-note">{note}</p>}
+                        <SubmitOnlyNote language={language} />
                         <RunOutput {...output} />
                       </>
                     ) : (
@@ -394,15 +390,12 @@ export function ProblemWorkspace(props: Props) {
           >
             초기화
           </button>
-          {running ? (
-            <button type="button" class="btn btn-dark" onClick={() => runner.cancel()}>
-              실행 중지
-            </button>
-          ) : (
-            <button type="button" class="btn btn-dark" onClick={() => void run()}>
-              코드 실행
-            </button>
-          )}
+          <RunButton
+            language={language}
+            running={running}
+            onRun={() => void run()}
+            onStop={() => runner.cancel()}
+          />
           <button
             type="button"
             class="btn btn-primary"

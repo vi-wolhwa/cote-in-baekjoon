@@ -298,7 +298,7 @@ describe('stored exam validation', () => {
       { ...good, include: 1234 },
       { ...good, flagged: [1234] },
       { ...good, submissions: { 1234: { language: 'python3', at: NOW } } },
-      { ...good, submissions: { 2001: { language: 'kotlin', at: NOW } } },
+      { ...good, submissions: { 2001: { language: 'cobol', at: NOW } } },
       {
         ...good,
         submissions: { 2001: { language: 'python3', at: NOW, judge: judge({ problemId: 2002 }) } },

@@ -5,7 +5,7 @@
 import type { Sample } from '@/boj/problem';
 import type { SandboxRunner } from '@/runner/client';
 import type { RunResponse } from '@/shared/messages';
-import { languageInfo, type LanguageId } from '@/shared/languages';
+import { languageInfo, SUBMIT_ONLY_REASON, type LanguageId } from '@/shared/languages';
 import type { RunOutputProps } from './RunOutput';
 import { buildCaseReport, runTimeLimit, summarize, type CaseReport } from './run-report';
 
@@ -25,13 +25,14 @@ export interface RunCasesInput {
 
 export async function runCases(input: RunCasesInput): Promise<RunOutputProps> {
   const { runner, language, code, cases, problemLimitMs, warmEngines } = input;
+  const engine = languageInfo(language).engine;
+  if (!engine) return { state: 'message', text: SUBMIT_ONLY_REASON };
   if (cases.length === 0) {
     return {
       state: 'message',
       text: '실행할 테스트 케이스가 없습니다. 테스트 케이스를 추가해 주세요.',
     };
   }
-  const engine = languageInfo(language).engine;
   const limit = runTimeLimit(problemLimitMs);
   const firstLoad = !warmEngines.has(engine);
   const reports: CaseReport[] = [];

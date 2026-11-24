@@ -34,7 +34,7 @@ describe('searchHelp', () => {
   });
 
   it('needs every word of a multi-word query in the same section', () => {
-    expect(ids('c++')).toEqual(['run-diff', 'solution-function', 'slow-start']);
+    expect(ids('c++')).toEqual(['languages', 'run-diff', 'solution-function', 'slow-start']);
     expect(ids('C++ 예외')).toEqual(['run-diff']);
     expect(ids('c++ 블록체인')).toEqual([]);
   });
