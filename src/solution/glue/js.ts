@@ -85,14 +85,56 @@ const __cib_raw = () => {
   __cib_p = end;
   return s;
 };
-const __cib_rowsLine = (e, raw) => {
+const __cib_isEnd = (t, m, e) => {
+  if (m === 1) return t === e;
+  if (m === 4) return t.startsWith(e);
+  if (m !== 2 && m !== 3) return false;
+  const f = t.trim().split(/\\s+/)[0];
+  if (!/^[+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(f)) return false;
+  return m === 2 ? +f < 0 : +f <= 0;
+};
+const __cib_rowsLine = (m, e, text) => {
   const s = __cib_p;
   let r = 0;
   for (;;) {
     __cib_nl();
-    if (!__cib_has()) { if (e !== null) __cib_fail(); break; }
-    const t = raw ? __cib_raw() : __cib_line();
-    if (e !== null && t === e) break;
+    if (!__cib_has()) { if (m) __cib_fail(); break; }
+    const t = text ? __cib_raw() : __cib_line();
+    if (m && __cib_isEnd(t, m, e)) break;
+    r++;
+  }
+  __cib_p = s;
+  return r;
+};
+const __cib_endl = (m, e) => {
+  const s = __cib_p;
+  __cib_nl();
+  if (__cib_has() && __cib_isEnd(__cib_line(), m, e)) return true;
+  __cib_p = s;
+  return false;
+};
+const __cib_bol = () => {
+  if (__cib_p > 0 && __cib_d.charCodeAt(__cib_p - 1) !== 10) {
+    const e = __cib_d.indexOf('\\n', __cib_p);
+    __cib_p = e < 0 ? __cib_n : e + 1;
+  }
+};
+const __cib_rawl = () => {
+  __cib_bol();
+  if (__cib_p >= __cib_n) __cib_fail();
+  const e = __cib_d.indexOf('\\n', __cib_p);
+  const s = __cib_d.slice(__cib_p, e < 0 ? __cib_n : e).replace(/\\r$/, '');
+  __cib_p = e < 0 ? __cib_n : e + 1;
+  return s;
+};
+const __cib_rowsPhys = (m, e) => {
+  const s = __cib_p;
+  let r = 0;
+  __cib_bol();
+  for (;;) {
+    if (__cib_p >= __cib_n) { if (m) __cib_fail(); break; }
+    const t = __cib_rawl().replace(/\\s+$/, '');
+    if (m && __cib_isEnd(t, m, e)) break;
     r++;
   }
   __cib_p = s;
@@ -111,11 +153,44 @@ const count = (c: CountRef) => renderCount(c, (v) => `Number(${variable(v)})`);
 const rows = (n: Rows) =>
   renderRows(n, count, {
     tok: (end, k) => `__cib_rowsTok([${end.map(quote).join(', ')}], ${k})`,
-    line: (end, raw) => `__cib_rowsLine(${end === null ? 'null' : quote(end)}, ${raw})`,
+    line: (end, text) => `__cib_rowsLine(${end.mode}, ${quote(end.text)}, ${text})`,
+    phys: (end) => `__cib_rowsPhys(${end.mode}, ${quote(end.text)})`,
   });
+
+/** A block: its lists start empty; each pass reads the block's variables and appends them. */
+function block(s: Extract<Step, { op: 'block' }>): string {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return `for (let __cib_b = 0, __cib_bn = ${count(s.loop.n)}; __cib_bn < 0 ? __cib_fail() : __cib_b < __cib_bn; __cib_b++)`;
+      case 'eof':
+        return 'while (__cib_has())';
+      case 'tok':
+        return `while (!__cib_at([${s.loop.end.map(quote).join(', ')}]))`;
+      case 'line':
+        return `while (!__cib_endl(${s.loop.end.mode}, ${quote(s.loop.end.text)}))`;
+    }
+  })();
+  return [
+    ...s.items.map((x) => `${variable(x.list)} = [];`),
+    `${head} {`,
+    `  let ${s.items.map((x) => variable(x.item)).join(', ')};`,
+    ...s.steps.flatMap((x) => step(x).split('\n')).map((l) => `  ${l}`),
+    ...s.items.map((x) => `  ${variable(x.list)}.push(${variable(x.item)});`),
+    '}',
+  ].join('\n');
+}
 
 function step(s: Step): string {
   switch (s.op) {
+    case 'block':
+      return block(s);
+    case 'raw':
+      return `${variable(s.v)} = __cib_rawl();`;
+    case 'rawLines':
+      return `${variable(s.v)} = __cib_rep(${rows(s.n)}, __cib_rawl);`;
+    case 'endRaw':
+      return '__cib_rawl();';
     case 'nl':
       return '__cib_nl();';
     case 'scalar':
@@ -170,7 +245,10 @@ function caseText(ret: RetSpec, value: string): string {
 
 export function jsGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
-  const read = plan.steps.map((s) => `      ${step(s)}`).join('\n');
+  const read = plan.steps
+    .flatMap((s) => step(s).split('\n'))
+    .map((l) => `      ${l}`)
+    .join('\n');
   const body = [
     ...(vars.length ? [`    let ${vars.join(', ')};`] : []),
     '    try {',
@@ -188,6 +266,10 @@ export function jsGlue(plan: Plan, ret: RetSpec): string {
         return `  const __cib_t = __cib_int(__cib_tok());\n  for (let __cib_i = 0; __cib_i < __cib_t; __cib_i++) {\n${body}\n  }`;
       case 'eof':
         return `  while (__cib_has()) {\n${body}\n  }`;
+      case 'line': {
+        const { mode, text } = plan.loop.end;
+        return `  while (__cib_has() && !__cib_endl(${mode}, ${quote(text)})) {\n${body}\n  }`;
+      }
       case 'until': {
         const words = plan.loop.tokens.map(quote).join(', ');
         return [

@@ -9,7 +9,6 @@
  */
 import { parseCount, type Count } from './count';
 import { parseLines } from './dsl-lines';
-import { parseEnd } from './end';
 import { parseRet, RET_KEYS, type RetSpec } from './ret';
 
 export const PARAM_TYPES = [
@@ -339,8 +338,6 @@ function parseCases(
 export function normalizeEnd(text: string): string | undefined {
   const until = text.trim().replace(/\s+/g, ' ');
   if (until === '' || until.length > MAX_WORD) return undefined;
-  const end = parseEnd(until);
-  if (end.kind === 'prefix' && end.text.trim() === '') return undefined;
   return until;
 }
 

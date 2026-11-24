@@ -110,17 +110,70 @@ const ROWS_TOK = `
         __cib_P[0] = e
         return __cib_d[p:e].rstrip()
 
-    def __cib_rowsLine(e, raw):
+    __cib_num = __import__('re').compile(r'[+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?$')
+
+    def __cib_isEnd(t, m, e):
+        if m == 1:
+            return t == e
+        if m == 4:
+            return t.startswith(e)
+        f = t.split()
+        if m not in (2, 3) or not f or __cib_num.match(f[0]) is None:
+            return False
+        return float(f[0]) < 0 if m == 2 else float(f[0]) <= 0
+
+    def __cib_rowsLine(m, e, text):
         s = __cib_P[0]
         r = 0
         while True:
             __cib_nl()
             if not __cib_has():
-                if e is not None:
+                if m:
                     raise EOFError
                 break
-            t = __cib_raw() if raw else __cib_line()
-            if e is not None and t == e:
+            t = __cib_raw() if text else __cib_line()
+            if m and __cib_isEnd(t, m, e):
+                break
+            r += 1
+        __cib_P[0] = s
+        return r
+
+    def __cib_endl(m, e):
+        s = __cib_P[0]
+        __cib_nl()
+        if __cib_has() and __cib_isEnd(__cib_line(), m, e):
+            return True
+        __cib_P[0] = s
+        return False
+
+    def __cib_bol():
+        p = __cib_P[0]
+        if p > 0 and __cib_d[p - 1] != '\\n':
+            e = __cib_d.find('\\n', p)
+            __cib_P[0] = __cib_n if e < 0 else e + 1
+
+    def __cib_rawl():
+        __cib_bol()
+        p = __cib_P[0]
+        if p >= __cib_n:
+            raise EOFError
+        e = __cib_d.find('\\n', p)
+        e = __cib_n if e < 0 else e
+        __cib_P[0] = min(e + 1, __cib_n)
+        s = __cib_d[p:e]
+        return s[:-1] if s.endswith('\\r') else s
+
+    def __cib_rowsPhys(m, e):
+        s = __cib_P[0]
+        r = 0
+        __cib_bol()
+        while True:
+            if __cib_P[0] >= __cib_n:
+                if m:
+                    raise EOFError
+                break
+            t = __cib_rawl().rstrip()
+            if m and __cib_isEnd(t, m, e):
                 break
             r += 1
         __cib_P[0] = s
@@ -154,12 +207,48 @@ const count = (c: CountRef) => renderCount(c, variable);
 const rows = (n: Rows) =>
   renderRows(n, count, {
     tok: (end, k) => `__cib_rowsTok([${end.map(quote).join(', ')}], ${k})`,
-    line: (end, raw) =>
-      `__cib_rowsLine(${end === null ? 'None' : quote(end)}, ${raw ? 'True' : 'False'})`,
+    line: (end, text) =>
+      `__cib_rowsLine(${end.mode}, ${quote(end.text)}, ${text ? 'True' : 'False'})`,
+    phys: (end) => `__cib_rowsPhys(${end.mode}, ${quote(end.text)})`,
   });
+
+/** A block: its lists start empty; each pass reads the block's variables and appends them. */
+function block(s: Extract<Step, { op: 'block' }>): string {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return [
+          `__cib_bn = ${count(s.loop.n)}`,
+          'if __cib_bn < 0:',
+          '    raise EOFError',
+          'for _ in range(__cib_bn):',
+        ];
+      case 'eof':
+        return ['while __cib_has():'];
+      case 'tok':
+        return [`while not __cib_at([${s.loop.end.map(quote).join(', ')}]):`];
+      case 'line':
+        return [`while not __cib_endl(${s.loop.end.mode}, ${quote(s.loop.end.text)}):`];
+    }
+  })();
+  return [
+    ...s.items.map((x) => `${variable(x.list)} = []`),
+    ...head,
+    ...s.steps.flatMap((x) => step(x).split('\n')).map((l) => `    ${l}`),
+    ...s.items.map((x) => `    ${variable(x.list)}.append(${variable(x.item)})`),
+  ].join('\n');
+}
 
 function step(s: Step): string {
   switch (s.op) {
+    case 'block':
+      return block(s);
+    case 'raw':
+      return `${variable(s.v)} = __cib_rawl()`;
+    case 'rawLines':
+      return `${variable(s.v)} = [__cib_rawl() for _ in range(${rows(s.n)})]`;
+    case 'endRaw':
+      return '__cib_rawl()';
     case 'nl':
       return '__cib_nl()';
     case 'scalar':
@@ -218,7 +307,9 @@ export function pythonGlue(plan: Plan, ret: RetSpec): string {
   const body = (n: number) =>
     indent(n, [
       'try:',
-      ...(plan.steps.length ? plan.steps.map((s) => `    ${step(s)}`) : ['    pass']),
+      ...(plan.steps.length
+        ? plan.steps.flatMap((s) => step(s).split('\n')).map((l) => `    ${l}`)
+        : ['    pass']),
       'except Exception:',
       "    raise RuntimeError('__cib_input') from None",
       `__cib_o.append(${caseText(ret, `__cib_f(solution(${vars.join(', ')}))`)})`,
@@ -231,6 +322,10 @@ export function pythonGlue(plan: Plan, ret: RetSpec): string {
         return `    for _ in range(int(__cib_tok())):\n${body(8)}`;
       case 'eof':
         return `    while __cib_more():\n${body(8)}`;
+      case 'line': {
+        const { mode, text } = plan.loop.end;
+        return `    while __cib_more() and not __cib_endl(${mode}, ${quote(text)}):\n${body(8)}`;
+      }
       case 'until': {
         const words = plan.loop.tokens.map(quote).join(', ');
         return [

@@ -47,7 +47,7 @@ export function tsGlue(plan: Plan, ret: RetSpec): string {
   const typed = typeArrows(js)
     .replace("require('fs')", "__cib_req('fs')")
     .replace(/\bBigInt\(/g, '__cib_big(')
-    .replace(/let (__cib_v\d+(?:, __cib_v\d+)*);/, (_, vars: string) => {
+    .replace(/let (__cib_v\d+(?:, __cib_v\d+)*);/g, (_, vars: string) => {
       return `let ${vars
         .split(', ')
         .map((v) => `${v}: any`)
