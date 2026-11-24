@@ -30,8 +30,9 @@ const ARRAY = f({
   ret: { type: 'int[]', sep: ' ' },
 });
 
+// A problem number with no bundled format, so the inference step is reached.
 const AB_PROBLEM: Pick<Problem, 'id' | 'samples' | 'labels' | 'sections'> = {
-  id: 1000,
+  id: 9_999_999,
   samples: [
     { input: '1 2\n', output: '3\n' },
     { input: '5 4\n', output: '9\n' },
@@ -106,6 +107,13 @@ describe('resolveFormat', () => {
     const inferred = resolveFormat(AB_PROBLEM, undefined);
     expect(inferred.source).toBe('inferred');
     expect(inferred.format?.params.map((p) => p.name)).toEqual(['a', 'b']);
+  });
+
+  it('uses the bundled format data when there is no saved format', () => {
+    expect(resolveFormat({ ...AB_PROBLEM, id: 1000 }, undefined)).toMatchObject({
+      source: 'bundled',
+      format: { params: [{ name: 'a' }, { name: 'b' }] },
+    });
   });
 
   it('skips a saved format that no longer passes the samples, and says why', () => {

@@ -80,7 +80,10 @@ export function splitSections(markdown: string): { first: string | null; section
 }
 
 /** First code fence or `<pre>` block in a section body, if any. */
-export function extractBlock(body: string): string | null {
+export function extractBlock(raw: string): string | null {
+  // Blocks quoted with `> ` (some blogs): the quote marker of the closing line is not sample text.
+  const quoted = /(^|\n)[ \t]*>[ \t]?(<pre\b|```|~~~)/i.test(raw);
+  const body = quoted ? raw.replace(/^[ \t]*>[ \t]?/gm, '') : raw;
   const fence = /(^|\n)[ \t]*(```|~~~)[^\n]*\n([\s\S]*?)\n?[ \t]*\2[ \t]*(?=\n|$)/.exec(body);
   if (fence) return normalizeSample(fence[3] ?? '');
   const pre = /<pre\b[^>]*>([\s\S]*?)<\/pre>/i.exec(body);

@@ -125,6 +125,11 @@ describe('extractBlock', () => {
     expect(extractBlock('<pre>a &lt; b\r\n1 2  \n</pre>')).toBe('a < b\n1 2');
   });
 
+  it('drops the quote marker of a quoted block but keeps a real ">" sample', () => {
+    expect(extractBlock('> <pre>\n3\n1 2 3\n> </pre>\n')).toBe('3\n1 2 3');
+    expect(extractBlock('<pre>&gt;\n</pre>')).toBe('>');
+  });
+
   it('keeps entity-like text in Markdown fences as written', () => {
     expect(extractBlock('```text\n&lt;\n```')).toBe('&lt;');
   });
