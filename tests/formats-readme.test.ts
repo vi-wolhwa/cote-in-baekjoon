@@ -159,8 +159,8 @@ describe('normalizeSample', () => {
   });
 
   it('drops zero-width spaces and an indent shared by every line of a copied block', () => {
-    expect(normalizeSample('    3​\n    1 2\n\n    4')).toBe('3\n1 2\n\n4');
+    expect(normalizeSample('    3\u200B\n    1\u00A02\n\n    4')).toBe('3\n1 2\n\n4');
     expect(normalizeSample('  *\n ***', false)).toBe('  *\n ***');
-    expect(normalizeSample('7​', false)).toBe('7​');
+    expect(normalizeSample('7\u200B', false)).toBe('7\u200B');
   });
 });

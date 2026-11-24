@@ -75,7 +75,7 @@ export function normalizeSample(text: string, copied = true): string {
   const lines = (
     copied
       ? // Blog editors leave zero-width spaces and no-break spaces in copied samples.
-        text.replace(/[​-‍﻿]/g, '').replace(/ /g, ' ')
+        text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\u00A0/g, ' ')
       : text
   )
     .replace(/\r\n?/g, '\n')
