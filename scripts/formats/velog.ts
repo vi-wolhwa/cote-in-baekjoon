@@ -9,6 +9,7 @@
 import type { Cache } from './lib/cache.ts';
 import { parseReadme } from './lib/readme.ts';
 import { emptyRecord, isComplete, mergePartial, type ProblemRecord } from './lib/record.ts';
+import { eachConcurrently } from './lib/pool.ts';
 import type { TopProblem } from './solvedac.ts';
 
 const ENDPOINT = 'https://v2.velog.io/graphql';
@@ -75,16 +76,20 @@ interface VelogState {
   tried: Record<string, string[]>;
 }
 
-export async function fetchFromVelog(cache: Cache, list: TopProblem[]): Promise<number> {
+export async function fetchFromVelog(
+  cache: Cache,
+  list: TopProblem[],
+  concurrency = 1,
+): Promise<number> {
   const state = cache.readJson<VelogState>(['velog', 'state.json'], { tried: {} });
   let filled = 0;
   let done = 0;
-  for (const p of list) {
+  await eachConcurrently(list, concurrency, async (p) => {
     const path = ['problems', `${p.id}.json`];
     const record =
       cache.readJson<ProblemRecord | null>(path, null) ??
       emptyRecord(p.id, p.title, new Date().toISOString());
-    if (isComplete(record) || state.tried[p.id]) continue;
+    if (isComplete(record) || state.tried[p.id]) return;
     const read: string[] = [];
     for (const ref of (await searchPosts(p)).slice(0, MAX_POSTS)) {
       const body = await postBody(ref);
@@ -109,6 +114,6 @@ export async function fetchFromVelog(cache: Cache, list: TopProblem[]): Promise<
     state.tried[p.id] = read;
     cache.writeJson(['velog', 'state.json'], state);
     if (++done % 25 === 0) console.log(`velog ${done}문제 확인, ${filled}문제 채움`);
-  }
+  });
   return filled;
 }

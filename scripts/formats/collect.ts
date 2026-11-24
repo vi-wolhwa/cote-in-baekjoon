@@ -33,6 +33,7 @@ const { values } = parseArgs({
     'search-missing': { type: 'boolean', default: false },
     velog: { type: 'boolean', default: false },
     blog: { type: 'boolean', default: false },
+    concurrency: { type: 'string', default: '1' },
     stats: { type: 'boolean', default: false },
   },
 });
@@ -47,6 +48,8 @@ function positiveInt(name: string, raw: string, max: number): number {
 
 const top = positiveInt('top', values.top, 30000);
 const bojLimit = positiveInt('boj', values.boj, 100);
+/** Problems handled at once by the blog sources (each request keeps its own pacing). */
+const concurrency = Math.max(1, positiveInt('concurrency', values.concurrency, 16));
 const maxTries = positiveInt('max-tries', values['max-tries'], 50);
 const cache = new Cache(values.cache);
 const started = Date.now();
@@ -107,13 +110,13 @@ if (!values.stats) {
     }
   }
   if (values.velog) {
-    const filled = await fetchFromVelog(cache, list);
+    const filled = await fetchFromVelog(cache, list, concurrency);
     console.log(`velog로 ${filled}문제를 채웠습니다 ${JSON.stringify(velogCounters)}`);
   }
   if (values.blog) {
     const key = process.env.KAKAO_REST_API_KEY;
     if (!key) throw new Error('KAKAO_REST_API_KEY가 없습니다');
-    const filled = await fetchFromBlogs(cache, list, key);
+    const filled = await fetchFromBlogs(cache, list, key, concurrency);
     console.log(`블로그로 ${filled}문제를 채웠습니다 ${JSON.stringify(blogCounters)}`);
   }
   if (bojLimit > 0) await fetchFromBoj(cache, list, { limit: bojLimit, headed: values.headed });

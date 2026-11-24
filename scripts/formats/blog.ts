@@ -11,6 +11,7 @@ import { Window } from 'happy-dom';
 import type { Cache } from './lib/cache.ts';
 import { parseReadme } from './lib/readme.ts';
 import { emptyRecord, isComplete, mergePartial, type ProblemRecord } from './lib/record.ts';
+import { eachConcurrently } from './lib/pool.ts';
 import type { TopProblem } from './solvedac.ts';
 import { markPlainHeadings, titleHasId } from './velog.ts';
 
@@ -102,16 +103,17 @@ export async function fetchFromBlogs(
   cache: Cache,
   list: TopProblem[],
   key: string,
+  concurrency = 1,
 ): Promise<number> {
   const state = cache.readJson<BlogState>(['blog', 'state.json'], { tried: {} });
   let filled = 0;
   let done = 0;
-  for (const p of list) {
+  await eachConcurrently(list, concurrency, async (p) => {
     const path = ['problems', `${p.id}.json`];
     const record =
       cache.readJson<ProblemRecord | null>(path, null) ??
       emptyRecord(p.id, p.title, new Date().toISOString());
-    if (isComplete(record) || state.tried[p.id]) continue;
+    if (isComplete(record) || state.tried[p.id]) return;
     const read: string[] = [];
     for (const doc of (await search(key, p)).slice(0, MAX_POSTS)) {
       const html = await page(doc.url);
@@ -135,6 +137,6 @@ export async function fetchFromBlogs(
     state.tried[p.id] = read;
     cache.writeJson(['blog', 'state.json'], state);
     if (++done % 25 === 0) console.log(`blog ${done}문제 확인, ${filled}문제 채움`);
-  }
+  });
   return filled;
 }
