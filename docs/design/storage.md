@@ -9,7 +9,10 @@
 | 키 | 내용 | 저장소 | 언제 쓰나 |
 |---|---|---|---|
 | `code:{문제}:{언어}` | 작성 중인 코드 | `chrome.storage.local` | 입력을 멈추고 0.4초 뒤 |
-| `cases:{문제}` | 직접 추가한 테스트 케이스 | `chrome.storage.local` | 대화상자에서 확인을 누를 때 |
+| `code:{문제}:{언어}:fn` | solution 함수 모드의 코드(ADR-0006). 표준 입출력 코드와 따로 둔다 | `chrome.storage.local` | 입력을 멈추고 0.4초 뒤 |
+| `format:{문제}` | 사용자가 저장한 입출력 형식(DSL v1 JSON, 백업에 포함) | `chrome.storage.local` | 형식 카드에서 저장할 때 |
+| `ui:solution` | solution 함수 켜기/끄기(기본 켬, 백업에 포함) | `chrome.storage.local` | 스위치를 바꿀 때 |
+| `cases:{문제}` | 직접 추가한 테스트 케이스(solution 함수 모드도 표준 입출력으로 저장) | `chrome.storage.local` | 대화상자에서 확인을 누를 때 |
 | `judge:{문제}` | 마지막 채점 결과 1건 | `chrome.storage.local` | 채점 결과를 읽을 때 |
 | `ui:keymap`, `ui:split` | 키맵, 패널 크기 | `chrome.storage.local` | 바꿀 때 |
 | 제출 대기 코드 | 제출 페이지로 넘길 코드 | `chrome.storage.session` | 제출하기를 누를 때. 넘기면 바로 지우고, 10분이 지나면 버린다 |
