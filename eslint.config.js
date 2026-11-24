@@ -11,6 +11,8 @@ export default tseslint.config(
       'node_modules/',
       '.claude/',
       '.claude-flow/',
+      // Local, gitignored format-data cache (scratch scripts of review sessions).
+      'data/',
       'playwright-report/',
       'test-results/',
       // Third-party runtime files (teavm-javac), not our code.
