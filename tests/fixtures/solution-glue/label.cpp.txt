@@ -1,0 +1,129 @@
+#include <bits/stdc++.h>
+using namespace std;
+// 자동 포함: bits/stdc++.h, using namespace std
+
+bool solution(int n, int m, vector<string> board) {
+    bool answer = true;
+    return answer;
+}
+
+
+// ---- 입출력 코드 ----
+static std::string __cib_d;
+static size_t __cib_p = 0;
+static void __cib_fail() {
+    std::fputs("__cib_input\n", stderr);
+    std::exit(1);
+}
+static bool __cib_ws(char c) { return c == ' ' || c == '\n' || c == '\r' || c == '\t'; }
+static bool __cib_more() {
+    while (__cib_p < __cib_d.size() && __cib_ws(__cib_d[__cib_p])) __cib_p++;
+    return __cib_p < __cib_d.size();
+}
+static std::string __cib_tok() {
+    if (!__cib_more()) __cib_fail();
+    size_t s = __cib_p;
+    while (__cib_p < __cib_d.size() && !__cib_ws(__cib_d[__cib_p])) __cib_p++;
+    return __cib_d.substr(s, __cib_p - s);
+}
+static void __cib_nl() {
+    if (__cib_p > 0 && __cib_d[__cib_p - 1] != '\n') {
+        size_t e = __cib_d.find('\n', __cib_p);
+        __cib_p = e == std::string::npos ? __cib_d.size() : e + 1;
+    }
+    for (;;) {
+        size_t q = __cib_p;
+        while (q < __cib_d.size() && __cib_d[q] != '\n' && __cib_ws(__cib_d[q])) q++;
+        if (q < __cib_d.size() && __cib_d[q] == '\n') __cib_p = q + 1;
+        else break;
+    }
+}
+static std::string __cib_line() {
+    if (__cib_p >= __cib_d.size()) __cib_fail();
+    size_t e = __cib_d.find('\n', __cib_p);
+    if (e == std::string::npos) e = __cib_d.size();
+    size_t s = __cib_p;
+    __cib_p = e;
+    while (s < e && __cib_ws(__cib_d[s])) s++;
+    while (e > s && __cib_ws(__cib_d[e - 1])) e--;
+    return __cib_d.substr(s, e - s);
+}
+static std::vector<std::string> __cib_rest() {
+    std::vector<std::string> r;
+    std::string l = __cib_line();
+    size_t i = 0;
+    while (i < l.size()) {
+        while (i < l.size() && __cib_ws(l[i])) i++;
+        size_t s = i;
+        while (i < l.size() && !__cib_ws(l[i])) i++;
+        if (i > s) r.push_back(l.substr(s, i - s));
+    }
+    return r;
+}
+static long long __cib_ll(const std::string& s) {
+    size_t i = 0;
+    bool neg = false;
+    if (i < s.size() && (s[i] == '-' || s[i] == '+')) neg = s[i++] == '-';
+    if (i >= s.size()) __cib_fail();
+    unsigned long long v = 0;
+    for (; i < s.size(); i++) {
+        if (s[i] < '0' || s[i] > '9') __cib_fail();
+        v = v * 10 + (unsigned long long)(s[i] - '0');
+    }
+    return neg ? (long long)(0ULL - v) : (long long)v;
+}
+static int __cib_int(const std::string& s) { return (int)__cib_ll(s); }
+static double __cib_dbl(const std::string& s) {
+    char* e = nullptr;
+    double v = std::strtod(s.c_str(), &e);
+    if (e == s.c_str()) __cib_fail();
+    return v;
+}
+static std::string __cib_str(const std::string& s) { return s; }
+static void __cib_put(std::string& o, const std::string& s) { o += s; }
+static void __cib_put(std::string& o, const char* s) { o += s; }
+static void __cib_put(std::string& o, char c) { o += c; }
+template <class T>
+static typename std::enable_if<std::is_arithmetic<T>::value>::type __cib_put(std::string& o, T v) {
+    o += std::to_string(v);
+}
+static bool __cib_has() {
+    size_t q = __cib_p;
+    while (q < __cib_d.size() && __cib_ws(__cib_d[q])) q++;
+    return q < __cib_d.size();
+}
+template <class C>
+static void __cib_join(std::string& o, const C& c, const char* sep) {
+    bool first = true;
+    for (const auto& x : c) {
+        if (!first) o += sep;
+        first = false;
+        __cib_put(o, x);
+    }
+}
+int main() {
+    {
+        static char __cib_buf[1 << 16];
+        size_t __cib_k;
+        while ((__cib_k = std::fread(__cib_buf, 1, sizeof __cib_buf, stdin)) > 0) __cib_d.append(__cib_buf, __cib_k);
+    }
+    std::string __cib_o;
+    int __cib_cases = 0;
+    int __cib_t = __cib_int(__cib_tok());
+    for (int __cib_i = 0; __cib_i < __cib_t; __cib_i++) {
+        int __cib_v0{};
+        int __cib_v1{};
+        std::vector<std::string> __cib_v2{};
+        __cib_v0 = __cib_int(__cib_tok());
+        __cib_v1 = __cib_int(__cib_tok());
+        __cib_v2.assign((int)(__cib_v0), {}); for (auto& __cib_x : __cib_v2) __cib_x = __cib_tok();
+        auto __cib_r = solution(__cib_v0, __cib_v1, __cib_v2);
+        if (__cib_cases++) __cib_o += '\n';
+        __cib_o += "Scenario #" + std::to_string(__cib_cases) + ":\n";
+        __cib_o += (__cib_r ? "YES" : "NO");
+        __cib_o += '\n';
+    }
+    if (__cib_cases) __cib_o += '\n';
+    std::fwrite(__cib_o.data(), 1, __cib_o.size(), stdout);
+    return 0;
+}

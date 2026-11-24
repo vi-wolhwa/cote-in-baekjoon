@@ -58,6 +58,9 @@ const LINES = f({
   ret: { type: 'double', digits: 2 },
 });
 
+// A label line before each case and a blank line after it.
+const LABEL = f({ ...GRID, ret: { ...GRID.ret, label: 'Scenario #{i}:\n', blank: true } });
+
 /** Golden file extension per glue language. */
 const EXT = {
   js: 'js',
@@ -80,6 +83,7 @@ describe('generated programs (golden files)', () => {
       ['ab', AB],
       ['grid', GRID],
       ['lines', LINES],
+      ['label', LABEL],
     ] as const) {
       it(`${name} in ${engine}`, async () => {
         const program = buildProgram(engine, format, starterCode(engine, format));
