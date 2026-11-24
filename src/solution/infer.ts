@@ -8,7 +8,7 @@
  */
 import type { Sample } from '@/boj/problem';
 import type { Cases, Format, LineSpec, Param, ParamType, RetSpec } from './dsl';
-import { isValidName } from './dsl';
+import { isValidName, mapLine } from './dsl';
 import {
   kind,
   layouts,
@@ -215,13 +215,7 @@ function applyNames(
     ...(p.len !== undefined ? { len: rename(p.len) } : {}),
     ...(p.cols !== undefined ? { cols: rename(p.cols) } : {}),
   }));
-  const lines = format.lines.map((l) =>
-    Array.isArray(l)
-      ? l.map((n) => map.get(n) as string)
-      : 'repeat' in l
-        ? { repeat: rename(l.repeat), of: map.get(l.of) as string }
-        : { until: l.until, of: map.get(l.of) as string },
-  );
+  const lines = format.lines.map((l) => mapLine(l, (n) => map.get(n) as string, rename));
   const longIn = params.some((p) => p.type === 'long' || p.type === 'long[]');
   // Numbers past 64 bits in, so the answer is one too ("10^10000 이하의 A, B").
   const hugeIn =

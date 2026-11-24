@@ -4,8 +4,12 @@
  * A format says how standard input becomes the parameters of `solution(...)` and how its
  * return value becomes standard output. Formats come from untrusted places (user edits,
  * pasted JSON, backups, bundled data), so `checkFormat` validates every field before use.
- * Kept free of extension APIs so it can be unit tested. The return value lives in ret.ts.
+ * Kept free of extension APIs so it can be unit tested. The return value lives in ret.ts,
+ * counts in count.ts, end lines in end.ts and the checks of `lines` in dsl-lines.ts.
  */
+import { parseCount, type Count } from './count';
+import { parseLines } from './dsl-lines';
+import { parseEnd } from './end';
 import { parseRet, RET_KEYS, type RetSpec } from './ret';
 
 export const PARAM_TYPES = [
@@ -36,9 +40,16 @@ export {
   type RetSpec,
   type RetType,
 } from './ret';
-
-/** A count: a parameter name, a number, `name±k`, `name*name` or `name+name`. */
-export type Count = string | number;
+export {
+  countRefs,
+  countText,
+  evalCount,
+  MAX_COUNT,
+  parseCount,
+  type Count,
+  type ParsedCount,
+} from './count';
+export { endText, matchesEnd, parseEnd, type End } from './end';
 
 export interface Param {
   name: string;
@@ -47,23 +58,37 @@ export interface Param {
   len?: Count;
   /** 2D arrays: number of columns (omitted: every token of the row's line). */
   cols?: Count;
+  /** 1D arrays with a length: the elements may wrap over several lines ("10 per line"). */
+  flow?: true;
+  /** line and line[]: physical lines as they are, empty lines and outer spaces kept. */
+  raw?: true;
 }
 
 /**
  * Several lines, one element (a whole line for `line[]`, a row for 2D arrays) per line:
- * `repeat` lines, or until an end line (`until: "0"`, the end line is not part of the value),
- * or until the input ends (`until: "EOF"`, only as the last line of a single-case format).
+ * `repeat` lines, or until an end line (end.ts: "0", "<0", "#*"; the end line is not part of
+ * the value), or until the input ends (`until: "EOF"`, only as the last line).
  */
 export type RepeatLine = { repeat: Count; of: string } | { until: string; of: string };
 
-/** One input line: the parameters read from it, in order. */
-export type LineSpec = string[] | RepeatLine;
+/** A line inside a block: no blocks in blocks. */
+export type InnerLine = string[] | RepeatLine;
 
-/** How many lines a repeat line reads. */
+/**
+ * A block: several lines (`of`) read `repeat` times, until an end line or to the end of
+ * input. Each parameter read in it is one dimension higher in `solution`: one value (or one
+ * row) per block.
+ */
+export type BlockLine = { repeat: Count; of: InnerLine[] } | { until: string; of: InnerLine[] };
+
+/** One input line: the parameters read from it, in order. */
+export type LineSpec = InnerLine | BlockLine;
+
+/** How many lines (or blocks) a repeat line or a block reads. */
 export type RepeatSize =
   { kind: 'count'; count: Count } | { kind: 'until'; end: string } | { kind: 'eof' };
 
-export function repeatSize(line: RepeatLine): RepeatSize {
+export function repeatSize(line: RepeatLine | BlockLine): RepeatSize {
   if ('repeat' in line) return { kind: 'count', count: line.repeat };
   return line.until === 'EOF' ? { kind: 'eof' } : { kind: 'until', end: line.until };
 }
@@ -79,10 +104,9 @@ export interface Format {
   ret: RetSpec;
 }
 
-export const MAX_PARAMS = 10;
-export const MAX_COUNT = 1_000_000;
+export const MAX_PARAMS = 16;
 const MAX_NAME = 20;
-const MAX_WORD = 40;
+export const MAX_WORD = 40;
 
 /** Names that are keywords (or awkward) in a language with solution-mode glue. */
 const RESERVED = new Set(
@@ -138,64 +162,71 @@ export function isValidName(name: string): boolean {
   );
 }
 
-export type ParsedCount =
-  | { kind: 'num'; value: number }
-  | { kind: 'ref'; name: string; plus: number }
-  | { kind: 'mul'; a: string; b: string }
-  | { kind: 'add'; a: string; b: string };
-
-/** Parses a count expression; undefined when it is not one. */
-export function parseCount(c: Count): ParsedCount | undefined {
-  if (typeof c === 'number') {
-    return Number.isInteger(c) && c >= 0 && c <= MAX_COUNT ? { kind: 'num', value: c } : undefined;
-  }
-  if (typeof c !== 'string') return undefined;
-  const s = c.replace(/\s+/g, '');
-  if (/^\d{1,7}$/.test(s)) return parseCount(Number(s));
-  const ref = /^([a-z_]\w*)(?:([+-])(\d{1,3}))?$/.exec(s);
-  if (ref) {
-    const k = ref[3] ? Number(ref[3]) : 0;
-    return { kind: 'ref', name: ref[1] as string, plus: ref[2] === '-' ? -k : k };
-  }
-  const mul = /^([a-z_]\w*)([*+])([a-z_]\w*)$/.exec(s);
-  if (mul) {
-    return { kind: mul[2] === '*' ? 'mul' : 'add', a: mul[1] as string, b: mul[3] as string };
-  }
-  return undefined;
-}
-
-export function countRefs(c: ParsedCount): string[] {
-  if (c.kind === 'ref') return [c.name];
-  if (c.kind === 'mul' || c.kind === 'add') return [c.a, c.b];
-  return [];
-}
-
-/** The value of a count with the integer parameters read so far. */
-export function evalCount(c: ParsedCount, env: ReadonlyMap<string, number>): number {
-  const get = (name: string) => env.get(name) ?? Number.NaN;
-  if (c.kind === 'num') return c.value;
-  if (c.kind === 'ref') return get(c.name) + c.plus;
-  if (c.kind === 'add') return get(c.a) + get(c.b);
-  return get(c.a) * get(c.b);
-}
-
-/** "n", "n-1", "n*m" or "5", for display and code generation. */
-export function countText(c: ParsedCount): string {
-  if (c.kind === 'num') return String(c.value);
-  if (c.kind === 'ref') {
-    if (c.plus === 0) return c.name;
-    return `${c.name}${c.plus > 0 ? '+' : '-'}${Math.abs(c.plus)}`;
-  }
-  return `${c.a}${c.kind === 'add' ? '+' : '*'}${c.b}`;
-}
-
+/** A single-parameter repeat line (`of` is a name). */
 export function isRepeat(line: LineSpec): line is RepeatLine {
-  return !Array.isArray(line);
+  return !Array.isArray(line) && typeof line.of === 'string';
+}
+
+/** A block of several lines (`of` is a list of lines). */
+export function isBlock(line: LineSpec): line is BlockLine {
+  return !Array.isArray(line) && Array.isArray(line.of);
+}
+
+/** The names a line reads, blocks included. */
+export function lineNames(line: LineSpec): string[] {
+  if (Array.isArray(line)) return line;
+  if (isRepeat(line)) return [line.of];
+  return (line.of as InnerLine[]).flatMap(lineNames);
+}
+
+/** A line with its names and counts changed, blocks included (renaming parameters). */
+export function mapLine(
+  line: LineSpec,
+  name: (n: string) => string,
+  count: (c: Count) => Count,
+): LineSpec {
+  if (Array.isArray(line)) return line.map(name);
+  if (isBlock(line)) {
+    const of = line.of.map((l) => mapLine(l, name, count) as InnerLine);
+    return 'repeat' in line ? { repeat: count(line.repeat), of } : { until: line.until, of };
+  }
+  const of = name(line.of as string);
+  return 'repeat' in line ? { repeat: count(line.repeat), of } : { until: line.until, of };
 }
 
 export function sentinelOf(cases: Cases): string | undefined {
   if (cases && 'until' in cases && cases.until !== 'EOF') return cases.until;
   return undefined;
+}
+
+/** A parameter's type in `solution` when read in a block: one dimension higher. */
+const LIFTED: Partial<Record<ParamType, ParamType>> = {
+  int: 'int[]',
+  long: 'long[]',
+  double: 'double[]',
+  string: 'string[]',
+  line: 'line[]',
+  'int[]': 'int[][]',
+  'long[]': 'long[][]',
+  'double[]': 'double[][]',
+  'string[]': 'string[][]',
+  'line[]': 'string[][]',
+};
+
+/** Names of the parameters read inside blocks. */
+export function blockNames(format: Format): Set<string> {
+  return new Set(format.lines.flatMap((l) => (isBlock(l) ? lineNames(l) : [])));
+}
+
+/**
+ * The parameters as `solution` takes them: the ones read in a block one dimension higher,
+ * without their read options (they describe one block's value, not the whole array).
+ */
+export function solutionParams(format: Format): Param[] {
+  const inBlock = blockNames(format);
+  return format.params.map((p) =>
+    inBlock.has(p.name) ? { name: p.name, type: LIFTED[p.type] ?? p.type } : p,
+  );
 }
 
 export type CheckResult = { ok: true; format: Format } | { ok: false; errors: string[] };
@@ -264,101 +295,19 @@ function parseParams(raw: unknown, fail: (e: string) => void): Param[] {
     if (param.cols !== undefined && !isGridType(param.type)) {
       fail(`'${name}'은(는) 2차원 배열이 아니라 cols를 쓸 수 없어요.`);
     }
+    for (const key of ['flow', 'raw'] as const) {
+      const flag = p[key];
+      if (flag === undefined || flag === null || flag === false) continue;
+      if (flag !== true) fail(`'${name}'의 ${key}는 true여야 해요.`);
+      else param[key] = true;
+    }
+    if (param.flow && (!isArrayType(param.type) || param.len === undefined)) {
+      fail(`'${name}'의 flow는 개수(len)가 있는 1차원 배열에만 쓸 수 있어요.`);
+    }
+    if (param.raw && param.type !== 'line' && param.type !== 'line[]') {
+      fail(`'${name}'의 raw는 line, line[]에만 쓸 수 있어요.`);
+    }
     out.push(param);
-  }
-  return out;
-}
-
-function parseLines(
-  raw: unknown,
-  byName: Map<string, Param>,
-  fail: (e: string) => void,
-): LineSpec[] | undefined {
-  if (!Array.isArray(raw) || (raw.length === 0 && byName.size > 0)) {
-    fail('"lines"에 읽을 줄이 하나 이상 있어야 해요.');
-    return undefined;
-  }
-  const read = new Set<string>();
-  const out: LineSpec[] = [];
-  /** Checks a count's references: integers read before this point. */
-  const checkCount = (c: Count, what: string) => {
-    const parsed = parseCount(c);
-    if (!parsed) return fail(`${what}의 개수 '${String(c)}'을(를) 읽을 수 없어요.`);
-    for (const ref of countRefs(parsed)) {
-      const p = byName.get(ref);
-      if (!p) fail(`${what}의 개수에 나온 '${ref}'은(는) 없는 파라미터예요.`);
-      else if (!isIntegerType(p.type)) fail(`${what}의 개수 '${ref}'은(는) 정수여야 해요.`);
-      else if (!read.has(ref)) fail(`${what}의 개수 '${ref}'은(는) 그보다 먼저 읽어야 해요.`);
-    }
-  };
-  for (const [i, line] of raw.entries()) {
-    const where = `${i + 1}번째 줄`;
-    if (Array.isArray(line)) {
-      if (line.length === 0) fail(`${where}에 읽을 파라미터가 없어요.`);
-      for (const [j, name] of line.entries()) {
-        const p = typeof name === 'string' ? byName.get(name) : undefined;
-        if (!p) {
-          fail(`${where}의 '${String(name)}'은(는) 없는 파라미터예요.`);
-          continue;
-        }
-        if (read.has(p.name)) fail(`'${p.name}'을(를) 두 번 읽어요.`);
-        if (isRepeatOnly(p.type)) {
-          fail(`'${p.name}'(${p.type})은(는) 여러 줄로만 읽을 수 있어요.`);
-        }
-        if (p.type === 'line' && line.length > 1) {
-          fail(`'${p.name}'(line)은 한 줄을 통째로 읽어서 혼자 있어야 해요.`);
-        }
-        if (isArrayType(p.type) && p.len === undefined && j < line.length - 1) {
-          fail(`개수가 없는 배열 '${p.name}'은(는) 줄의 마지막에만 둘 수 있어요.`);
-        }
-        if (isArrayType(p.type) && p.len !== undefined) checkCount(p.len, `'${p.name}'`);
-        read.add(p.name);
-      }
-      out.push(line as string[]);
-      continue;
-    }
-    const hasUntil = isRecord(line) && typeof line.until === 'string';
-    if (
-      !isRecord(line) ||
-      typeof line.of !== 'string' ||
-      (line.repeat === undefined && !hasUntil)
-    ) {
-      fail(`${where}은(는) 파라미터 이름 배열이나 { "repeat", "of" }, { "until", "of" }여야 해요.`);
-      continue;
-    }
-    const p = byName.get(line.of);
-    if (!p) {
-      fail(`${where}의 '${line.of}'은(는) 없는 파라미터예요.`);
-      continue;
-    }
-    if (read.has(p.name)) fail(`'${p.name}'을(를) 두 번 읽어요.`);
-    if (!isArrayType(p.type) && !isRepeatOnly(p.type)) {
-      fail(`여러 줄로는 배열만 읽을 수 있어요. '${p.name}'은(는) ${p.type}이에요.`);
-    }
-    if (p.len !== undefined) fail(`여러 줄로 읽는 '${p.name}'에는 len을 쓰지 않아요.`);
-    if (p.cols !== undefined) checkCount(p.cols, `'${p.name}'의 열`);
-    read.add(p.name);
-    if (hasUntil) {
-      const until = (line.until as string).trim().replace(/\s+/g, ' ');
-      if (until === '' || until.length > MAX_WORD) {
-        fail(`'${p.name}'의 끝내는 줄은 "EOF"이거나 입력을 끝내는 줄(예: "0")이어야 해요.`);
-      }
-      if (until === 'EOF' && i < raw.length - 1) {
-        fail(`입력 끝까지 읽는 '${p.name}'은(는) 마지막 줄이어야 해요.`);
-      }
-      out.push({ until, of: p.name });
-      continue;
-    }
-    const repeat = line.repeat;
-    if (typeof repeat !== 'string' && typeof repeat !== 'number') {
-      fail(`${where}의 repeat 값을 읽을 수 없어요.`);
-      continue;
-    }
-    checkCount(repeat, `'${p.name}'`);
-    out.push({ repeat, of: p.name });
-  }
-  for (const name of byName.keys()) {
-    if (!read.has(name)) fail(`'${name}'을(를) 읽는 줄이 없어요.`);
   }
   return out;
 }
@@ -376,14 +325,23 @@ function parseCases(
     return { count: raw.count };
   }
   if (isRecord(raw) && typeof raw.until === 'string' && Object.keys(raw).length === 1) {
-    const until = raw.until.trim().replace(/\s+/g, ' ');
-    if (until === '' || until.length > MAX_WORD) {
-      fail('"until"은 "EOF"이거나 입력을 끝내는 줄(예: "0 0")이어야 해요.');
+    const until = normalizeEnd(raw.until);
+    if (until === undefined) {
+      fail('"until"은 "EOF"이거나 입력을 끝내는 줄(예: "0 0", "<0", "#*")이어야 해요.');
     }
-    return { until };
+    return { until: until ?? raw.until };
   }
   fail('"cases"는 null, { "count": "T" }, { "until": "EOF" }, { "until": "0 0" } 중 하나예요.');
   return undefined;
+}
+
+/** An end line with spaces normalized, or undefined when it cannot be one. */
+export function normalizeEnd(text: string): string | undefined {
+  const until = text.trim().replace(/\s+/g, ' ');
+  if (until === '' || until.length > MAX_WORD) return undefined;
+  const end = parseEnd(until);
+  if (end.kind === 'prefix' && end.text.trim() === '') return undefined;
+  return until;
 }
 
 /** Compact JSON with the key order of the DSL, for storage, prompts and issues. */
@@ -392,6 +350,8 @@ export function formatToJson(format: Format, pretty = false): string {
     const out: Record<string, unknown> = { name: p.name, type: p.type };
     if (p.len !== undefined) out.len = p.len;
     if (p.cols !== undefined) out.cols = p.cols;
+    if (p.flow) out.flow = true;
+    if (p.raw) out.raw = true;
     return out;
   });
   const ret: Record<string, unknown> = { type: format.ret.type };
@@ -417,6 +377,6 @@ export function sameFormat(a: Format, b: Format): boolean {
   return formatToJson(a) === formatToJson(b);
 }
 
-function isRecord(v: unknown): v is Record<string, unknown> {
+export function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }

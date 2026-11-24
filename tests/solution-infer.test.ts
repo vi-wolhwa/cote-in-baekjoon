@@ -5,7 +5,7 @@
  * structure. The per-set table is printed so changes in accuracy show up in the test log.
  */
 import { describe, expect, it } from 'vitest';
-import { checkFormat, formatToJson, type Format } from '@/solution/dsl';
+import { checkFormat, formatToJson, mapLine, type Format } from '@/solution/dsl';
 import { inferCandidates, inferFormat } from '@/solution/infer';
 import { htmlToText, maxBound, scalarNames, sentenceLine } from '@/solution/infer-text';
 import { HOLDOUT_SET, INFER_SET, type InferProblem } from './fixtures/infer-set';
@@ -25,13 +25,7 @@ function structure(format: Format): string {
       ...(p.len !== undefined ? { len: rename(p.len) } : {}),
       ...(p.cols !== undefined ? { cols: rename(p.cols) } : {}),
     })),
-    lines: format.lines.map((l) =>
-      Array.isArray(l)
-        ? l.map((n) => names.get(n) as string)
-        : 'repeat' in l
-          ? { repeat: rename(l.repeat), of: names.get(l.of) as string }
-          : { until: l.until, of: names.get(l.of) as string },
-    ),
+    lines: format.lines.map((l) => mapLine(l, (n) => names.get(n) as string, rename)),
   });
 }
 
