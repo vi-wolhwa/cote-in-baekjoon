@@ -103,19 +103,35 @@ export function fromTable(table: FormatTable): unknown {
 }
 
 /** Problems the table can name better than the format checks can. */
+/** What is wrong with a row's name (empty, not allowed, used twice), or undefined. */
+export function nameError(table: FormatTable, index: number): string | undefined {
+  const name = table.rows[index]?.name.trim();
+  if (name === undefined) return undefined;
+  if (name === '') return `${index + 1}번째 매개변수의 이름을 적어 주세요.`;
+  if (!isValidName(name)) {
+    return `'${name}'은(는) 쓸 수 없는 이름이에요. 영어 소문자로 시작하고, 언어의 예약어가 아니어야 해요.`;
+  }
+  if (table.rows.some((r, j) => j !== index && r.name.trim() === name)) {
+    return `'${name}' 이름을 다른 매개변수도 써요. 이름을 다르게 해 주세요.`;
+  }
+  return undefined;
+}
+
 export function tableErrors(table: FormatTable): string[] {
-  const errors: string[] = [];
+  // A name problem is reported once (a duplicate name shows up on both rows).
+  const errors = new Set<string>();
   table.rows.forEach((row, i) => {
     const label = row.name.trim() || `${i + 1}번째 매개변수`;
-    if (row.name.trim() === '') errors.push(`${i + 1}번째 매개변수의 이름을 적어 주세요.`);
+    const bad = nameError(table, i);
+    if (bad) errors.add(bad);
     if (row.mode === 'repeat' && row.count.trim() === '') {
-      errors.push(`'${label}'을(를) 몇 줄에 걸쳐 읽는지 적어 주세요.`);
+      errors.add(`'${label}'을(를) 몇 줄에 걸쳐 읽는지 적어 주세요.`);
     }
     if (row.mode === 'until' && row.count.trim() === '') {
-      errors.push(`'${label}'을(를) 끝내는 줄을 적어 주세요 (예: 0).`);
+      errors.add(`'${label}'을(를) 끝내는 줄을 적어 주세요 (예: 0).`);
     }
   });
-  return errors;
+  return [...errors];
 }
 
 /** How a row may be read, given its type and the row before it. */

@@ -1,3 +1,4 @@
+import { GLUES } from '@/solution/glue';
 import { describe, expect, it } from 'vitest';
 import {
   BOJ_LANGUAGES,
@@ -129,17 +130,17 @@ describe('language registry', () => {
     expect(languageInfo('ruby').starter).toContain('gets');
   });
 
-  it('offers solution mode only where the glue templates apply', () => {
-    for (const id of ['javascript', 'python3', 'pypy3', 'cpp14', 'cpp17', 'cpp20'] as const) {
-      expect(solutionLanguageReason(id), id).toBeUndefined();
+  it('offers solution mode exactly where a glue language exists', () => {
+    for (const l of LANGUAGES) {
+      const glue = l.glue === undefined ? undefined : GLUES[l.glue];
+      if (glue) expect(solutionLanguageReason(l.id), l.id).toBeUndefined();
+      else expect(solutionLanguageReason(l.id), l.id).toMatch(/solution 함수를 쓸 수 없어/);
     }
-    expect(solutionLanguageReason('java8')).toBeUndefined();
     expect(languageInfo('cpp14').glue).toBe('cpp');
     expect(languageInfo('java8').glue).toBe('java');
-    for (const id of ['c99', 'c11', 'typescript', ...SUBMIT_ONLY] as const) {
-      expect(solutionLanguageReason(id), id).toMatch(/solution 함수를 쓸 수 없어 표준 입출력/);
-    }
-    expect(solutionLanguageReason('typescript')).toContain('TypeScript');
+    expect(languageInfo('typescript').glue).toBe('ts');
+    // Every language has glue (ADR-0008).
+    for (const l of LANGUAGES) expect(l.glue && GLUES[l.glue], l.id).toBeDefined();
   });
 
   it('validates language ids', () => {

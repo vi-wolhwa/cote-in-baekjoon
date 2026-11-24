@@ -201,6 +201,10 @@
 .format-table input {
   padding: 0 6px;
 }
+.format-table input.is-invalid {
+  border-color: var(--fail);
+  box-shadow: 0 0 0 1px var(--fail);
+}
 .format-table select {
   padding: 0 4px;
 }

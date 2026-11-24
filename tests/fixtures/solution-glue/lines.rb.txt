@@ -1,0 +1,94 @@
+# 입력을 읽고 결과를 출력하는 코드는 자동으로 붙습니다.
+
+def solution(title, nums, k, rows)
+  answer = 0.0
+  return answer
+end
+
+
+# ---- 입출력 코드 ----
+def __cib_fail
+  raise '__cib_input'
+end
+
+def __cib_int(s)
+  Integer(s, 10)
+rescue StandardError
+  __cib_fail
+end
+
+def __cib_dbl(s)
+  Float(s)
+rescue StandardError
+  __cib_fail
+end
+
+require 'strscan'
+$__cib_s = StringScanner.new($stdin.binmode.read.force_encoding(Encoding::UTF_8))
+
+def __cib_more
+  $__cib_s.skip(/[ \t\r\n]+/)
+  !$__cib_s.eos?
+end
+
+def __cib_has
+  !$__cib_s.match?(/[ \t\r\n]*[^ \t\r\n]/).nil?
+end
+
+def __cib_tok
+  $__cib_s.skip(/[ \t\r\n]+/)
+  $__cib_s.scan(/[^ \t\r\n]+/) || __cib_fail
+end
+
+def __cib_take(n)
+  Array.new(n) { __cib_tok }
+end
+
+def __cib_nl
+  s = $__cib_s
+  if s.pos > 0 && s.string.getbyte(s.pos - 1) != 10
+    s.skip_until(/\n/) || s.terminate
+  end
+  nil while s.skip(/[ \t\r]*\n/)
+end
+
+def __cib_line
+  __cib_fail if $__cib_s.eos?
+  $__cib_s.scan(/[^\n]*/).strip
+end
+
+def __cib_pos
+  $__cib_s.pos
+end
+
+def __cib_seek(p)
+  $__cib_s.pos = p
+end
+
+def __cib_f(r)
+  format('%.2f', r)
+end
+
+def __cib_main
+  __cib_o = []
+  __cib_end = ['0', '0']
+  while __cib_has
+    __cib_s = __cib_pos
+    break if __cib_end.all? { |w| __cib_more && __cib_tok == w }
+    __cib_seek(__cib_s)
+    begin
+      __cib_nl
+      __cib_v0 = __cib_line
+      __cib_nl
+      __cib_v1 = __cib_line.split.map { |x| __cib_int(x) }
+      __cib_v2 = __cib_int(__cib_tok)
+      __cib_v3 = Array.new(__cib_v2) { __cib_nl; __cib_line.split.map { |x| __cib_int(x) } }
+    rescue StandardError
+      __cib_fail
+    end
+    __cib_o << __cib_f(solution(__cib_v0, __cib_v1, __cib_v2, __cib_v3))
+  end
+  $stdout.write(__cib_o.join("\n"), "\n") unless __cib_o.empty?
+end
+
+__cib_main

@@ -3,14 +3,10 @@
  * with the glue code after it (and, for C++/Java, a few lines before it). Glue comes only
  * from these fixed templates, never from AI output (ADR-0006).
  */
-import { maskNonCode } from '@/runner/java/preprocess';
 import type { EngineId } from '@/shared/languages';
 import type { Format } from './dsl';
-import { CPP_PREFIX, cppGlue } from './glue/cpp';
-import { JAVA_PREFIX, javaGlue, unpublicSolution } from './glue/java';
-import { jsGlue } from './glue/js';
+import { glueLanguage, type GlueId } from './glue';
 import { makePlan } from './glue/plan';
-import { pythonGlue } from './glue/python';
 
 export interface Program {
   /** The whole source to run or submit. */
@@ -21,24 +17,15 @@ export interface Program {
   userLines: number;
 }
 
-const PREFIX: Record<EngineId, string> = { js: '', python: '', cpp: CPP_PREFIX, java: JAVA_PREFIX };
-
-export function buildProgram(engine: EngineId, format: Format, code: string): Program {
+export function buildProgram(glue: GlueId, format: Format, code: string): Program {
+  const language = glueLanguage(glue);
   const plan = makePlan(format);
-  const prefix = PREFIX[engine];
+  const prefix = language.prefix;
   // Trailing blank lines dropped, so the glue always follows after exactly two blank lines.
   let user = `${code.replace(/\r\n?/g, '\n').replace(/\s+$/, '')}\n`;
-  if (engine === 'java') user = unpublicSolution(user, maskNonCode(user));
-  const glue =
-    engine === 'js'
-      ? jsGlue(plan, format.ret)
-      : engine === 'python'
-        ? pythonGlue(plan, format.ret)
-        : engine === 'cpp'
-          ? cppGlue(plan, format.ret)
-          : javaGlue(plan, format.ret);
+  if (language.user) user = language.user(user);
   return {
-    source: `${prefix}${user}\n\n${glue}`,
+    source: `${prefix}${user}\n\n${language.glue(plan, format.ret)}`,
     prefixLines: prefix.split('\n').length - 1,
     userLines: user.split('\n').length - 1,
   };
@@ -79,8 +66,9 @@ export function mapLines(
   let out = text;
   if (engine === 'cpp') {
     out = out
-      .replace(/solution\.cpp:(\d+):(\d+):/g, (_, n: string, col: string) =>
-        fix(n, (k) => `solution.cpp:${k}:${col}:`, 'solution.cpp(입출력 코드):'),
+      // C and C++ both compile with clang: solution.c or solution.cpp.
+      .replace(/solution\.(cpp|c):(\d+):(\d+):/g, (_, ext: string, n: string, col: string) =>
+        fix(n, (k) => `solution.${ext}:${k}:${col}:`, `solution.${ext}(입출력 코드):`),
       )
       .replace(/^(\s*)(\d+)( \| )/gm, (_, sp: string, n: string, bar: string) =>
         fix(

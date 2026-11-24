@@ -185,12 +185,10 @@ test.describe('submit-only languages', () => {
     await expect(run).toHaveAttribute('title', SUBMIT_ONLY_REASON);
     await expect(page.getByTestId('run-unavailable')).toHaveText(SUBMIT_ONLY_REASON);
     await expect(page.getByText('solution.rs', { exact: true })).toBeVisible();
-    // The solution-function switch is off and says why.
+    // Rust has solution-function glue: submit-only does not block the switch.
     const toggle = page.getByRole('switch', { name: 'solution 함수' });
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
-    await expect(page.locator('#solution-reason')).toHaveText(
-      'Rust 2021에서는 solution 함수를 쓸 수 없어 표준 입출력으로 풀어요',
-    );
+    await expect(page.locator('#solution-reason')).toHaveCount(0);
 
     // Back to a language that runs: the button works again.
     await select.selectOption('javascript');

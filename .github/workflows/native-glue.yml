@@ -1,0 +1,72 @@
+# Compiles and runs solution-mode glue for languages the browser cannot run (tests/native).
+# Toolchains follow Baekjoon's languages; see tests/native/*.test.ts for the exact commands.
+name: 네이티브 연결 코드
+
+on:
+  pull_request:
+    paths:
+      - 'src/solution/**'
+      - 'tests/native/**'
+      - '.github/workflows/native-glue.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/solution/**'
+      - 'tests/native/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: 언어별 컴파일·실행
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      # Swift comes with the ubuntu runner image; install it only when the image drops it.
+      - name: Swift 확인
+        id: swift
+        run: echo "missing=$(command -v swiftc >/dev/null && echo false || echo true)" >> "$GITHUB_OUTPUT"
+      - uses: swift-actions/setup-swift@v2
+        if: steps.swift.outputs.missing == 'true'
+        with:
+          swift-version: '5.10'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Kotlin 컴파일러
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v1.9.24/kotlin-compiler-1.9.24.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+      - name: 도구 버전
+        run: |
+          gcc --version | head -1
+          go version
+          rustc --version || true
+          kotlinc -version 2>&1 || true
+          swift --version || true
+          dotnet --version
+          ruby --version
+      - name: 연결 코드 실행
+        run: npx vitest run tests/native --passWithNoTests
+        env:
+          NATIVE_GLUE: '1'

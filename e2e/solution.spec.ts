@@ -64,6 +64,26 @@ test('opens in solution mode with a format inferred from the samples', async ({
   await shot(page, 'solution-light-format-card');
 });
 
+test('runs a TypeScript solution function with typed starting code', async ({
+  page,
+  extensionId,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  await page.getByRole('combobox', { name: '언어' }).selectOption('typescript');
+  await expect(toggle(page)).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.file-tab')).toHaveText('solution.ts');
+  await expect(page.locator('.cm-content')).toContainText(
+    'function solution(a: number, b: number): number {',
+  );
+  await writeCode(
+    page,
+    page,
+    'function solution(a: number, b: number): number {\n  return a + b;\n}',
+  );
+  await page.getByRole('button', { name: '코드 실행' }).click();
+  await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공');
+});
+
 test('runs a Python solution function', async ({ page, extensionId }) => {
   test.setTimeout(60_000);
   await page.goto(`chrome-extension://${extensionId}/ide.html`);
@@ -130,6 +150,23 @@ test('editing the format validates it against the samples, and saving makes it t
   await expect(page.getByTestId('format-warning')).toBeVisible();
   await shot(page, 'solution-format-table');
   await page.getByRole('button', { name: '3번째 매개변수 삭제' }).click();
+
+  // A name used twice: one message, and both name fields marked.
+  const second = page.getByRole('textbox', { name: '2번째 매개변수 이름' });
+  await second.fill('x');
+  await second.press('Enter');
+  await expect(second).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByRole('textbox', { name: '1번째 매개변수 이름' })).toHaveAttribute(
+    'aria-invalid',
+    'true',
+  );
+  await page.getByTestId('format-warning').hover();
+  await expect(page.getByTestId('format-errors').locator('li')).toHaveText([
+    "'x' 이름을 다른 매개변수도 써요. 이름을 다르게 해 주세요.",
+  ]);
+  await second.fill('b');
+  await second.press('Enter');
+  await expect(second).not.toHaveAttribute('aria-invalid', 'true');
   await expect(page.getByTestId('format-check')).toBeVisible();
   await expect(page.getByRole('button', { name: '저장', exact: true })).toBeDisabled();
 

@@ -5,6 +5,7 @@
  */
 import { BOJ_LANGUAGES, type SubmitLanguage } from '@/boj/languages';
 import type { BuildOptions } from '@/runner/engine';
+import type { GlueId } from '@/solution/glue/types';
 import { LANGUAGE_STARTERS } from './starters';
 
 export type LanguageId = SubmitLanguage;
@@ -39,7 +40,7 @@ export interface LanguageInfo {
   build?: BuildOptions;
   syntax: SyntaxId;
   /** Glue family for the solution-function mode; none where its glue does not apply. */
-  glue?: EngineId;
+  glue?: GlueId;
   /** Languages with the same group share saved code (Python 3 and PyPy3, C++14/17/20). */
   codeGroup: string;
   bojId: number;
@@ -49,7 +50,13 @@ export interface LanguageInfo {
 type Entry = Omit<LanguageInfo, 'bojId' | 'starter' | 'syntax'> & { syntax?: SyntaxId };
 
 const clang = (lang: 'c' | 'c++', std: string): BuildOptions => ({ kind: 'clang', lang, std });
-const C = { fileName: 'solution.c', engine: 'cpp', syntax: 'c', codeGroup: 'c' } as const;
+const C = {
+  fileName: 'solution.c',
+  engine: 'cpp',
+  syntax: 'c',
+  glue: 'c',
+  codeGroup: 'c',
+} as const;
 const CPP = { fileName: 'solution.cpp', engine: 'cpp', glue: 'cpp', codeGroup: 'cpp' } as const;
 const PYTHON = {
   fileName: 'solution.py',
@@ -76,14 +83,15 @@ const ENTRIES: readonly Entry[] = [
     label: 'TypeScript',
     fileName: 'solution.ts',
     engine: 'js',
+    glue: 'ts',
     build: { kind: 'typescript' },
   },
-  { id: 'kotlin', label: 'Kotlin (JVM)', fileName: 'solution.kt' },
-  { id: 'rust', label: 'Rust 2021', fileName: 'solution.rs' },
-  { id: 'go', label: 'Go', fileName: 'solution.go' },
-  { id: 'swift', label: 'Swift', fileName: 'solution.swift' },
-  { id: 'csharp', label: 'C#', fileName: 'solution.cs' },
-  { id: 'ruby', label: 'Ruby', fileName: 'solution.rb' },
+  { id: 'kotlin', label: 'Kotlin (JVM)', fileName: 'solution.kt', glue: 'kotlin' },
+  { id: 'rust', label: 'Rust 2021', fileName: 'solution.rs', glue: 'rust' },
+  { id: 'go', label: 'Go', fileName: 'solution.go', glue: 'go' },
+  { id: 'swift', label: 'Swift', fileName: 'solution.swift', glue: 'swift' },
+  { id: 'csharp', label: 'C#', fileName: 'solution.cs', glue: 'csharp' },
+  { id: 'ruby', label: 'Ruby', fileName: 'solution.rb', glue: 'ruby' },
 ].map((e) => ({ codeGroup: e.id, ...e }) as Entry);
 
 export const LANGUAGES: readonly LanguageInfo[] = ENTRIES.map((e) => ({
