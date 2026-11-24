@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.16.0...v0.17.0) (2026-11-24)
+
+
+### 기능
+
+* **formats:** 케이스 머리말·빈 줄이 필요한 476문제 형식 추가 ([#167](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/167)) ([dbfe8b9](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/dbfe8b9ee5c1866222f2be33ae8a940f24764407))
+* **solution:** 형식 DSL에 케이스 머리말(label)과 케이스 뒤 빈 줄(blank) ([#165](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/165)) ([5ba163f](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/5ba163f87a9b77d3560b4dbca90f58d33b02a82e))
+
 ## [0.16.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.15.0...v0.16.0) (2026-11-24)
 
 
