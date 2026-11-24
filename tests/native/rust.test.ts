@@ -63,5 +63,30 @@ fn solution(a: i32, b: i32) -> i32 {
     scenario: `fn solution(_n: i32, arr: Vec<i32>) -> Vec<i32> {
     arr
 }`,
+    exprFlow: `fn solution(_n: i32, arr: Vec<i32>, g: Vec<Vec<i32>>) -> i64 {
+    let s: i64 = arr.iter().map(|&x| x as i64).sum();
+    s * 100 + g.len() as i64 * 10 + g[0].len() as i64
+}`,
+    blockCount: `fn solution(_n: i32, _k: Vec<i32>, name: Vec<String>, items: Vec<Vec<i32>>) -> Vec<String> {
+    name.iter()
+        .zip(items.iter())
+        .map(|(s, v)| format!("{}:{}", s, v.iter().sum::<i32>()))
+        .collect()
+}`,
+    blockUntil: `fn solution(_m: Vec<i32>, vals: Vec<Vec<i32>>, x: Vec<i32>, y: Vec<i32>) -> Vec<i32> {
+    let mut r: Vec<i32> = vals.iter().map(|v| *v.iter().max().unwrap()).collect();
+    r.extend(x.iter().zip(y.iter()).map(|(a, b)| a * b));
+    r
+}`,
+    endConds: `fn solution(n: i32, words: Vec<String>, p: Vec<i32>) -> i64 {
+    n as i64 + words.len() as i64 * 10 + p.iter().map(|&x| x as i64).sum::<i64>() * 100
+}`,
+    rawLines: `fn solution(t: String, _n: i32, ls: Vec<String>, mid: Vec<String>, rest: Vec<String>) -> Vec<String> {
+    let mut r = vec![format!("[{}]", t)];
+    for s in ls.iter().chain(mid.iter()).chain(rest.iter()) {
+        r.push(format!("[{}]", s));
+    }
+    r
+}`,
   },
 );
