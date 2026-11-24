@@ -163,6 +163,18 @@ const EMPTY_THEN_EOF = f({
   cases: null,
   ret: { type: 'long' },
 });
+// "Case #i: " before each answer; a label line before each case's lines and a blank line after.
+const LABEL = f({ ...AB, cases: { until: 'EOF' }, ret: { type: 'int', label: 'Case #{i}: ' } });
+const SCENARIO = f({
+  v: 1,
+  params: [
+    { name: 'n', type: 'int' },
+    { name: 'names', type: 'line[]' },
+  ],
+  lines: [['n'], { repeat: 'n', of: 'names' }],
+  cases: { count: 'T' },
+  ret: { type: 'line[]', label: 'Scenario #{i}:\n', blank: true },
+});
 
 interface Case {
   format: Format;
@@ -171,19 +183,16 @@ interface Case {
   code: Partial<Record<GlueId, string>>;
 }
 
+const AB_CODE = {
+  js: 'function solution(a, b) {\n  return a + b;\n}',
+  python: 'def solution(a, b):\n    return a + b',
+  cpp: 'int solution(int a, int b) {\n    return a + b;\n}',
+  c: 'int solution(int a, int b) {\n    return a + b;\n}',
+  java: 'class Solution {\n    public int solution(int a, int b) {\n        return a + b;\n    }\n}',
+};
+
 export const CASES: Record<string, Case> = {
-  'A+B': {
-    format: AB,
-    input: '1 2\n',
-    output: '3\n',
-    code: {
-      js: 'function solution(a, b) {\n  return a + b;\n}',
-      python: 'def solution(a, b):\n    return a + b',
-      cpp: 'int solution(int a, int b) {\n    return a + b;\n}',
-      c: 'int solution(int a, int b) {\n    return a + b;\n}',
-      java: 'class Solution {\n    public int solution(int a, int b) {\n        return a + b;\n    }\n}',
-    },
-  },
+  'A+B': { format: AB, input: '1 2\n', output: '3\n', code: AB_CODE },
   'sorting an array (lines wrapped differently from the format)': {
     format: SORT,
     input: '3\n5\n1 4\n',
@@ -317,6 +326,24 @@ export const CASES: Record<string, Case> = {
       cpp: 'long long solution(int n, vector<int> arr, vector<long long> rest) {\n    long long s = 0;\n    for (auto x : rest) s += x;\n    return s;\n}',
       c: 'long long solution(int n, int arr[], size_t arr_len, long long rest[], size_t rest_len) {\n    long long s = 0;\n    for (size_t i = 0; i < rest_len; i++) s += rest[i];\n    return s;\n}',
       java: 'class Solution {\n    public long solution(int n, int[] arr, long[] rest) {\n        long s = 0;\n        for (long x : rest) s += x;\n        return s;\n    }\n}',
+    },
+  },
+  'a case label on the answer line': {
+    format: LABEL,
+    input: '1 2\n3 4\n',
+    output: 'Case #1: 3\nCase #2: 7\n',
+    code: AB_CODE,
+  },
+  'a case label line, multi-line answers and a blank line after each case': {
+    format: SCENARIO,
+    input: '2\n1\nAlice Kim\n2\nBob\nCarol\n',
+    output: 'Scenario #1:\nAlice Kim\n\nScenario #2:\nBob\nCarol\n\n',
+    code: {
+      js: 'function solution(n, names) {\n  return names;\n}',
+      python: 'def solution(n, names):\n    return names',
+      cpp: 'vector<string> solution(int n, vector<string> names) {\n    return names;\n}',
+      c: 'char** solution(int n, const char* names[], size_t names_len, size_t* ret_len) {\n    *ret_len = names_len;\n    return (char**)names;\n}',
+      java: 'class Solution {\n    public String[] solution(int n, String[] names) {\n        return names;\n    }\n}',
     },
   },
 };

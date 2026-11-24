@@ -226,6 +226,37 @@ export const CASES = {
     input: '0\n50\n30\n9000000000\n',
     output: '9000000080\n',
   },
+  caseLabel: {
+    task: 'return a + b (each case printed after "Case #i: ")',
+    format: f({
+      v: 1,
+      params: [
+        { name: 'a', type: 'int' },
+        { name: 'b', type: 'int' },
+      ],
+      lines: [['a', 'b']],
+      cases: { count: 'T' },
+      ret: { type: 'int', label: 'Case #{i}: ' },
+    }),
+    input: '2\n1 2\n3 4\n',
+    output: 'Case #1: 3\nCase #2: 7\n',
+  },
+  scenario: {
+    task: 'return arr unchanged (a label line before each case and a blank line after it)',
+    format: f({
+      v: 1,
+      params: [
+        { name: 'n', type: 'int' },
+        { name: 'arr', type: 'int[]', len: 'n' },
+      ],
+      lines: [['n', 'arr']],
+      cases: { until: '0' },
+      ret: { type: 'int[]', sep: '\n', label: 'Scenario #{i}:\n', blank: true },
+    }),
+    input: '2 5 1\n1 9\n0\n',
+    // The blank line after the last case stays; judges ignore it.
+    output: 'Scenario #1:\n5\n1\n\nScenario #2:\n9\n\n',
+  },
 } satisfies Record<string, Case>;
 
 export type CaseName = keyof typeof CASES;

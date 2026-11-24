@@ -19,5 +19,7 @@ nativeSuite(
     untilEof: 'def solution(n, pairs, names)\n  pairs.map { |p| (p[0] + p[1]).to_s } + names\nend',
     untilDot: 'def solution(nums, texts)\n  (nums[0] + nums[1]) * 10 + texts.size\nend',
     emptyThenEof: 'def solution(n, arr, rest)\n  rest.sum\nend',
+    caseLabel: 'def solution(a, b)\n  a + b\nend',
+    scenario: 'def solution(n, arr)\n  arr\nend',
   },
 );

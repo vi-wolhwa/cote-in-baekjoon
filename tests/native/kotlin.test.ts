@@ -62,5 +62,11 @@ class Solution {
     emptyThenEof: `class Solution {
     fun solution(n: Int, arr: IntArray, rest: LongArray): Long = rest.sum()
 }`,
+    caseLabel: `class Solution {
+    fun solution(a: Int, b: Int): Int = a + b
+}`,
+    scenario: `class Solution {
+    fun solution(n: Int, arr: IntArray): IntArray = arr
+}`,
   },
 );

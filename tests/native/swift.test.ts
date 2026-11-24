@@ -25,5 +25,7 @@ nativeSuite(
       'func solution(_ nums: [Int], _ texts: [String]) -> Int {\n    return (nums[0] + nums[1]) * 10 + texts.count\n}',
     emptyThenEof:
       'func solution(_ n: Int, _ arr: [Int], _ rest: [Int]) -> Int {\n    return rest.reduce(0, +)\n}',
+    caseLabel: 'func solution(_ a: Int, _ b: Int) -> Int {\n    return a + b\n}',
+    scenario: 'func solution(_ n: Int, _ arr: [Int]) -> [Int] {\n    return arr\n}',
   },
 );

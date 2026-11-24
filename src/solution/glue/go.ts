@@ -4,7 +4,14 @@
  * `func solution(...)`; the user's own imports follow at the top of their code. After it,
  * a byte reader and `func main` that calls `solution` per case.
  */
-import { retSep, type Format, type ParamType, type RetSpec, type RetType } from '../dsl';
+import {
+  labelParts,
+  retSep,
+  type Format,
+  type ParamType,
+  type RetSpec,
+  type RetType,
+} from '../dsl';
 import {
   renderCount,
   renderRows,
@@ -397,6 +404,7 @@ function printer(ret: RetSpec): string[] {
 
 export function goGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
+  const label = labelParts(ret);
   const decls = plan.params.map((p, i) => `var ${variable(i)} ${GO_TYPES[p.type]}`);
   const body = (n: number) =>
     [
@@ -407,7 +415,15 @@ export function goGlue(plan: Plan, ret: RetSpec): string {
       "    __cib_o = append(__cib_o, '\\n')",
       '}',
       '__cib_cases++',
+      ...(label
+        ? [
+            `__cib_o = append(__cib_o, ${goQuote(label.pre)}...)`,
+            '__cib_o = __cib_strconv.AppendInt(__cib_o, int64(__cib_cases), 10)',
+            `__cib_o = append(__cib_o, ${goQuote(label.post)}...)`,
+          ]
+        : []),
       ...printer(ret),
+      ...(ret.blank ? ["__cib_o = append(__cib_o, '\\n')"] : []),
     ]
       .map((l) => ' '.repeat(n) + l)
       .join('\n');

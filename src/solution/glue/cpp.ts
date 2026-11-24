@@ -4,7 +4,7 @@
  * that calls `solution` per case, and printing that accepts any compatible return type
  * (int or long long, vector<int> or vector<long long>, string or vector<char> rows).
  */
-import { retSep, type ParamType, type RetSpec, type RetType } from '../dsl';
+import { labelParts, retSep, type ParamType, type RetSpec, type RetType } from '../dsl';
 import {
   quote,
   renderCount,
@@ -248,13 +248,18 @@ function printer(ret: RetSpec): string {
 export function cppGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
   const decls = plan.params.map((p, i) => `${qualified(CPP_TYPES[p.type])} ${variable(i)}{};`);
+  const label = labelParts(ret);
   const body = (n: number) =>
     [
       ...decls,
       ...plan.steps.map(step),
       `auto __cib_r = solution(${vars.join(', ')});`,
       "if (__cib_cases++) __cib_o += '\\n';",
+      ...(label
+        ? [`__cib_o += ${quote(label.pre)} + std::to_string(__cib_cases) + ${quote(label.post)};`]
+        : []),
       printer(ret),
+      ...(ret.blank ? ["__cib_o += '\\n';"] : []),
     ]
       .map((l) => ' '.repeat(n) + l)
       .join('\n');

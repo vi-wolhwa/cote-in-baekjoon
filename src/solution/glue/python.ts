@@ -3,7 +3,7 @@
  * everything with one sys.stdout.write. Formats without line boundaries use the fast
  * `sys.stdin.buffer.read().split()` path; the others keep a position in the text.
  */
-import { retSep, type RetSpec } from '../dsl';
+import { labelParts, retSep, type RetSpec } from '../dsl';
 import {
   needsLines,
   quote,
@@ -205,6 +205,13 @@ function formatter(ret: RetSpec): string {
   }
 }
 
+/** One case's output: its label (the case number is the outputs so far + 1), value, blank line. */
+function caseText(ret: RetSpec, value: string): string {
+  const label = labelParts(ret);
+  const head = label ? `${quote(label.pre)} + str(len(__cib_o) + 1) + ${quote(label.post)} + ` : '';
+  return `${head}${value}${ret.blank ? " + '\\n'" : ''}`;
+}
+
 export function pythonGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
   const indent = (n: number, lines: string[]) => lines.map((l) => ' '.repeat(n) + l).join('\n');
@@ -214,7 +221,7 @@ export function pythonGlue(plan: Plan, ret: RetSpec): string {
       ...(plan.steps.length ? plan.steps.map((s) => `    ${step(s)}`) : ['    pass']),
       'except Exception:',
       "    raise RuntimeError('__cib_input') from None",
-      `__cib_o.append(__cib_f(solution(${vars.join(', ')})))`,
+      `__cib_o.append(${caseText(ret, `__cib_f(solution(${vars.join(', ')}))`)})`,
     ]);
   const loop = (() => {
     switch (plan.loop.kind) {

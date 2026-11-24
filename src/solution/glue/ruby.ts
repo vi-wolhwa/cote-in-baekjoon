@@ -4,7 +4,7 @@
  * write. Formats without line boundaries split the whole input into tokens; the others
  * scan it with StringScanner. Integers are Integer (any size), reals Float.
  */
-import { retSep, type Format, type RetSpec } from '../dsl';
+import { labelParts, retSep, type Format, type RetSpec } from '../dsl';
 import {
   needsLines,
   renderCount,
@@ -225,6 +225,20 @@ function formatter(ret: RetSpec): string {
   }
 }
 
+/** A Ruby string expression; a trailing newline as `+ "\n"` (single quotes keep `\n` as is). */
+function rubyText(s: string): string {
+  return s.endsWith('\n') ? `${rubyQuote(s.slice(0, -1))} + "\\n"` : rubyQuote(s);
+}
+
+/** One case's output: its label (the case number is the outputs so far + 1), value, blank line. */
+function caseText(ret: RetSpec, value: string): string {
+  const label = labelParts(ret);
+  const head = label
+    ? `${rubyQuote(label.pre)} + (__cib_o.size + 1).to_s + ${rubyText(label.post)} + `
+    : '';
+  return `${head}${value}${ret.blank ? ' + "\\n"' : ''}`;
+}
+
 export function rubyGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
   const indent = (n: number, lines: string[]) => lines.map((l) => ' '.repeat(n) + l).join('\n');
@@ -239,7 +253,7 @@ export function rubyGlue(plan: Plan, ret: RetSpec): string {
             'end',
           ]
         : []),
-      `__cib_o << __cib_f(solution(${vars.join(', ')}))`,
+      `__cib_o << ${caseText(ret, `__cib_f(solution(${vars.join(', ')}))`)}`,
     ]);
   const loop = (() => {
     switch (plan.loop.kind) {

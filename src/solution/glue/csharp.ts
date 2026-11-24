@@ -5,7 +5,14 @@
  * `Main`: a byte reader over the whole input, one call per case (a new Solution each time)
  * and one write at the end. 2D arrays are jagged (`int[][]`).
  */
-import { retSep, type Format, type ParamType, type RetSpec, type RetType } from '../dsl';
+import {
+  labelParts,
+  retSep,
+  type Format,
+  type ParamType,
+  type RetSpec,
+  type RetType,
+} from '../dsl';
 import {
   renderCount,
   renderRows,
@@ -271,6 +278,7 @@ function printer(ret: RetSpec): string[] {
 
 export function csharpGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
+  const label = labelParts(ret);
   const decls = plan.params.map((p, i) => {
     const type = CSHARP_TYPES[p.type];
     const init = type === 'int' || type === 'long' ? '0' : type === 'double' ? '0.0' : 'null';
@@ -286,7 +294,13 @@ export function csharpGlue(plan: Plan, ret: RetSpec): string {
       '}',
       `${CSHARP_TYPES[ret.type]} __cib_res = new Solution().solution(${vars.join(', ')});`,
       "if (__cib_cases++ > 0) __cib_o.Append('\\n');",
+      ...(label
+        ? [
+            `__cib_o.Append(${csharpQuote(label.pre)}).Append(__cib_cases).Append(${csharpQuote(label.post)});`,
+          ]
+        : []),
       ...printer(ret),
+      ...(ret.blank ? ["__cib_o.Append('\\n');"] : []),
     ]
       .map((l) => ' '.repeat(n) + l)
       .join('\n');

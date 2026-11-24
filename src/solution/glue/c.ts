@@ -10,6 +10,7 @@
  * array of row lengths).
  */
 import {
+  labelParts,
   retSep,
   type Format,
   type Param,
@@ -198,9 +199,14 @@ export function cGlue(plan: Plan, ret: RetSpec): string {
     ]
       .map((l) => ' '.repeat(n) + l)
       .join('\n');
+  const label = labelParts(ret);
+  const before = label
+    ? `\n        __cib_puts(${quote(label.pre)}); __cib_putll(__cib_cases); __cib_puts(${quote(label.post)});`
+    : '';
+  const after = ret.blank ? "\n        __cib_putc('\\n');" : '';
   const loop = (() => {
     const each = (head: string) =>
-      `    ${head ? `${head} ` : ''}{\n        if (__cib_cases++) __cib_putc('\\n');\n${body(8)}\n    }`;
+      `    ${head ? `${head} ` : ''}{\n        if (__cib_cases++) __cib_putc('\\n');${before}\n${body(8)}${after}\n    }`;
     switch (plan.loop.kind) {
       case 'once':
         return each('');

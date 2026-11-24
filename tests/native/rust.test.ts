@@ -57,5 +57,11 @@ fn solution(a: i32, b: i32) -> i32 {
     emptyThenEof: `fn solution(_n: i32, _arr: Vec<i32>, rest: Vec<i64>) -> i64 {
     rest.iter().sum()
 }`,
+    caseLabel: `fn solution(a: i32, b: i32) -> i32 {
+    a + b
+}`,
+    scenario: `fn solution(_n: i32, arr: Vec<i32>) -> Vec<i32> {
+    arr
+}`,
   },
 );
