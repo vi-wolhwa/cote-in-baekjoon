@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.2](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.19.1...v0.19.2) (2026-11-24)
+
+
+### 버그 수정
+
+* **history:** 불러오는 동안 기존 기록 숨기기 — 불러오는 중 문구와 겹치던 문제 ([#181](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/181)) ([2be8fbf](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/2be8fbf9d6d694897159293e33b9157166c7b092))
+
 ## [0.19.1](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.19.0...v0.19.1) (2026-11-24)
 
 
