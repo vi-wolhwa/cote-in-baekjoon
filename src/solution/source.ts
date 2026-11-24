@@ -13,7 +13,7 @@ export type FormatSource = 'user' | 'bundled' | 'inferred';
 
 export const SOURCE_LABELS: Record<FormatSource, string> = {
   user: '직접 정의함',
-  bundled: '검증된 형식',
+  bundled: '형식 데이터',
   inferred: '예제로 추론함',
 };
 

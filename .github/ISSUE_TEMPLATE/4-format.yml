@@ -1,12 +1,12 @@
-name: 입출력 형식 제안
-description: solution 함수로 풀 때 쓰는 문제의 입출력 형식을 알려 주세요. 검토한 뒤 다음 버전의 형식 데이터에 넣습니다.
+name: 입출력 형식 오류 신고
+description: solution 함수로 풀 때 문제의 입출력 형식이 틀렸으면 알려 주세요. 확인한 뒤 다음 버전에서 고칩니다.
 title: "[형식] "
-labels: ["type:chore", "area:runner", "triage"]
+labels: ["type:fix", "area:runner", "triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        확장의 '형식 제안'으로 열었다면 문제 번호와 형식이 이미 채워져 있습니다. **문제 본문이나 코드는 붙이지 마세요.** 이 이슈는 공개됩니다.
+        확장의 '형식 오류 신고'로 열었다면 문제 번호와 형식이 이미 채워져 있습니다. **문제 본문이나 코드는 붙이지 마세요.** 이 이슈는 공개됩니다.
   - type: input
     id: problem
     attributes:
@@ -15,15 +15,22 @@ body:
     validations:
       required: true
   - type: textarea
-    id: format
+    id: what
     attributes:
-      label: 입출력 형식 (JSON)
-      description: 확장의 입출력 형식 편집기에서 저장한 형식입니다.
-      render: json
-    validations:
-      required: true
+      label: 무엇이 틀렸나요? (선택)
+      description: 한 줄이면 됩니다. 비워 두어도 확인합니다.
+      placeholder: 예) 배열 길이가 n이 아니라 n-1이에요. / 반환값을 줄마다 출력해야 해요.
   - type: textarea
-    id: note
+    id: io_format
     attributes:
-      label: 더 알려 주실 것 (선택)
-      placeholder: 예) 추론된 형식은 배열 길이가 틀렸어요.
+      label: 확장이 쓴 입출력 형식
+      render: json
+  - type: input
+    id: source
+    attributes:
+      label: 형식 출처
+  - type: input
+    id: version
+    attributes:
+      label: 확장 버전과 브라우저
+      placeholder: "0.6.0 / Chrome 131"

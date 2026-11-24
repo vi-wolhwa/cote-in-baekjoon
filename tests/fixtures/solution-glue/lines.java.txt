@@ -8,7 +8,8 @@ class Solution {
     }
 }
 
-// ---- 입출력 코드 (코딩테스트 in 백준이 붙임) ----
+
+// ---- 입출력 코드 ----
 public class Main {
     static byte[] __cib_d;
     static int __cib_p, __cib_n;

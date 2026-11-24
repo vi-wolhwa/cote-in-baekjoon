@@ -119,10 +119,16 @@ test('editing the format validates it against the samples, and saving makes it t
   // The untouched starting code follows the new signature.
   await expect(page.locator('.cm-content')).toContainText('function solution(x, b) {');
 
-  // JSON that is not even JSON.
-  await page.getByRole('tab', { name: 'JSON으로 편집' }).click();
-  await page.getByRole('textbox', { name: '입출력 형식 JSON' }).fill('{ "v": 1,');
-  await expect(page.getByTestId('format-errors')).toContainText('JSON 문법이 맞지 않아요');
+  // A parameter added on its own line does not fit the one-line samples; deleting it does.
+  await page.getByRole('button', { name: '+ 매개변수 추가' }).click();
+  await expect(page.getByRole('textbox', { name: '3번째 매개변수 이름' })).toHaveValue('n');
+  await expect(page.getByTestId('format-errors')).toBeVisible();
+  await page.getByRole('combobox', { name: '3번째 매개변수 읽는 방법' }).selectOption('same');
+  await expect(page.getByTestId('format-errors')).toBeVisible();
+  await shot(page, 'solution-format-table');
+  await page.getByRole('button', { name: '3번째 매개변수 삭제' }).click();
+  await expect(page.getByTestId('format-ok')).toBeVisible();
+  await expect(page.getByRole('button', { name: '저장', exact: true })).toBeDisabled();
 
   // 형식 초기화 goes back to the inferred format.
   await page.getByRole('button', { name: '형식 초기화' }).click();
@@ -241,8 +247,19 @@ test('in the mock exam, the answer keeps the function and the program with glue'
   });
   await page.goto(`chrome-extension://${extensionId}/exam.html#${id}`);
   await expect(toggle(page)).toHaveAttribute('aria-checked', 'true');
-  // 1000 is in the bundled format data (#123).
-  await expect(page.getByTestId('format-source')).toHaveText('검증된 형식');
+  // 1000 is in the bundled format data (#123), which needs no badge.
+  await expect(page.getByTestId('format-source')).toHaveCount(0);
+  // A wrong format can be reported; the link never carries a "format" parameter (GitHub: 406).
+  await page.getByRole('button', { name: '입출력 형식' }).click();
+  const report = new URL(
+    (await page.getByRole('link', { name: '형식 오류 신고' }).getAttribute('href')) ?? '',
+  );
+  expect(report.searchParams.get('template')).toBe('4-format.yml');
+  expect(report.searchParams.get('problem')).toBe('1000');
+  expect(report.searchParams.get('source')).toBe('형식 데이터');
+  expect(report.searchParams.get('io_format')).toContain('"name":"a"');
+  expect(report.searchParams.has('format')).toBe(false);
+  await page.getByRole('button', { name: '입출력 형식' }).click();
   await writeCode(page, page, JS_SOLUTION);
   await page.getByRole('button', { name: '코드 실행' }).click();
   await expect(page.getByText('solution(a: int, b: int) → int')).toBeVisible();
