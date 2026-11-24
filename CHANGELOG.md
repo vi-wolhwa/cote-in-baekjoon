@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.19.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.18.0...v0.19.0) (2026-11-24)
+
+
+### 기능
+
+* **formats:** 확장한 DSL로 null이던 236문제 형식 추가 ([#172](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/172)) ([08b2917](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/08b2917641a3b8d0d168cf91df38cf03cdbf804b))
+* **solution:** 형식 DSL 확장 — 개수 식, 블록 반복, flow 배열, 끝 조건, raw 줄 ([#170](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/170)) ([cdfe277](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/cdfe277e16ad54a0abb509ebcd33de5480ea3539))
+
 ## [0.18.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.17.0...v0.18.0) (2026-11-24)
 
 
