@@ -54,6 +54,7 @@ export const RULES: [RegExp, Target][] = [
     ['submit', 'submit-tab', 'exam-batch'],
   ],
   [/^src\/entrypoints\/ide\/solution\.css$/, ['solution']],
+  [/^src\/ide\/translate\//, ['translate']],
 ];
 
 /** The specs to run for these changed files: ALL, NONE, or a sorted list. */

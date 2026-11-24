@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'preact/hooks';
 import type { Problem, Sample } from '@/boj/problem';
 import { sampleRows, type CaseRow } from '@/solution/cases';
 import type { Format } from '@/solution/dsl';
+import { useTranslation, type TranslationStatus } from './translate/useTranslation';
 
 const MATH_PATTERN = /\$|\\\(|\\\[/;
 
@@ -26,7 +27,8 @@ export function ProblemPane({
   format?: Format | undefined;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const { sections } = problem;
+  const translation = useTranslation(problem.id, problem.sections);
+  const sections = translation.shown;
   const io = useMemo(
     () => (format ? problem.samples.map((s) => sampleRows(format, s)) : undefined),
     [problem, format],
@@ -43,11 +45,17 @@ export function ProblemPane({
     return () => {
       cancelled = true;
     };
-  }, [problem]);
+  }, [problem, sections]);
 
   return (
     <div class="problem" ref={root}>
       <div class="problem-label">문제 설명</div>
+      <TranslationBar
+        status={translation.status}
+        showOriginal={translation.showOriginal}
+        onTranslate={translation.translate}
+        onChoose={translation.choose}
+      />
       <p class="problem-limits">
         시간 제한 <b>{problem.timeLimitText || '-'}</b>
         <span aria-hidden="true"> · </span>
@@ -60,6 +68,88 @@ export function ProblemPane({
       {format && rows.length > 0 && <IoTable format={format} rows={rows} />}
       {problem.samples.map((s, i) => (io?.[i] ? null : <RawSample key={i} sample={s} n={i + 1} />))}
       {sections.hint && <Section title="힌트" html={sections.hint} />}
+    </div>
+  );
+}
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: '영어',
+  ja: '일본어',
+  zh: '중국어',
+  ru: '러시아어',
+  pl: '폴란드어',
+  de: '독일어',
+  fr: '프랑스어',
+  es: '스페인어',
+  vi: '베트남어',
+};
+
+const languageName = (code: string) => LANGUAGE_NAMES[code.split('-')[0] ?? code] ?? '외국어';
+
+/** Above a foreign-language statement: translating, and switching to the original. */
+function TranslationBar(props: {
+  status: TranslationStatus;
+  showOriginal: boolean;
+  onTranslate: () => void;
+  onChoose: (original: boolean) => void;
+}) {
+  const { status } = props;
+  if (status.kind === 'native') return null;
+  const name = languageName(status.source);
+  return (
+    <div class="translate-bar" data-testid="translate-bar">
+      {status.kind === 'unsupported' && (
+        <span class="translate-note">
+          {name} 문제예요. 이 브라우저는 내장 번역을 지원하지 않아 원문으로 보여요.
+        </span>
+      )}
+      {status.kind === 'ready' && (
+        <>
+          <button type="button" class="translate-button" onClick={props.onTranslate}>
+            한국어로 번역
+          </button>
+          <span class="translate-note">{name} 문제예요. 처음에는 번역 모델을 내려받아요.</span>
+        </>
+      )}
+      {status.kind === 'working' && (
+        <span class="translate-note" role="status">
+          번역하는 중…
+          {status.progress !== undefined &&
+            status.progress < 1 &&
+            ` (모델 ${Math.round(status.progress * 100)}%)`}
+        </span>
+      )}
+      {status.kind === 'error' && (
+        <>
+          <span class="translate-note">번역하지 못해 원문으로 보여요.</span>
+          <button type="button" class="translate-button" onClick={props.onTranslate}>
+            다시 시도
+          </button>
+        </>
+      )}
+      {status.kind === 'done' && (
+        <>
+          <span class="translate-toggle" role="group" aria-label="문제 언어">
+            <button
+              type="button"
+              aria-pressed={!props.showOriginal}
+              onClick={() => props.onChoose(false)}
+            >
+              번역
+            </button>
+            <button
+              type="button"
+              aria-pressed={props.showOriginal}
+              onClick={() => props.onChoose(true)}
+            >
+              원문
+            </button>
+          </span>
+          <span class="translate-note">
+            {props.showOriginal ? `${name} 원문` : `${name}에서 기계 번역했어요`}
+          </span>
+        </>
+      )}
     </div>
   );
 }

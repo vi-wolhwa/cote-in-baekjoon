@@ -249,5 +249,5 @@ test('help: report link, questions and the help page', async ({ page, context, e
     (await help.locator('#no-button').getByTestId('report-link').getAttribute('href')) ?? '',
   );
   expect(bug.searchParams.get('template')).toBe('1-bug.yml');
-  await expect(help.getByTestId('report-link')).toHaveCount(9);
+  await expect(help.getByTestId('report-link')).toHaveCount(10);
 });

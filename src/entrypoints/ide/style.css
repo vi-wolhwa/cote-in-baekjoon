@@ -449,6 +449,47 @@ textarea {
   white-space: pre-wrap;
   overflow-x: auto;
 }
+/* Translation of a foreign-language statement (ADR-0010). */
+.translate-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.translate-note {
+  color: var(--out-text);
+}
+.translate-button,
+.translate-toggle button {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--chip-border);
+  border-radius: 4px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+.translate-toggle {
+  display: inline-flex;
+}
+.translate-toggle button + button {
+  margin-left: -1px;
+}
+.translate-toggle button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+.translate-toggle button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.translate-toggle button[aria-pressed='true'] {
+  background: var(--chip-active-bg);
+  border-color: var(--chip-active-border);
+  color: var(--chip-active-text);
+}
 /* '입출력 예' in solution-function mode: a column per parameter and result. */
 .problem-io-scroll {
   overflow-x: auto;
