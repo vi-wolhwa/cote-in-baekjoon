@@ -59,7 +59,16 @@ const LINES = f({
 });
 
 /** Golden file extension per glue language. */
-const EXT = { js: 'js', python: 'py', cpp: 'cpp', c: 'c', java: 'java' } as const;
+const EXT = {
+  js: 'js',
+  python: 'py',
+  cpp: 'cpp',
+  c: 'c',
+  java: 'java',
+  kotlin: 'kt',
+  rust: 'rs',
+  go: 'go',
+} as const;
 const ENGINES = Object.keys(EXT) as (keyof typeof EXT)[];
 
 describe('generated programs (golden files)', () => {
@@ -149,6 +158,25 @@ describe('starterCode', () => {
       'double solution(const char* title, long long nums[], size_t nums_len, int k, int** rows, size_t rows_rows, size_t rows_cols[]) {',
     );
     expect(solutionFileName('c')).toBe('solution.c');
+  });
+
+  it('writes Kotlin, Rust and Go signatures like a coding-test site', () => {
+    expect(starterCode('kotlin', LINES)).toContain(
+      'fun solution(title: String, nums: LongArray, k: Int, rows: Array<IntArray>): Double {',
+    );
+    expect(starterCode('rust', GRID)).toContain(
+      'fn solution(n: i32, m: i32, board: Vec<Vec<char>>) -> bool {',
+    );
+    expect(starterCode('go', LINES)).toContain(
+      'func solution(title string, nums []int64, k int, rows [][]int) float64 {',
+    );
+  });
+
+  it('drops a package clause written in Go code', () => {
+    const go = buildProgram('go', AB, 'package main\n\nfunc solution(a int, b int) int {}');
+    expect(go.source.match(/^package main$/gm)).toHaveLength(1);
+    expect(go.prefixLines).toBe(2);
+    expect(go.userLines).toBe(3);
   });
 });
 

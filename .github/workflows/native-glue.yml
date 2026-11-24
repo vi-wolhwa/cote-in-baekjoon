@@ -43,6 +43,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Kotlin 컴파일러
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v1.9.24/kotlin-compiler-1.9.24.zip
+          unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
       - name: 도구 버전
         run: |
           gcc --version | head -1
