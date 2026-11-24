@@ -181,7 +181,7 @@ export function moveRow(table: FormatTable, index: number, by: -1 | 1): FormatTa
   return normalize({ ...table, rows });
 }
 
-/** "1번째 줄", "2번째 줄부터 n줄", then "그다음 줄" once line numbers stop being fixed. */
+/** "1번째 줄", "2번째 줄부터" (several lines), then "그다음 줄" once line numbers stop being fixed. */
 export function rowPositions(table: FormatTable): string[] {
   let line: number | undefined = table.cases && 'count' in table.cases ? 1 : 0;
   const out: string[] = [];
@@ -192,8 +192,7 @@ export function rowPositions(table: FormatTable): string[] {
     }
     if (line !== undefined) line++;
     if (row.mode === 'repeat') {
-      const n = row.count.trim() || '?';
-      out.push(line === undefined ? `그다음 ${n}줄` : `${line}번째 줄부터 ${n}줄`);
+      out.push(line === undefined ? '그다음 줄부터' : `${line}번째 줄부터`);
       line = undefined;
       return;
     }

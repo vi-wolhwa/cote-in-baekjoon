@@ -73,7 +73,7 @@ describe('table model', () => {
     expect(rowPositions(toTable(GRID))).toEqual([
       '1번째 줄',
       '1번째 줄',
-      '2번째 줄부터 n줄',
+      '2번째 줄부터',
       '그다음 줄',
     ]);
     expect(rowPositions(toTable(ARRAY))).toEqual(['2번째 줄', '3번째 줄']);
@@ -187,7 +187,7 @@ describe('formats beyond one value per token', () => {
     };
     expect(ok(blocks, '2 3\n1 2\n2 3\n1\n2\n3\n', '1\n1\n0').ok).toBe(true);
     const shown = toTable(f(blocks));
-    expect(rowPositions(shown)).toEqual(['1번째 줄', '1번째 줄', '2번째 줄부터 a줄', '그다음 b줄']);
+    expect(rowPositions(shown)).toEqual(['1번째 줄', '1번째 줄', '2번째 줄부터', '그다음 줄부터']);
   });
 
   it('reads n+m lines, whole lines, rows of words and doubles', () => {
