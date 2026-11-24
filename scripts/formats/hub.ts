@@ -15,11 +15,12 @@
 import { api, token, treeFile, type RepoIndex } from './github.ts';
 import type { Cache } from './lib/cache.ts';
 import { problemIdFromPath } from './lib/paths.ts';
+import { eachConcurrently } from './lib/pool.ts';
 
 const QUERY = '"Baekjoon Online Judge created with" in:description';
 const MAX_KB = 10_000_000;
 /** Repositories per GraphQL request. */
-const BATCH = 25;
+const BATCH = 10;
 
 export interface HubRepo {
   repo: string;
@@ -71,8 +72,9 @@ interface TreeNode {
   object?: { entries?: TreeNode[] } | null;
 }
 
-async function graphql<T>(query: string): Promise<T> {
-  for (let attempt = 0; ; attempt++) {
+/** One GraphQL request; null when it fails or takes too long (large trees time out). */
+async function graphql<T>(query: string): Promise<T | null> {
+  try {
     const res = await fetch('https://api.github.com/graphql', {
       method: 'POST',
       headers: {
@@ -81,10 +83,11 @@ async function graphql<T>(query: string): Promise<T> {
         'User-Agent': 'cote-in-baekjoon-format-data',
       },
       body: JSON.stringify({ query }),
-    }).catch(() => null);
-    if (res?.ok) return (await res.json()) as T;
-    if (attempt >= 4) throw new Error(`GraphQL ${res?.status ?? 'network'}`);
-    await new Promise((r) => setTimeout(r, 15_000 * (attempt + 1)));
+      signal: AbortSignal.timeout(60_000),
+    });
+    return res.ok ? ((await res.json()) as T) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -101,7 +104,38 @@ export function hubPaths(tiers: TreeNode[]): Record<string, string[]> {
   return paths;
 }
 
-/** Indexes `repos` not indexed yet, BATCH per GraphQL request. Returns every index. */
+/**
+ * Indexes one batch in one request. A failed request (usually a timeout on large trees) is split
+ * in halves; a single repository that still fails gets an empty index and is skipped.
+ */
+async function indexBatch(cache: Cache, batch: string[], out: RepoIndex[]): Promise<void> {
+  const fields = batch.map((repo, k) => {
+    const [owner, name] = repo.split('/');
+    return `r${k}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) {
+      object(expression: "HEAD:백준") { ... on Tree { entries { name object { ... on Tree { entries { name } } } } } }
+    }`;
+  });
+  const res = await graphql<{
+    data?: Record<string, { object: { entries?: TreeNode[] } | null } | null>;
+  }>(`query { ${fields.join(' ')} }`);
+  if (!res) {
+    if (batch.length > 1) {
+      const mid = Math.ceil(batch.length / 2);
+      await indexBatch(cache, batch.slice(0, mid), out);
+      await indexBatch(cache, batch.slice(mid), out);
+      return;
+    }
+    console.log(`${batch[0]}: 색인 실패`);
+  }
+  batch.forEach((repo, k) => {
+    const tiers = res?.data?.[`r${k}`]?.object?.entries ?? [];
+    const index: RepoIndex = { repo, sha: 'HEAD', truncated: false, paths: hubPaths(tiers) };
+    cache.writeJson(treeFile(repo), index);
+    out.push(index);
+  });
+}
+
+/** Indexes `repos` not indexed yet, BATCH per request, a few requests at once. */
 export async function indexHubRepos(cache: Cache, repos: HubRepo[]): Promise<RepoIndex[]> {
   const out: RepoIndex[] = [];
   const todo: string[] = [];
@@ -110,24 +144,12 @@ export async function indexHubRepos(cache: Cache, repos: HubRepo[]): Promise<Rep
     if (cached) out.push(cached);
     else todo.push(repo);
   }
-  for (let i = 0; i < todo.length; i += BATCH) {
-    const batch = todo.slice(i, i + BATCH);
-    const fields = batch.map((repo, k) => {
-      const [owner, name] = repo.split('/');
-      return `r${k}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) {
-        object(expression: "HEAD:백준") { ... on Tree { entries { name object { ... on Tree { entries { name } } } } } }
-      }`;
-    });
-    const res = await graphql<{
-      data?: Record<string, { object: { entries?: TreeNode[] } | null } | null>;
-    }>(`query { ${fields.join('\n')} }`);
-    batch.forEach((repo, k) => {
-      const tiers = res.data?.[`r${k}`]?.object?.entries ?? [];
-      const index: RepoIndex = { repo, sha: 'HEAD', truncated: false, paths: hubPaths(tiers) };
-      cache.writeJson(treeFile(repo), index);
-      out.push(index);
-    });
-    if ((i / BATCH + 1) % 20 === 0) console.log(`허브 색인 ${i + batch.length}/${todo.length}`);
-  }
+  const batches: string[][] = [];
+  for (let i = 0; i < todo.length; i += BATCH) batches.push(todo.slice(i, i + BATCH));
+  let done = 0;
+  await eachConcurrently(batches, 4, async (batch) => {
+    await indexBatch(cache, batch, out);
+    if (++done % 20 === 0) console.log(`허브 색인 ${done * BATCH}/${todo.length}`);
+  });
   return out;
 }
