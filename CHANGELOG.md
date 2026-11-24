@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.11.0...v0.11.1) (2026-11-24)
+
+
+### 버그 수정
+
+* **ide:** 번역을 Chrome·Edge·Whale에서, 코드·수식을 문장 속 제자리에 ([#149](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/149)) ([5d4ebf7](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/5d4ebf74df3df3dba2ad18d200ef7bda070fba2a))
+
 ## [0.11.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.10.0...v0.11.0) (2026-11-24)
 
 
