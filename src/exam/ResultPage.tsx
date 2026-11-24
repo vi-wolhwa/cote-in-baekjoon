@@ -24,6 +24,7 @@ import { PRACTICE_HASH, problemPageUrl } from './routes';
 import { tierName } from './solvedac';
 import { useBatchSubmit } from './useBatch';
 import { useExamRecord, useNow } from './useExam';
+import { StatusLink } from '@/shared/StatusLink';
 
 export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => void }) {
   const { state, update } = useExamRecord(id);
@@ -270,6 +271,13 @@ function ResultRow({
         {notice && <span class="result-reason">{notice}</span>}
         {row.submittedAfterMs !== undefined && (
           <span class="result-at">시작 후 {formatClock(row.submittedAfterMs)}</span>
+        )}
+        {!hidden && !live && row.judge?.status === 'done' && (
+          <StatusLink
+            class="result-status-link"
+            problemId={row.problem.id}
+            solutionId={row.judge.solutionId}
+          />
         )}
       </span>
       <a

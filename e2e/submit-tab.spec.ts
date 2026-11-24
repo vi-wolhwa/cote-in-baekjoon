@@ -71,6 +71,13 @@ test('submits in a background tab with a spinner, 직접 확인 and the result',
   await expect(judging.locator('.spinner')).toBeVisible();
   await closed;
   await expect(ide.getByTestId('judge')).toContainText('맞았습니다!! (44ms, 8.8MB)');
+  // After judging, a link to Baekjoon's status page lets the user check it there.
+  const link = ide.getByTestId('status-link');
+  await expect(link).toHaveText('채점 현황 보기 ↗');
+  await expect(link).toHaveAttribute('target', '_blank');
+  const href = new URL((await link.getAttribute('href')) ?? '');
+  expect(href.origin + href.pathname).toBe('https://www.acmicpc.net/status');
+  expect(href.searchParams.get('problem_id')).toBe('1000');
 });
 
 test('closing the tab early offers 결과 다시 확인, which reads the status list', async ({

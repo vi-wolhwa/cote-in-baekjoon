@@ -40,3 +40,25 @@ export async function rememberHandle(doc: Document): Promise<void> {
     // Storage unavailable (extension updated while the page was open).
   }
 }
+
+/** The stored id of the logged-in user, if any. */
+export async function loadHandle(): Promise<string | undefined> {
+  try {
+    const stored: unknown = (await browser.storage.local.get(HANDLE_KEY))[HANDLE_KEY];
+    return isHandle(stored) ? stored : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Baekjoon's status list for a finished submission, for "채점 현황 보기": the submission at
+ * the top when its number is known, else the user's own submissions for the problem.
+ */
+export function judgeStatusUrl(problemId: number, solutionId?: number, handle?: string): string {
+  const params = new URLSearchParams({ problem_id: String(problemId) });
+  if (isHandle(handle)) params.set('user_id', handle);
+  if (solutionId) params.set('top', String(solutionId));
+  else if (!isHandle(handle)) params.set('from_mine', '1');
+  return `https://www.acmicpc.net/status?${params.toString()}`;
+}

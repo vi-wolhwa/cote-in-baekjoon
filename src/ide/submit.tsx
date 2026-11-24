@@ -22,6 +22,7 @@ import {
   type JudgeResult,
   type SubmitLanguage,
 } from '@/shared/submission';
+import { StatusLink } from '@/shared/StatusLink';
 
 export interface SubmitInfo {
   /** When the submission being shown was asked for (this session, or a tab still running). */
@@ -236,7 +237,8 @@ function JudgeView({ result }: { result: JudgeResult }) {
       {done && (
         <p class="out-note">
           백준 채점 결과입니다
-          {result.solutionId ? ` (제출 번호 ${result.solutionId})` : ''}.
+          {result.solutionId ? ` (제출 번호 ${result.solutionId})` : ''}.{' '}
+          <StatusLink problemId={result.problemId} solutionId={result.solutionId} />
         </p>
       )}
     </div>
