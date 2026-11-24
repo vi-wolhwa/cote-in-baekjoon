@@ -10,6 +10,7 @@ import {
   type AccessEntry,
 } from '../scripts/formats/lib/boj-policy.ts';
 import { refFromContentsUrl } from '../scripts/formats/github.ts';
+import { hubPaths } from '../scripts/formats/hub.ts';
 import { indexTree, problemIdFromPath, rawUrl } from '../scripts/formats/lib/paths.ts';
 import {
   emptyRecord,
@@ -237,5 +238,19 @@ describe('hasDescription', () => {
     expect(hasDescription(rec(null, '출력'))).toBe(false);
     expect(hasDescription(rec('', '출력'))).toBe(false);
     expect(hasDescription(rec('', '출력', ''))).toBe(true);
+  });
+});
+
+describe('hubPaths', () => {
+  it('turns BaekjoonHub tier folders into README paths by problem id', () => {
+    const tiers = [
+      { name: 'Bronze', object: { entries: [{ name: '1000. A＋B' }, { name: 'notes' }] } },
+      { name: 'Gold', object: { entries: [{ name: '12865. 평범한 배낭' }] } },
+      { name: 'README.md', object: null },
+    ];
+    expect(hubPaths(tiers)).toEqual({
+      '1000': ['백준/Bronze/1000. A＋B/README.md'],
+      '12865': ['백준/Gold/12865. 평범한 배낭/README.md'],
+    });
   });
 });

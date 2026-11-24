@@ -38,14 +38,14 @@ export const CODE_QUERIES = [
   '"예제 입력 1" "제출 정보" "acmicpc.net/problem"',
 ];
 
-function token(): string {
+export function token(): string {
   if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
   return execFileSync('gh', ['auth', 'token'], { encoding: 'utf8' }).trim();
 }
 
 let cachedToken: string | null = null;
 
-async function api<T>(pathAndQuery: string, search = false): Promise<T> {
+export async function api<T>(pathAndQuery: string, search = false): Promise<T> {
   cachedToken ??= token();
   for (let attempt = 0; ; attempt++) {
     await (search ? searchPacer : apiPacer).wait();
@@ -174,7 +174,7 @@ export interface RepoIndex {
   paths: Record<string, string[]>;
 }
 
-const treeFile = (repo: string) => ['github', 'trees', `${repo.replace('/', '__')}.json`];
+export const treeFile = (repo: string) => ['github', 'trees', `${repo.replace('/', '__')}.json`];
 
 /** README index of one repository at its default branch head (cached). */
 async function indexRepo(cache: Cache, repo: string): Promise<RepoIndex> {
@@ -293,6 +293,8 @@ export interface FetchOptions {
   maxTries: number;
   /** Problems handled at once; raw reads stay paced as a whole. */
   concurrency?: number;
+  /** Stop at the input/output description (no samples needed; BaekjoonHub READMEs have none). */
+  descriptionOnly?: boolean;
 }
 
 /**
@@ -306,22 +308,30 @@ export async function fetchFromGithub(
   options: FetchOptions,
 ): Promise<void> {
   const state = cache.readJson<GithubState>(['github', 'state.json'], { tried: {}, repos: {} });
+  // Which README files hold each problem, built once (thousands of repositories).
+  const byId = new Map<number, { index: RepoIndex; path: string }[]>();
+  for (const index of indexes) {
+    for (const [id, paths] of Object.entries(index.paths)) {
+      const list = byId.get(Number(id)) ?? [];
+      for (const path of paths) list.push({ index, path });
+      byId.set(Number(id), list);
+    }
+  }
+  const enough = (r: ProblemRecord) => (options.descriptionOnly ? hasIo(r) : isComplete(r));
   let done = 0;
   await eachConcurrently(top, options.concurrency ?? 1, async (problem) => {
     const file = ['problems', `${problem.id}.json`];
     const now = new Date().toISOString();
     const record = cache.readJson<ProblemRecord>(file, emptyRecord(problem.id, problem.title, now));
-    if (isComplete(record)) {
+    if (enough(record)) {
       done++;
       return;
     }
 
     const tried = new Set(state.tried[problem.id] ?? []);
-    const options_ = indexes.flatMap((index) =>
-      (index.paths[problem.id] ?? []).map((p) => ({ index, path: p })),
-    );
+    const options_ = byId.get(problem.id) ?? [];
     let attempts = 0;
-    while (!isComplete(record) && attempts < options.maxTries) {
+    while (!enough(record) && attempts < options.maxTries) {
       const need = hasIo(record) ? 'samples' : 'io';
       const next = options_
         .filter((o) => !tried.has(rawUrl(o.index.repo, o.index.sha, o.path)))

@@ -20,6 +20,7 @@ import { hasDescription, isComplete, type ProblemRecord } from './lib/record.ts'
 import { coverage, topEntries } from './lib/stats.ts';
 import { loadTop, type TopProblem } from './solvedac.ts';
 import { blogCounters, fetchFromBlogs } from './blog.ts';
+import { indexHubRepos, listHubRepos } from './hub.ts';
 import { fetchFromVelog, velogCounters } from './velog.ts';
 
 const { values } = parseArgs({
@@ -32,6 +33,7 @@ const { values } = parseArgs({
     'skip-github': { type: 'boolean', default: false },
     'search-missing': { type: 'boolean', default: false },
     'more-repos': { type: 'boolean', default: false },
+    hub: { type: 'boolean', default: false },
     velog: { type: 'boolean', default: false },
     blog: { type: 'boolean', default: false },
     concurrency: { type: 'string', default: '1' },
@@ -118,6 +120,17 @@ if (!values.stats) {
       const extra = [...forText, ...(await searchMissing(cache, missing))];
       await fetchFromGithub(cache, list, [...indexes, ...extra], { maxTries, concurrency });
     }
+  }
+  if (values.hub) {
+    // Every BaekjoonHub repository: descriptions for every problem someone has solved and pushed.
+    const repos = await listHubRepos(cache);
+    console.log(`허브 저장소 ${repos.length}개`);
+    const hubIndexes = await indexHubRepos(cache, repos);
+    await fetchFromGithub(cache, list, hubIndexes, {
+      maxTries: 3,
+      concurrency,
+      descriptionOnly: true,
+    });
   }
   if (values.velog) {
     const filled = await fetchFromVelog(cache, list, concurrency);
