@@ -57,7 +57,7 @@
 
 **연결 코드** — 정해진 템플릿으로만 만든다(AI가 만든 코드는 넣지 않는다).
 - 사용자 코드 뒤에 붙이고, 앞에 붙는 줄(C++ include, Java import)만큼 오류 줄 번호를 보정한다. 식별자는 `__cib_` 접두어.
-- JavaScript: 표준 입력 한 번에 읽기, `console.log` 한 번. Python: `sys.stdin.buffer.read().split()`, `sys.stdout.write`. C++17: `bits/stdc++.h`, 빠른 입출력, 반환 타입을 가리지 않는 출력 템플릿. Java 11: 빠른 입력 리더, 사용자 `class Solution` + 뒤에 `public class Main`.
+- 언어마다 연결 코드 파일 하나를 등록한다(ADR-0008). JavaScript: 표준 입력 한 번에 읽기, `console.log` 한 번. Python: `sys.stdin.buffer.read().split()`, `sys.stdout.write`. C++17: `bits/stdc++.h`, 빠른 입출력, 반환 타입을 가리지 않는 출력 템플릿. Java 11: 빠른 입력 리더, 사용자 `class Solution` + 뒤에 `public class Main`.
 - 코드는 모드별로 따로 저장한다(모드를 바꿔도 코드가 지워지지 않는다).
 - interactive·함수 구현(func) 라벨 문제는 표준 입출력으로만 연다.
 
