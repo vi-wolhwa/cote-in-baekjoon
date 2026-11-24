@@ -17,7 +17,14 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { shardOf } from '@/solution/bundled';
-import { checkFormat, formatToJson, isBlock, mapLine, sameFormat, type Format } from '@/solution/dsl';
+import {
+  checkFormat,
+  formatToJson,
+  isBlock,
+  mapLine,
+  sameFormat,
+  type Format,
+} from '@/solution/dsl';
 import { inferCandidates, MIN_SCORE } from '@/solution/infer';
 import { isExcluded } from '@/solution/source';
 import { validateFormat } from '@/solution/validate';
@@ -203,7 +210,11 @@ function shapeKey(format: Format): string {
       Array.isArray(l)
         ? l.map((n) => names.get(n))
         : isBlock(l)
-          ? mapLine(l, (n) => names.get(n) ?? n, (c) => ref(c) ?? c)
+          ? mapLine(
+              l,
+              (n) => names.get(n) ?? n,
+              (c) => ref(c) ?? c,
+            )
           : ['repeat' in l ? ref(l.repeat) : { until: l.until }, names.get(l.of as string)],
     ),
     cases: format.cases,
