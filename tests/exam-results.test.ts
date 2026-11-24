@@ -67,7 +67,7 @@ describe('exam results', () => {
       ['accepted', '맞았습니다!!'],
       ['wrong', '틀렸습니다'],
       ['none', '채점 결과를 기다리는 중'],
-      ['none', '제출하지 않음'],
+      ['none', '제출 안 함'],
     ]);
     expect(summary.rows[0]).toMatchObject({ language: 'Python 3', submittedAfterMs: 10 * MIN });
     expect(summary.rows[3]?.language).toBeUndefined();

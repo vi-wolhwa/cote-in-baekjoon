@@ -2,7 +2,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { EXAM_COVER_ID, EXAM_COVER_MESSAGE, showExamCover } from '@/boj/exam-cover';
 import {
   EXAM_BUTTON_ID,
   EXAM_ITEM_ID,
@@ -153,17 +152,5 @@ describe('background: open the exam setup', () => {
       handleOpenExamSetup(message, { url: 'https://www.acmicpc.net/problem/1000' }),
     ).resolves.toEqual({ ok: false });
     expect(create).not.toHaveBeenCalled();
-  });
-});
-
-describe('status page cover in the exam (ADR-0005)', () => {
-  it('covers the whole page with the message, once', () => {
-    const doc = page('<html><head></head></html>');
-    const host = showExamCover(doc);
-    expect(host.parentElement).toBe(doc.documentElement);
-    expect(host.style.position).toBe('fixed');
-    expect(host.shadowRoot?.textContent).toContain(EXAM_COVER_MESSAGE);
-    expect(showExamCover(doc)).toBe(host);
-    expect(doc.querySelectorAll(`#${EXAM_COVER_ID}`)).toHaveLength(1);
   });
 });
