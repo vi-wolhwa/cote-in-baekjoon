@@ -46,50 +46,46 @@ async function typeCode(page: Page, ide: FrameLocator, code: string) {
 
 /**
  * Serves the status pages the extension opens to read (not the submit flow's `from_mine`
- * page) and returns the queries read. `pages` picks the page for a query.
+ * page) and returns the distinct queries read, in order. `pages` picks the page for a query.
+ * The handler never touches the request's page: a tab the extension opens may not be known
+ * to the test yet when its first navigation is routed.
  */
 async function serveStatus(
   context: BrowserContext,
   pages: (params: URLSearchParams) => string = (p) => (p.has('top') ? secondPage : statusPage),
 ) {
   const read: string[] = [];
-  const tabs = new Set<Page>();
   await context.route(/^https:\/\/(www\.)?acmicpc\.net\/status\?/, async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.has('from_mine')) return route.fallback();
-    try {
-      // A tab may load twice (its first navigation, then answerTabs): count it once.
-      const tab = route.request().frame().page();
-      if (!tabs.has(tab)) read.push(url.search);
-      tabs.add(tab);
-      await route.fulfill({
-        contentType: 'text/html; charset=utf-8',
-        body: pages(url.searchParams),
-      });
-    } catch {
-      // The extension closed the tab as soon as it had read it.
-    }
+    if (!read.includes(url.search)) read.push(url.search);
+    // The extension closes the tab as soon as it has read it.
+    await route
+      .fulfill({ contentType: 'text/html; charset=utf-8', body: pages(url.searchParams) })
+      .catch(() => undefined);
   });
   return read;
 }
 
 /**
- * The extension's reading tabs, in the order it opens them. Routes do not catch the first
- * navigation of a tab the extension creates, so each is loaded again at its URL.
+ * The extension's reading tabs, in the order it opens them; returns how many opened. Where
+ * a tab's first navigation is not routed, it is loaded again at its URL.
  */
 function answerTabs(context: BrowserContext, urls: string[]) {
   const queue = [...urls];
+  const opened = { count: 0 };
   context.on('page', (tab) => {
     const url = queue.shift();
     if (!url) return;
+    opened.count += 1;
     void (async () => {
       // Where the first navigation is routed, the extension reads the tab and closes it.
-      await tab.waitForEvent('close', { timeout: 1500 }).catch(() => undefined);
+      await tab.waitForEvent('close', { timeout: 3000 }).catch(() => undefined);
       if (!tab.isClosed()) await tab.goto(url).catch(() => undefined);
     })();
   });
+  return opened;
 }
-
 test('records a submission with its result and loads its code back', async ({ page, context }) => {
   await serveBaekjoon(context);
   await serveStatus(context, () => lastPage);
@@ -152,7 +148,7 @@ test('reads my and everyone’s status lists when the tab opens, and pages on', 
   await serveBaekjoon(context);
   const read = await serveStatus(context);
   const ide = await openIde(page);
-  answerTabs(context, [MINE, ALL, `${MINE}&top=6990`]);
+  const opened = answerTabs(context, [MINE, ALL, `${MINE}&top=6990`]);
   await ide.getByRole('tab', { name: '제출 기록' }).click();
 
   const mine = ide.getByTestId('my-status');
@@ -190,7 +186,7 @@ test('reads my and everyone’s status lists when the tab opens, and pages on', 
   await ide.getByRole('tab', { name: '제출 기록' }).click();
   await expect(all.getByTestId('all-status-row')).toHaveCount(4);
   await page.waitForTimeout(500);
-  expect(read).toHaveLength(3);
+  expect(opened.count).toBe(3);
 });
 
 test('shows the IDE’s submissions only when the Baekjoon id is unknown', async ({
