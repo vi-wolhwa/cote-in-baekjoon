@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.14.0...v0.15.0) (2026-11-24)
+
+
+### 기능
+
+* **formats:** BaekjoonHub 저장소 전체 수집, 웹에 올라온 1,280문제 형식 추가 ([#162](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/162)) ([23bceaa](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/23bceaa7a84c542cfc34a2c2b8752980908ff0a1))
+* **formats:** 오차 허용 실수 문제와 블로그 출처 501문제 형식 추가 ([#160](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/160)) ([00a7348](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/00a73488cc7e33e51a0e49f2336624f0b1acf67e))
+
 ## [0.14.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.13.0...v0.14.0) (2026-11-24)
 
 
