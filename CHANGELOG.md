@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.4.0...v0.5.0) (2026-11-24)
+
+
+### 기능
+
+* **exam:** 모의 시험 (문제 세트 만들기, 시험 화면, 결과, 백준 메뉴) ([#104](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/104)) ([ec29c54](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/ec29c548a293654c632652f08a478085d9f17637))
+* **exam:** 문제 미리 읽기와 시험 종료 후 답안 일괄 제출 ([#109](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/109)) ([71d0926](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/71d09264c46409dc32f484349818950008c246b4))
+* **exam:** 문제 번호를 왼쪽 세로 레일로 ([#107](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/107)) ([1555008](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/1555008d0eda95bba0cb563b118c1499284e487f)), closes [#101](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/101)
+* **exam:** 포함할 문제를 직접 넣고 빼기 ([#108](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/108)) ([0663e55](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/0663e559196c7d7864db425d64573837fea41245))
+* 제출을 팝업 창 대신 백그라운드 탭에서, 채점 중 표시와 결과 다시 확인 ([#110](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/110)) ([0bdc2df](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/0bdc2dfd1d5ecee951a0b34f76e5c9d7c856e86d))
+* 채점이 끝난 뒤 백준 채점 현황으로 가는 링크 ([#111](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/111)) ([69ed4ac](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/69ed4ac1c662d9a9429bb96234ec81c77fa7aa72))
+
+
+### 버그 수정
+
+* **exam:** 시험 문제 본문을 백그라운드 탭에서 읽기 ([#106](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/106)) ([347b132](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/347b132d1481a787e7929a6e3ee66ed635ea1236))
+
 ## [0.4.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.3.0...v0.4.0) (2026-11-23)
 
 
