@@ -14,9 +14,9 @@
  */
 import { parseArgs } from 'node:util';
 import { fetchFromBoj } from './boj.ts';
-import { discover, fetchFromGithub, indexRepos, searchMissing } from './github.ts';
+import { discover, discoverMore, fetchFromGithub, indexRepos, searchMissing } from './github.ts';
 import { Cache, counters } from './lib/cache.ts';
-import { isComplete, type ProblemRecord } from './lib/record.ts';
+import { hasDescription, isComplete, type ProblemRecord } from './lib/record.ts';
 import { coverage, topEntries } from './lib/stats.ts';
 import { loadTop, type TopProblem } from './solvedac.ts';
 import { blogCounters, fetchFromBlogs } from './blog.ts';
@@ -31,6 +31,7 @@ const { values } = parseArgs({
     'max-tries': { type: 'string', default: '6' },
     'skip-github': { type: 'boolean', default: false },
     'search-missing': { type: 'boolean', default: false },
+    'more-repos': { type: 'boolean', default: false },
     velog: { type: 'boolean', default: false },
     blog: { type: 'boolean', default: false },
     concurrency: { type: 'string', default: '1' },
@@ -53,6 +54,11 @@ const concurrency = Math.max(1, positiveInt('concurrency', values.concurrency, 1
 const maxTries = positiveInt('max-tries', values['max-tries'], 50);
 const cache = new Cache(values.cache);
 const started = Date.now();
+
+function describedInCache(id: number): boolean {
+  const r = cache.readJson<ProblemRecord | null>(['problems', `${id}.json`], null);
+  return r !== null && hasDescription(r);
+}
 
 function completeInCache(id: number): boolean {
   const r = cache.readJson<ProblemRecord | null>(['problems', `${id}.json`], null);
@@ -98,15 +104,19 @@ function report(list: TopProblem[]): void {
 const list = await loadTop(cache, top);
 if (!values.stats) {
   if (!values['skip-github']) {
-    const candidates = await discover(cache);
+    const candidates = values['more-repos'] ? await discoverMore(cache) : await discover(cache);
     const indexes = await indexRepos(cache, candidates, new Set(list.map((p) => p.id)));
     console.log(`문제가 있는 저장소 ${indexes.length}개`);
-    await fetchFromGithub(cache, list, indexes, { maxTries });
+    await fetchFromGithub(cache, list, indexes, { maxTries, concurrency });
     if (values['search-missing']) {
+      // Descriptions first: a format can be written from the description alone (ADR-0006).
+      const noText = list.filter((p) => !describedInCache(p.id)).map((p) => p.id);
+      console.log(`설명이 없는 문제 ${noText.length}개를 코드 검색합니다(7초 간격)`);
+      const forText = await searchMissing(cache, noText, 'description');
       const missing = list.filter((p) => !completeInCache(p.id)).map((p) => p.id);
-      console.log(`덜 모인 문제 ${missing.length}개를 코드 검색합니다(7초 간격)`);
-      const extra = await searchMissing(cache, missing);
-      await fetchFromGithub(cache, list, [...indexes, ...extra], { maxTries });
+      console.log(`예제가 없는 문제 ${missing.length}개를 코드 검색합니다(7초 간격)`);
+      const extra = [...forText, ...(await searchMissing(cache, missing))];
+      await fetchFromGithub(cache, list, [...indexes, ...extra], { maxTries, concurrency });
     }
   }
   if (values.velog) {
