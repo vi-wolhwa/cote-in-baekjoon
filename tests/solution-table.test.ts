@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import bundledData from '@/data/formats.json';
+import { sampleRows } from '@/solution/cases';
 import { checkFormat, formatToJson, sameFormat, type Format } from '@/solution/dsl';
 import { signature } from '@/solution/edit';
 import { parseBundled } from '@/solution/source';
@@ -342,5 +343,22 @@ describe('parameter name problems', () => {
     expect(nameError(t, 1)).toContain("'end'은(는) 쓸 수 없는 이름이에요");
     expect(nameError(t, 0)).toBeUndefined();
     expect(nameError(renameRow(t, 1, 'Arr'), 1)).toContain('영어 소문자로 시작');
+  });
+});
+
+describe("samples as '입출력 예' rows", () => {
+  it('writes one row per case with literals', () => {
+    expect(sampleRows(ARRAY, { input: '2\n3\n3 1 2\n1\n5\n', output: '1 2 3\n5\n' })).toEqual([
+      { params: { n: '3', arr: '[3, 1, 2]' }, expected: '[1, 2, 3]' },
+      { params: { n: '1', arr: '[5]' }, expected: '[5]' },
+    ]);
+  });
+
+  it('gives up on samples the format does not read', () => {
+    expect(sampleRows(ARRAY, { input: 'x\n', output: '1\n' })).toBeUndefined();
+    const art = f({ v: 1, params: [], lines: [], cases: null, ret: { type: 'line[]' } });
+    expect(sampleRows(art, { input: '', output: ' *\n***\n' })).toEqual([
+      { params: {}, expected: '[" *", "***"]' },
+    ]);
   });
 });

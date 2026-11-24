@@ -316,7 +316,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
               size={split.horizontal}
               onResize={(h) => setSplit((s) => ({ ...s, horizontal: h }))}
               onResizeEnd={saveSplit}
-              first={<ProblemPane problem={problem} />}
+              first={<ProblemPane problem={problem} format={sol.fn ? sol.format : undefined} />}
               second={
                 <SplitPane
                   direction="vertical"
