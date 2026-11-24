@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.7.0...v0.7.1) (2026-11-24)
+
+
+### 버그 수정
+
+* **solution:** 형식 표 열 너비 고정과 읽는 방법 정리 ([#133](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/133)) ([0b4f99c](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/0b4f99c726646579d73dd0884fb6006699113c70))
+
 ## [0.7.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.6.0...v0.7.0) (2026-11-24)
 
 
