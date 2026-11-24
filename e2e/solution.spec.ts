@@ -64,6 +64,26 @@ test('opens in solution mode with a format inferred from the samples', async ({
   await shot(page, 'solution-light-format-card');
 });
 
+test('runs a TypeScript solution function with typed starting code', async ({
+  page,
+  extensionId,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  await page.getByRole('combobox', { name: '언어' }).selectOption('typescript');
+  await expect(toggle(page)).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.file-tab')).toHaveText('solution.ts');
+  await expect(page.locator('.cm-content')).toContainText(
+    'function solution(a: number, b: number): number {',
+  );
+  await writeCode(
+    page,
+    page,
+    'function solution(a: number, b: number): number {\n  return a + b;\n}',
+  );
+  await page.getByRole('button', { name: '코드 실행' }).click();
+  await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공');
+});
+
 test('runs a Python solution function', async ({ page, extensionId }) => {
   test.setTimeout(60_000);
   await page.goto(`chrome-extension://${extensionId}/ide.html`);
