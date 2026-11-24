@@ -14,15 +14,17 @@
 }
 
 .history {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  padding: 16px;
+  padding: 12px 16px;
   font-size: 14px;
   line-height: 1.5;
 }
 .history-section + .history-section {
-  margin-top: 24px;
-  padding-top: 24px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid var(--line);
 }
 .history-head {
@@ -36,8 +38,14 @@
   font-size: 16px;
   color: var(--text-strong);
 }
+.history-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
 .history-head .out-button {
-  margin: 0 0 0 auto;
+  margin: 0;
 }
 .history-count {
   color: var(--out-hint);
@@ -57,36 +65,6 @@
   margin-top: 8px;
 }
 
-.history-list {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-}
-.history-list > li + li {
-  border-top: 1px solid var(--line);
-}
-.history-item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 10px;
-  width: 100%;
-  padding: 8px 12px;
-  border: 0;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  font-size: 14px;
-  text-align: left;
-}
-button.history-item {
-  cursor: pointer;
-}
-button.history-item:hover {
-  background: var(--icon-hover-bg);
-}
 .history-badge {
   flex: none;
   max-width: 12em;
@@ -122,18 +100,8 @@ button.history-item:hover {
   font-size: 13px;
 }
 .history-time {
-  margin-left: auto;
   color: var(--out-hint);
   font-size: 13px;
-  white-space: nowrap;
-}
-.history-tag {
-  padding: 0 6px;
-  border-radius: 9px;
-  background: var(--chip-active-bg);
-  color: var(--chip-active-text);
-  font-size: 11px;
-  line-height: 18px;
   white-space: nowrap;
 }
 .history-source {
@@ -162,9 +130,6 @@ button.history-item:hover {
   gap: 4px 10px;
   margin-top: 12px;
 }
-.history-detail-head .history-time {
-  margin-left: 0;
-}
 .history-actions {
   display: flex;
   flex-wrap: wrap;
@@ -187,4 +152,160 @@ button.history-item:hover {
   line-height: 1.5;
   white-space: pre;
   tab-size: 4;
+}
+
+/* Status tables like Baekjoon's 채점 현황: each section takes half the pane and shows as many
+   fixed-height rows as fit (StatusTable.tsx ROW_PX), so the pane does not scroll. */
+.status-section {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 220px;
+  container-type: inline-size;
+}
+.status-table-wrap {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 8px;
+}
+.status-body {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.status-body > .history-busy,
+.status-body > .status-empty {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 0 6px;
+}
+.status-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+.status-table th,
+.status-table td {
+  height: 30px;
+  padding: 0 6px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status-table th {
+  color: var(--out-hint);
+  font-size: 12px;
+  font-weight: 600;
+}
+.status-table td {
+  color: var(--text);
+}
+.status-table .col-num {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+.status-table .col-id {
+  width: 84px;
+}
+.status-table .col-user {
+  width: 96px;
+}
+.status-table .col-memory {
+  width: 76px;
+}
+.status-table .col-time {
+  width: 58px;
+}
+.status-table .col-lang {
+  width: 92px;
+}
+.status-table .col-length {
+  width: 66px;
+}
+.status-table .col-at {
+  width: 76px;
+}
+.status-table a,
+.status-open {
+  color: var(--link);
+  text-decoration: none;
+}
+.status-table a:hover,
+.status-open:hover {
+  text-decoration: underline;
+}
+.status-open {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.status-table tr.is-ide {
+  cursor: pointer;
+}
+.status-table tr.is-ide td {
+  font-weight: 700;
+}
+.status-table tr.is-ide:hover td {
+  background: var(--icon-hover-bg);
+}
+.status-result {
+  font-weight: 700;
+}
+.status-result.is-pass {
+  color: var(--pass);
+}
+.status-result.is-fail {
+  color: var(--fail);
+}
+.status-result.is-partial {
+  color: var(--warn);
+}
+.status-result.is-wait,
+.status-result.is-none {
+  color: var(--out-hint);
+}
+.status-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 6px;
+}
+.status-pager .out-button {
+  margin: 0;
+}
+.status-page-no {
+  color: var(--out-hint);
+  font-size: 13px;
+}
+/* Narrow panes keep the columns Baekjoon users look at first. */
+@container (max-width: 600px) {
+  .status-table .col-length {
+    display: none;
+  }
+}
+@container (max-width: 520px) {
+  .status-table .col-memory {
+    display: none;
+  }
+}
+@container (max-width: 430px) {
+  .status-table .col-lang,
+  .status-table .col-time {
+    display: none;
+  }
+}
+.history.history-detail {
+  display: block;
 }

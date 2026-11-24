@@ -15,7 +15,7 @@ import { FlagIcon } from '@/ide/icons';
 import { ProblemPane, runBlockReason, runNote } from '@/ide/ProblemPane';
 import { runCases } from '@/ide/run-cases';
 import { RunOutput, type RunOutputProps } from '@/ide/RunOutput';
-import { SplitPane } from '@/ide/SplitPane';
+import { EDITOR_MIN_PX, PROBLEM_MIN_PX, SplitPane } from '@/ide/SplitPane';
 import * as store from '@/ide/storage';
 import { Warnings } from '@/ide/submit';
 import { FormatCard } from '@/ide/solution/FormatCard';
@@ -273,6 +273,8 @@ export function ProblemWorkspace(props: Props) {
         <SplitPane
           direction="horizontal"
           size={split.horizontal}
+          minFirstPx={PROBLEM_MIN_PX}
+          minPx={EDITOR_MIN_PX}
           onResize={(h) => setSplit((s) => ({ ...s, horizontal: h }))}
           onResizeEnd={props.onSplitEnd}
           first={

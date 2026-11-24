@@ -201,6 +201,10 @@ milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
   - Mock exam (ADR-0005): after the user starts an exam, its problems (≤ 8) are opened one
     at a time in a background tab to read them. When the exam ends, its saved answers are
     submitted one at a time through the official submit window
+  - Submission history tab (ADR-0012, product owner decision 2026-11-25): when the user
+    opens the 제출 기록 tab, the first page of their own and of the problem's status list
+    are opened one at a time in a background tab to read them; later pages only when the
+    user pages on. At least 1 s apart, a page read within a minute is not read again
   - Format data for solution mode (ADR-0006), a development-time job, not the extension:
     problems found nowhere else on the public web may be opened on acmicpc.net in a
     browser at most one page per minute with a daily cap and a log (product owner

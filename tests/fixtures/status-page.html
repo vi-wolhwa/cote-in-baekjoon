@@ -1,7 +1,8 @@
 <!doctype html>
 <!--
   Synthetic page that mimics the structure of Baekjoon's /status list filtered by problem and
-  user (`/status?problem_id=1000&user_id=tester`). Not real data.
+  user (`/status?problem_id=1000&user_id=tester&top=7003`). Since 2026-11 it has a 채점 서버 column
+  before 언어. Not real data.
 -->
 <html lang="ko">
   <head>
@@ -21,6 +22,7 @@
           <th>결과</th>
           <th>메모리</th>
           <th>시간</th>
+          <th>채점 서버</th>
           <th>언어</th>
           <th>코드 길이</th>
           <th>제출한 시간</th>
@@ -36,6 +38,7 @@
           </td>
           <td class="memory">31120<span class="kb-text"></span></td>
           <td class="time">40<span class="ms-text"></span></td>
+          <td class="judge-platform"><span title="GCP">2</span></td>
           <td><a href="/source/7003">Python 3</a> / <a href="/submit/1000/7003">수정</a></td>
           <td>58<span class="b-text"></span></td>
           <td>
@@ -51,6 +54,7 @@
           </td>
           <td class="memory"></td>
           <td class="time"></td>
+          <td class="judge-platform"><span title="GCP">2</span></td>
           <td><a href="/source/7002">C++17</a> / <a href="/submit/1000/7002">수정</a></td>
           <td>213<span class="b-text"></span></td>
           <td>
@@ -68,6 +72,7 @@
           </td>
           <td class="memory"></td>
           <td class="time"></td>
+          <td class="judge-platform"><span title="GCP">2</span></td>
           <td>node.js</td>
           <td>40<span class="b-text"></span></td>
           <td>
@@ -83,6 +88,7 @@
           </td>
           <td class="memory">9000<span class="kb-text"></span></td>
           <td class="time">40<span class="ms-text"></span></td>
+          <td class="judge-platform"><span title="GCP">2</span></td>
           <td>node.js</td>
           <td>120<span class="b-text"></span></td>
           <td>
@@ -98,6 +104,7 @@
           </td>
           <td class="memory">9000<span class="kb-text"></span></td>
           <td class="time">40<span class="ms-text"></span></td>
+          <td class="judge-platform"><span title="GCP">2</span></td>
           <td>node.js</td>
           <td>120<span class="b-text"></span></td>
           <td>
@@ -106,5 +113,9 @@
         </tr>
       </tbody>
     </table>
+    <div class="text-center">
+      <a href="/status?problem_id=1000&amp;user_id=tester&amp;top=7010" id="prev_page">이전 페이지</a>
+      <a href="/status?problem_id=1000&amp;user_id=tester&amp;top=6990" id="next_page">다음 페이지</a>
+    </div>
   </body>
 </html>
