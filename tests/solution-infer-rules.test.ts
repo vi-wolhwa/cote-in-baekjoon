@@ -6,10 +6,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Sample } from '@/boj/problem';
 import { formatToJson, type Format } from '@/solution/dsl';
-import { inferFormat } from '@/solution/infer';
+import { inferCandidates, inferFormat } from '@/solution/infer';
 import { unprintable } from '@/solution/infer-ret';
 import {
   arrayLetters,
+  errorTolerance,
   fixedCounts,
   INT_LIMIT,
   maxBound,
@@ -201,9 +202,29 @@ describe('return value', () => {
   it('gives up on outputs a solution cannot print alone', () => {
     expect(unprintable([s('2\n1 2\n3 4\n', 'Case #1: 3\nCase #2: 7\n')])).toBe(true);
     expect(unprintable([s('5\n', '3\n1 2 3\n')])).toBe(true);
+    // A readable error bound is printable (a double with `tol`); an unreadable one is not.
     expect(unprintable([s('1 3\n', '0.333333\n')], '절대오차가 10^-6 이하이면 정답이다')).toBe(
-      true,
+      false,
     );
+    expect(unprintable([s('1 3\n', '0.333333\n')], '오차가 작으면 정답이다')).toBe(true);
     expect(unprintable([s('3\n1\n2\n3\n', '1\n2\n3\n')])).toBe(false);
+  });
+
+  it('reads the allowed error of real answers', () => {
+    expect(errorTolerance('절대/상대 오차가 10^-6 이하이면 정답이다')).toBe(1e-6);
+    expect(errorTolerance('정답과의 오차는 10-9까지 허용한다')).toBe(1e-9);
+    expect(errorTolerance('absolute error up to 1e-4 is accepted')).toBe(1e-4);
+    expect(errorTolerance('10^-6 이하로 출력한다')).toBeUndefined();
+    expect(errorTolerance('오차가 작으면 정답이다')).toBeUndefined();
+  });
+
+  it('prints real answers with an error bound as a double with tol', () => {
+    const [best] = inferCandidates({
+      samples: [s('1 3\n', '0.333333\n'), s('2 3\n', '0.6666666667\n')],
+      inputHtml: '<p>두 정수 A와 B가 주어진다.</p>',
+      outputHtml:
+        '<p>A/B를 출력한다. 실제 정답과 출력값의 절대오차 또는 상대오차가 10<sup>-9</sup> 이하이면 정답이다.</p>',
+    });
+    expect(best?.format.ret).toEqual({ type: 'double', digits: 10, tol: 1e-9 });
   });
 });

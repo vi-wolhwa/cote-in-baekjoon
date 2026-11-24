@@ -21,6 +21,8 @@ export interface RunCasesInput {
   onProgress: (output: RunOutputProps) => void;
   /** Rewrites each response (solution mode maps messages back to the user code). */
   transform?: (response: RunResponse) => RunResponse;
+  /** Allowed error for real answers (solution mode). */
+  tol?: number;
 }
 
 export async function runCases(input: RunCasesInput): Promise<RunOutputProps> {
@@ -45,7 +47,7 @@ export async function runCases(input: RunCasesInput): Promise<RunOutputProps> {
     });
     const raw = await runner.run(language, code, sample.input, limit);
     const response = input.transform ? input.transform(raw) : raw;
-    reports.push(buildCaseReport(i + 1, sample, response, limit, problemLimitMs));
+    reports.push(buildCaseReport(i + 1, sample, response, limit, problemLimitMs, input.tol));
     if (response.status !== 'cancelled' && response.status !== 'timeout') warmEngines.add(engine);
     // A compile error is the same for every case: show it once.
     if (response.status === 'cancelled' || response.status === 'compile-error') break;

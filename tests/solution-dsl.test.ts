@@ -501,6 +501,33 @@ describe('validateFormat', () => {
     });
   });
 
+  it('compares real answers within the allowed error (tol)', () => {
+    const base = JSON.parse(formatToJson(AB)) as Format;
+    const samples = [
+      { input: '1 3\n', output: '0.333333\n' },
+      { input: '2 3\n', output: '0.6666666667\n' },
+    ];
+    expect(validateFormat({ ...base, ret: { type: 'double', digits: 10 } }, samples).ok).toBe(
+      false,
+    );
+    expect(
+      validateFormat({ ...base, ret: { type: 'double', digits: 10, tol: 1e-6 } }, samples).ok,
+    ).toBe(true);
+  });
+
+  it('accepts tol only on a double return, between 1e-15 and 1', () => {
+    const base = JSON.parse(formatToJson(AB)) as Format;
+    const ok = checkFormat({ ...base, ret: { type: 'double', digits: 6, tol: 1e-6 } });
+    expect(ok.ok && formatToJson(ok.format)).toContain(
+      '"ret":{"type":"double","digits":6,"tol":0.000001}',
+    );
+    expect(checkFormat({ ...base, ret: { type: 'int', tol: 1e-6 } }).ok).toBe(false);
+    expect(checkFormat({ ...base, ret: { type: 'double', digits: 6, tol: 0 } }).ok).toBe(false);
+    expect(checkFormat({ ...base, ret: { type: 'double', digits: 6, tol: '1e-6' } }).ok).toBe(
+      false,
+    );
+  });
+
   it('keeps a string token with leading zeros as written', () => {
     const r = validateFormat(
       {

@@ -29,7 +29,7 @@ export function validateFormat(value: unknown, samples: readonly Sample[]): Vali
       reasons.push(`${tag} 출력: ${out.error}`);
     } else if (
       out.values.length > 0 &&
-      !outputsMatch(formatOutput(format.ret, out.values), sample.output)
+      !outputsMatch(formatOutput(format.ret, out.values), sample.output, format.ret.tol)
     ) {
       reasons.push(`${tag} 출력: 반환값을 이 형식으로 출력하면 예제 출력과 달라져요`);
     }

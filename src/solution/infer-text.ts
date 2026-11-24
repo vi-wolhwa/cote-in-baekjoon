@@ -200,6 +200,8 @@ export interface TextHints {
   /** Fixed sizes the input description states ("5개의 정수" → 5), and row widths ("세 정수"). */
   fixed: Set<number>;
   fixedCols: Set<number>;
+  /** The error the output description allows for real answers ("오차 10^-6까지 허용" → 1e-6). */
+  tol?: number;
 }
 
 const END_LINE =
@@ -236,7 +238,19 @@ export function textHints(inputHtml: string, outputHtml: string): TextHints {
       !WIDE.test(outText),
     fixed: fixedCounts(inText),
     fixedCols: fixedCounts(inText, true),
+    ...(errorTolerance(outText) !== undefined ? { tol: errorTolerance(outText) } : {}),
   };
+}
+
+/**
+ * The allowed error of real answers in an output description: "절대/상대 오차가 10^-6 이하",
+ * "10-9까지 허용" (superscripts lost), "1e-4". Undefined when there is none or it is unclear.
+ */
+export function errorTolerance(text: string): number | undefined {
+  if (!/오차|error/i.test(text)) return undefined;
+  const m = /10\s*\^?\s*\{?\s*[-−–]\s*(\d{1,2})|\b1\s*[eE]\s*[-−–]\s*(\d{1,2})\b/.exec(text);
+  const k = Number(m?.[1] ?? m?.[2]);
+  return k >= 1 && k <= 15 ? 10 ** -k : undefined;
 }
 
 /** Quoted text and Latin phrases, in order of appearance and each once. */

@@ -31,6 +31,8 @@ export interface SolutionDeps {
 export interface RunPlan {
   code: string;
   transform?: (r: RunResponse) => RunResponse;
+  /** Allowed error for real answers, compared in the run results. */
+  tol?: number;
 }
 
 export function useSolution(deps: SolutionDeps) {
@@ -143,6 +145,7 @@ export function useSolution(deps: SolutionDeps) {
     const program = buildProgram(glue, format, code);
     return {
       code: program.source,
+      ...(format.ret.tol !== undefined ? { tol: format.ret.tol } : {}),
       transform: (r) => {
         if (!r.result || !engine) return r;
         const mapped = mapRunMessages(engine, program, r.result);

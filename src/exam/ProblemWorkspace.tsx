@@ -192,6 +192,7 @@ export function ProblemWorkspace(props: Props) {
       language,
       code: plan.code,
       ...(plan.transform ? { transform: plan.transform } : {}),
+      ...(plan.tol !== undefined ? { tol: plan.tol } : {}),
       cases: [...body.samples, ...cases],
       problemLimitMs: body.timeLimitMs,
       warmEngines: props.warmEngines,
