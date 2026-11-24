@@ -139,6 +139,8 @@ describe('language registry', () => {
     expect(languageInfo('cpp14').glue).toBe('cpp');
     expect(languageInfo('java8').glue).toBe('java');
     expect(languageInfo('typescript').glue).toBe('ts');
+    // Every language has glue (ADR-0008).
+    for (const l of LANGUAGES) expect(l.glue && GLUES[l.glue], l.id).toBeDefined();
   });
 
   it('validates language ids', () => {
