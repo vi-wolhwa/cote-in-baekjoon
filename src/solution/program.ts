@@ -26,8 +26,8 @@ const PREFIX: Record<EngineId, string> = { js: '', python: '', cpp: CPP_PREFIX, 
 export function buildProgram(engine: EngineId, format: Format, code: string): Program {
   const plan = makePlan(format);
   const prefix = PREFIX[engine];
-  let user = code.replace(/\r\n?/g, '\n');
-  if (!user.endsWith('\n')) user += '\n';
+  // Trailing blank lines dropped, so the glue always follows after exactly two blank lines.
+  let user = `${code.replace(/\r\n?/g, '\n').replace(/\s+$/, '')}\n`;
   if (engine === 'java') user = unpublicSolution(user, maskNonCode(user));
   const glue =
     engine === 'js'
@@ -38,7 +38,7 @@ export function buildProgram(engine: EngineId, format: Format, code: string): Pr
           ? cppGlue(plan, format.ret)
           : javaGlue(plan, format.ret);
   return {
-    source: `${prefix}${user}\n${glue}`,
+    source: `${prefix}${user}\n\n${glue}`,
     prefixLines: prefix.split('\n').length - 1,
     userLines: user.split('\n').length - 1,
   };

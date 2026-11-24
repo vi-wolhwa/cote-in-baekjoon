@@ -10,6 +10,7 @@ export const ISSUE_FORMS = {
   bug: '1-bug.yml',
   'run-diff': '2-run-diff.yml',
   feature: '3-feature.yml',
+  format: '4-format.yml',
 } as const;
 
 export type IssueKind = keyof typeof ISSUE_FORMS;
@@ -24,6 +25,9 @@ export interface ReportContext {
   language?: string;
   /** Fills "무엇이 잘못되었나요?" (bug form only), e.g. a self-diagnosis line (#87). */
   details?: string;
+  /** Format form only: the format in use, as JSON, and where it came from. */
+  format?: string;
+  formatSource?: string;
 }
 
 /** The issue form URL with the known fields filled in (form field ids are the keys). */
@@ -35,6 +39,9 @@ export function issueUrl(kind: IssueKind, context: ReportContext): string {
     if (context.language) params.set('language', context.language);
   }
   if (kind === 'bug' && context.details) params.set('what', context.details);
+  // Not "format": GitHub (Rails) reads that parameter as the response type and answers 406.
+  if (kind === 'format' && context.format) params.set('io_format', context.format);
+  if (kind === 'format' && context.formatSource) params.set('source', context.formatSource);
   return `${REPO_URL}/issues/new?${params.toString()}`;
 }
 

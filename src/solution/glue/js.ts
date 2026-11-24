@@ -134,7 +134,7 @@ export function jsGlue(plan: Plan, ret: RetSpec): string {
     }
   })();
   return [
-    '// ---- 입출력 코드 (코딩테스트 in 백준이 붙임) ----',
+    '// ---- 입출력 코드 ----',
     '(() => {',
     RUNTIME.split('\n')
       .map((l) => `  ${l}`)

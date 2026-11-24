@@ -275,7 +275,7 @@ function parseLines(
           fail(`'${p.name}'(line)은 한 줄을 통째로 읽어서 혼자 있어야 해요.`);
         }
         if (isArrayType(p.type) && p.len === undefined && j < line.length - 1) {
-          fail(`개수(len)가 없는 배열 '${p.name}'은(는) 줄의 마지막에만 둘 수 있어요.`);
+          fail(`개수가 없는 배열 '${p.name}'은(는) 줄의 마지막에만 둘 수 있어요.`);
         }
         if (isArrayType(p.type) && p.len !== undefined) checkCount(p.len, `'${p.name}'`);
         read.add(p.name);

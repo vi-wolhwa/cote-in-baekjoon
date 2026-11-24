@@ -1,27 +1,64 @@
 /**
- * The table view of the format editor: each parameter's name, type and where it is read,
- * and the return value's type and output options. Line layout and case loops are edited
- * as JSON; this view keeps every reference when a parameter is renamed.
+ * The format editor (#114): one row per parameter in input order, with its name, type, how
+ * it is read and its counts; rows can be added, removed and moved. Below them, how many
+ * cases the input has and how the return value is printed. Covers all of DSL v1.
  */
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import {
+  isArrayType,
+  isGridType,
+  MAX_PARAMS,
   PARAM_TYPES,
   RET_TYPES,
-  type Format,
   type ParamType,
   type RetSpec,
   type RetType,
 } from '@/solution/dsl';
-import { casesText, positions, renameParam, retypeParam, setRet } from '@/solution/edit';
+import {
+  addRow,
+  casesChoice,
+  casesFor,
+  modeOptions,
+  moveRow,
+  removeRow,
+  renameRow,
+  rowPositions,
+  setRow,
+  type CasesChoice,
+  type FormatTable,
+  type ParamRow,
+  type RowMode,
+} from '@/solution/table';
 
 interface Props {
-  format: Format;
-  onChange: (format: Format) => void;
+  table: FormatTable;
+  onChange: (table: FormatTable) => void;
 }
 
-export function FormatForm({ format, onChange }: Props) {
-  const where = positions(format);
-  const loop = casesText(format);
+const TYPE_LABELS: Record<ParamType, string> = {
+  int: 'int 정수',
+  long: 'long 큰 정수',
+  double: 'double 실수',
+  string: 'string 단어',
+  line: 'line 한 줄 전체',
+  'int[]': 'int[] 정수 배열',
+  'long[]': 'long[] 큰 정수 배열',
+  'string[]': 'string[] 단어 배열',
+  'int[][]': 'int[][] 정수 2차원 배열',
+  'char[][]': 'char[][] 문자 격자',
+};
+
+const retLabel = (t: RetType) => (t === 'bool' ? 'bool 참거짓' : TYPE_LABELS[t]);
+
+function modeLabel(mode: RowMode, type: ParamType): string {
+  if (mode === 'new') return '새 줄에서';
+  if (mode === 'same') return '앞과 같은 줄에서';
+  return isGridType(type) ? '여러 줄에서 (한 줄에 한 행)' : '여러 줄에서 (한 줄에 하나씩)';
+}
+
+export function FormatForm({ table, onChange }: Props) {
+  const where = rowPositions(table);
+  const last = table.rows.length - 1;
   return (
     <div class="format-form">
       <table class="format-table">
@@ -29,70 +66,250 @@ export function FormatForm({ format, onChange }: Props) {
           <tr>
             <th scope="col">매개변수</th>
             <th scope="col">타입</th>
-            <th scope="col">읽는 위치</th>
+            <th scope="col">읽는 방법</th>
+            <th scope="col">
+              <span class="visually-hidden">순서와 삭제</span>
+            </th>
           </tr>
         </thead>
         <tbody>
-          {format.params.map((p, i) => (
-            <tr key={`${i}:${p.name}`}>
+          {table.rows.map((row, i) => (
+            <tr key={i}>
               <td>
                 <NameInput
-                  value={p.name}
+                  value={row.name}
                   label={`${i + 1}번째 매개변수 이름`}
-                  onCommit={(name) => onChange(renameParam(format, p.name, name))}
+                  onCommit={(name) => onChange(renameRow(table, i, name))}
                 />
               </td>
               <td>
                 <select
-                  aria-label={`${p.name}의 타입`}
-                  value={p.type}
+                  aria-label={`${i + 1}번째 매개변수 타입`}
+                  value={row.type}
                   onChange={(e) =>
-                    onChange(retypeParam(format, p.name, e.currentTarget.value as ParamType))
+                    onChange(setRow(table, i, { type: e.currentTarget.value as ParamType }))
                   }
                 >
                   {PARAM_TYPES.map((t) => (
                     <option key={t} value={t}>
-                      {t}
+                      {TYPE_LABELS[t]}
                     </option>
                   ))}
                 </select>
               </td>
-              <td class="format-where">
-                {where.get(p.name)}
-                {p.len !== undefined && ` · 길이 ${p.len}`}
-                {p.cols !== undefined && ` · 열 ${p.cols}`}
+              <td>
+                <div class="format-read">
+                  <span class="format-where">{where[i]}</span>
+                  <ReadOptions
+                    row={row}
+                    index={i}
+                    modes={modeOptions(table, i)}
+                    onChange={(patch) => onChange(setRow(table, i, patch))}
+                  />
+                </div>
+              </td>
+              <td class="format-row-actions">
+                <button
+                  type="button"
+
+                  aria-label={`${i + 1}번째 매개변수를 위로`}
+                  title="위로"
+                  disabled={i === 0}
+                  onClick={() => onChange(moveRow(table, i, -1))}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+
+                  aria-label={`${i + 1}번째 매개변수를 아래로`}
+                  title="아래로"
+                  disabled={i === last}
+                  onClick={() => onChange(moveRow(table, i, 1))}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+
+                  aria-label={`${i + 1}번째 매개변수 삭제`}
+                  title="삭제"
+                  disabled={table.rows.length <= 1}
+                  onClick={() => onChange(removeRow(table, i))}
+                >
+                  ×
+                </button>
               </td>
             </tr>
           ))}
+          <tr>
+            <td colSpan={4}>
+              <button
+                type="button"
+                class="out-button format-add"
+                disabled={table.rows.length >= MAX_PARAMS}
+                onClick={() => onChange(addRow(table))}
+              >
+                + 매개변수 추가
+              </button>
+            </td>
+          </tr>
+          <tr class="format-cases">
+            <th scope="row">입력 반복</th>
+            <td colSpan={3}>
+              <CasesOptions table={table} onChange={onChange} />
+            </td>
+          </tr>
           <tr class="format-ret">
             <th scope="row">반환값</th>
             <td>
               <select
                 aria-label="반환 타입"
-                value={format.ret.type}
+                value={table.ret.type}
                 onChange={(e) =>
-                  onChange(setRet(format, defaultRet(e.currentTarget.value as RetType, format.ret)))
+                  onChange({
+                    ...table,
+                    ret: defaultRet(e.currentTarget.value as RetType, table.ret),
+                  })
                 }
               >
                 {RET_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t}
+                    {retLabel(t)}
                   </option>
                 ))}
               </select>
             </td>
-            <td>
-              <RetOptions ret={format.ret} onChange={(ret) => onChange(setRet(format, ret))} />
+            <td colSpan={2}>
+              <RetOptions ret={table.ret} onChange={(ret) => onChange({ ...table, ret })} />
             </td>
           </tr>
         </tbody>
       </table>
-      {loop && (
-        <p class="format-note">
-          여러 케이스: {loop}. 케이스마다 solution을 부르고 결과를 줄마다 출력해요.
-        </p>
-      )}
     </div>
+  );
+}
+
+function ReadOptions(props: {
+  row: ParamRow;
+  index: number;
+  modes: RowMode[];
+  onChange: (patch: Partial<ParamRow>) => void;
+}) {
+  const { row, index, modes, onChange } = props;
+  const n = index + 1;
+  const repeat = row.mode === 'repeat';
+  return (
+    <span class="format-ret-options">
+      {modes.length > 1 ? (
+        <select
+          aria-label={`${n}번째 매개변수 읽는 방법`}
+          value={row.mode}
+          onChange={(e) => onChange({ mode: e.currentTarget.value as RowMode })}
+        >
+          {modes.map((m) => (
+            <option key={m} value={m}>
+              {modeLabel(m, row.type)}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span class="format-where">{modeLabel(row.mode, row.type)}</span>
+      )}
+      {isArrayType(row.type) && !repeat && (
+        <CountInput
+          label={`${n}번째 매개변수 개수`}
+          prefix="개수"
+          placeholder="줄 끝까지"
+          value={row.count}
+          onChange={(count) => onChange({ count })}
+        />
+      )}
+      {repeat && (
+        <CountInput
+          label={`${n}번째 매개변수 줄 수`}
+          prefix={isGridType(row.type) ? '행' : '줄 수'}
+          placeholder="예: n"
+          value={row.count}
+          onChange={(count) => onChange({ count })}
+        />
+      )}
+      {isGridType(row.type) && (
+        <CountInput
+          label={`${n}번째 매개변수 열 수`}
+          prefix="열"
+          placeholder="줄 전체"
+          value={row.cols}
+          onChange={(cols) => onChange({ cols })}
+        />
+      )}
+    </span>
+  );
+}
+
+function CountInput(props: {
+  label: string;
+  prefix: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <>
+      {props.prefix}
+      <input
+        type="text"
+        class="format-count"
+        aria-label={props.label}
+        placeholder={props.placeholder}
+        title="숫자나 앞에서 읽은 정수 이름 (n, n-1, n*m)"
+        spellcheck={false}
+        value={props.value}
+        onInput={(e) => props.onChange(e.currentTarget.value)}
+      />
+    </>
+  );
+}
+
+const CASES_LABELS: Record<CasesChoice, string> = {
+  once: '한 번 (케이스 하나)',
+  count: '첫 줄의 수만큼',
+  eof: '입력이 끝날 때까지',
+  until: '이 줄이 나올 때까지',
+};
+
+function CasesOptions({ table, onChange }: Props) {
+  const choice = casesChoice(table.cases);
+  const until = table.cases && 'until' in table.cases ? table.cases.until : '';
+  return (
+    <span class="format-ret-options">
+      <select
+        aria-label="입력 반복"
+        value={choice}
+        onChange={(e) =>
+          onChange({
+            ...table,
+            cases: casesFor(e.currentTarget.value as CasesChoice, table.cases),
+          })
+        }
+      >
+        {(Object.keys(CASES_LABELS) as CasesChoice[]).map((c) => (
+          <option key={c} value={c}>
+            {CASES_LABELS[c]}
+          </option>
+        ))}
+      </select>
+      {choice === 'until' && (
+        <input
+          type="text"
+          aria-label="입력을 끝내는 줄"
+          spellcheck={false}
+          value={until}
+          onInput={(e) => onChange({ ...table, cases: { until: e.currentTarget.value } })}
+        />
+      )}
+      {choice !== 'once' && <span class="format-where">케이스마다 solution을 불러요</span>}
+    </span>
   );
 }
 
@@ -107,6 +324,7 @@ function NameInput({
   onCommit: (v: string) => void;
 }) {
   const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
   const commit = () => {
     const name = text.trim();
     if (name && name !== value) onCommit(name);
@@ -185,9 +403,9 @@ function RetOptions({ ret, onChange }: { ret: RetSpec; onChange: (r: RetSpec) =>
         onChange({ ...ret, sep: v === 'newline' ? '\n' : v === 'none' ? '' : ' ' });
       }}
     >
-      <option value="space">{grid ? '열 사이 공백' : '공백으로 구분'}</option>
+      <option value="space">{grid ? '행마다 한 줄, 열 사이 공백' : '한 줄에 공백으로 구분'}</option>
       {grid ? (
-        <option value="none">열 사이 없음</option>
+        <option value="none">행마다 한 줄, 열 사이 없음</option>
       ) : (
         <option value="newline">한 줄에 하나씩</option>
       )}

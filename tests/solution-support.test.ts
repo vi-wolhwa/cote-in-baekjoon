@@ -1,6 +1,6 @@
 /**
  * Everything around the solution-function core: test case rows (#36), where a format comes
- * from, the AI prompt and the proposal issue, editor helpers, backups and exam answers.
+ * from, backups and exam answers. The format editor's table model is in solution-table.test.ts.
  */
 import { describe, expect, it } from 'vitest';
 import type { Problem } from '@/boj/problem';
@@ -9,8 +9,6 @@ import { isAnswer } from '@/exam/answers';
 import { isBackupKey, isValidEntry } from '@/shared/backup';
 import { emptyRow, rowToSample, sampleToRow, RET_CELL } from '@/solution/cases';
 import { checkFormat, type Format } from '@/solution/dsl';
-import { positions, renameParam, signature } from '@/solution/edit';
-import { buildPrompt, extractJson, formatProposalUrl } from '@/solution/prompt';
 import { EXCLUDED_REASON, parseBundled, resolveFormat, UNKNOWN_REASON } from '@/solution/source';
 
 const f = (x: unknown): Format => {
@@ -138,61 +136,6 @@ describe('resolveFormat', () => {
     const map = parseBundled({ v: 1, formats: { '1000': AB_JSON, '1001': { v: 2 }, x: AB_JSON } });
     expect([...map.keys()]).toEqual([1000]);
     expect(parseBundled({ v: 2, formats: {} }).size).toBe(0);
-  });
-});
-
-describe('prompt and proposal', () => {
-  it('builds a prompt with the DSL rules, the description and the samples', () => {
-    const text = buildPrompt(AB_PROBLEM);
-    expect(text).toContain('JSON만 답하세요');
-    expect(text).toContain('"lines"');
-    expect(text).toContain('[입력]\n첫째 줄에 A와 B가 주어진다.');
-    expect(text).toContain('예제 입력 2:\n```\n5 4\n```');
-  });
-
-  it('finds the JSON in a pasted answer', () => {
-    expect(extractJson('여기 있어요:\n```json\n{"v": 1}\n```')).toEqual({ v: 1 });
-    expect(() => extractJson('없음')).toThrow('JSON을 찾지 못했어요');
-    expect(() => extractJson('{ v: 1 }')).toThrow('JSON 문법');
-  });
-
-  it('opens a proposal issue with only the problem number and the format', () => {
-    const url = new URL(formatProposalUrl(1000, f(AB_JSON)));
-    expect(url.pathname).toBe('/vi-wolhwa/cote-in-baekjoon/issues/new');
-    expect(url.searchParams.get('template')).toBe('4-format.yml');
-    expect(url.searchParams.get('problem')).toBe('1000');
-    expect(JSON.parse(url.searchParams.get('format') ?? '')).toEqual(AB_JSON);
-    expect([...url.searchParams.keys()].sort()).toEqual(['format', 'problem', 'template', 'title']);
-  });
-});
-
-describe('editor helpers', () => {
-  it('renames a parameter everywhere it is referenced', () => {
-    const r = renameParam(ARRAY, 'n', 'size');
-    expect(r.params[1]).toEqual({ name: 'arr', type: 'int[]', len: 'size' });
-    expect(r.lines).toEqual([['size'], ['arr']]);
-    expect(checkFormat(r).ok).toBe(true);
-  });
-
-  it('says where each parameter is read and writes a signature', () => {
-    const grid = f({
-      v: 1,
-      params: [
-        { name: 'n', type: 'int' },
-        { name: 'g', type: 'char[][]' },
-        { name: 'k', type: 'int' },
-      ],
-      lines: [['n'], { repeat: 'n', of: 'g' }, ['k']],
-      cases: null,
-      ret: { type: 'int' },
-    });
-    expect(Object.fromEntries(positions(grid))).toEqual({
-      n: '1번째 줄',
-      g: '2번째 줄부터 n줄',
-      k: '그다음 줄',
-    });
-    expect(Object.fromEntries(positions(ARRAY))).toEqual({ n: '2번째 줄', arr: '3번째 줄' });
-    expect(signature(ARRAY)).toBe('solution(n: int, arr: int[]) → int[]');
   });
 });
 

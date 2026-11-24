@@ -3,7 +3,8 @@ function solution(title, nums, k, rows) {
     return answer;
 }
 
-// ---- 입출력 코드 (코딩테스트 in 백준이 붙임) ----
+
+// ---- 입출력 코드 ----
 (() => {
   const __cib_d = require('fs').readFileSync('/dev/stdin').toString();
   const __cib_n = __cib_d.length;
