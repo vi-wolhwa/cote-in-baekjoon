@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { checkFormat, formatToJson, type Format } from '@/solution/dsl';
 import { inferCandidates, inferFormat } from '@/solution/infer';
-import { htmlToText, maxBound, sentenceLine, variables } from '@/solution/infer-text';
+import { htmlToText, maxBound, scalarNames, sentenceLine } from '@/solution/infer-text';
 import { HOLDOUT_SET, INFER_SET, type InferProblem } from './fixtures/infer-set';
 
 /** The format with parameters renamed p0, p1, … in order, so only the structure is compared. */
@@ -47,7 +47,7 @@ describe('text hints', () => {
   it('finds lines, variables and bounds', () => {
     expect(sentenceLine('둘째 줄부터 N개의 줄에')).toBe(2);
     expect(sentenceLine('세 번째 줄에는')).toBe(3);
-    expect(variables('첫째 줄에 N과 M이 주어진다. A_1, A_2')).toEqual(['N', 'M']);
+    expect(scalarNames('첫째 줄에 N과 M이 주어진다. A_1, A_2, …, A_N')).toEqual(['N', 'M']);
     expect(maxBound('1 ≤ N ≤ 100,000, A_i ≤ 10^18')).toBe(1e18);
   });
 });

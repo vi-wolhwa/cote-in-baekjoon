@@ -232,7 +232,7 @@ export const INFER_SET: InferProblem[] = [
     input: '<p>첫째 줄에 N이 주어진다. 다음 N개의 줄에 N개의 정수가 주어진다.</p>',
     output: '<p>대각선 원소의 합을 출력한다.</p>',
     samples: [s('3\n1 2 3\n4 5 6\n7 8 9\n', '15\n'), s('2\n1 0\n0 1\n', '2\n')],
-    expect: { v: 1, params: [p('n', 'int'), p('grid', 'int[][]', { cols: 'n' })], lines: [['n'], { repeat: 'n', of: 'grid' }], cases: null, ret: { type: 'int' } },
+    expect: { v: 1, params: [p('n', 'int'), p('board', 'int[][]', { cols: 'n' })], lines: [['n'], { repeat: 'n', of: 'board' }], cases: null, ret: { type: 'int' } },
   },
   {
     name: '벽 세기',
