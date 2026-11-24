@@ -292,6 +292,7 @@ export function usesRows(plan: Plan): boolean {
     allSteps(plan.steps).some(
       (s) =>
         s.op === 'raw' ||
+        s.op === 'rawLines' ||
         s.op === 'endRaw' ||
         (s.op === 'block' && (s.loop.kind === 'tok' || s.loop.kind === 'line')) ||
         ('n' in s && 'kind' in s.n && ['tok', 'line', 'phys'].includes(s.n.kind)),
