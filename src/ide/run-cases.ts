@@ -4,6 +4,7 @@
  */
 import type { Sample } from '@/boj/problem';
 import type { SandboxRunner } from '@/runner/client';
+import type { RunResponse } from '@/shared/messages';
 import { languageInfo, type LanguageId } from '@/shared/languages';
 import type { RunOutputProps } from './RunOutput';
 import { buildCaseReport, runTimeLimit, summarize, type CaseReport } from './run-report';
@@ -18,6 +19,8 @@ export interface RunCasesInput {
   /** Engines that already loaded in this session; the first Python/C++ run takes seconds. */
   warmEngines: Set<string>;
   onProgress: (output: RunOutputProps) => void;
+  /** Rewrites each response (solution mode maps messages back to the user code). */
+  transform?: (response: RunResponse) => RunResponse;
 }
 
 export async function runCases(input: RunCasesInput): Promise<RunOutputProps> {
@@ -39,7 +42,8 @@ export async function runCases(input: RunCasesInput): Promise<RunOutputProps> {
       total: cases.length,
       preparing: firstLoad && i === 0,
     });
-    const response = await runner.run(language, code, sample.input, limit);
+    const raw = await runner.run(language, code, sample.input, limit);
+    const response = input.transform ? input.transform(raw) : raw;
     reports.push(buildCaseReport(i + 1, sample, response, limit, problemLimitMs));
     if (response.status !== 'cancelled' && response.status !== 'timeout') warmEngines.add(engine);
     // A compile error is the same for every case: show it once.

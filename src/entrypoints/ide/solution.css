@@ -1,0 +1,281 @@
+/* solution 함수 mode (ADR-0006): title-row switch, the 입출력 형식 card, the test case table. */
+
+.solution-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px 0 4px;
+  border: 1px solid var(--chip-border);
+  border-radius: 4px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.switch.is-on {
+  color: var(--chip-active-text);
+  background: var(--chip-active-bg);
+  border-color: var(--chip-active-border);
+}
+.switch[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.switch-track {
+  position: relative;
+  width: 24px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--handle);
+  transition: background 0.15s;
+}
+.switch.is-on .switch-track {
+  background: var(--blue);
+}
+.switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.15s;
+}
+.switch.is-on .switch-thumb {
+  transform: translateX(10px);
+}
+.link-chip {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px dashed var(--chip-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--link);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* The format card sits between the file tab and the editor. */
+.format-card {
+  flex: none;
+  max-height: 55%;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+/* Open, the card may take most of the code area; the editor keeps a few lines. */
+.format-card.is-open {
+  max-height: calc(100% - 96px);
+}
+.format-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 12px;
+}
+.format-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-strong);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.format-chevron {
+  width: 12px;
+  color: var(--icon);
+}
+.format-badge {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  border: 1px solid currentColor;
+}
+.format-badge.is-user {
+  color: var(--pass);
+}
+.format-badge.is-bundled {
+  color: var(--text-strong);
+}
+.format-badge.is-inferred {
+  color: var(--warn);
+}
+.format-signature {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--out-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.format-body {
+  padding: 0 12px 12px 28px;
+  color: var(--text);
+}
+.format-note,
+.format-ok,
+.format-status {
+  margin: 6px 0;
+  color: var(--out-hint);
+}
+.format-ok {
+  color: var(--pass);
+}
+.format-warn,
+.format-errors {
+  margin: 6px 0;
+  color: var(--warn);
+}
+.format-errors {
+  padding-left: 18px;
+}
+.format-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0;
+}
+.format-tabs button {
+  padding: 2px 10px;
+  border: 1px solid var(--chip-border);
+  border-radius: 4px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+.format-tabs button[aria-selected='true'] {
+  background: var(--chip-active-bg);
+  border-color: var(--chip-active-border);
+  color: var(--chip-active-text);
+}
+.format-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.format-table th,
+.format-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: middle;
+}
+.format-table thead th {
+  color: var(--out-label);
+  font-size: 12px;
+}
+.format-ret th {
+  color: var(--text-strong);
+}
+.format-table input,
+.format-table select,
+.format-json,
+.format-paste textarea {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--select-text);
+  background: var(--select-bg);
+  border: 1px solid var(--select-border);
+  border-radius: 4px;
+}
+.format-table input[type='text'] {
+  width: 9em;
+  padding: 2px 6px;
+}
+.format-table input[type='number'] {
+  width: 4em;
+}
+.format-table select {
+  height: 22px;
+}
+.format-where {
+  color: var(--out-text);
+}
+.format-ret-options {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--out-text);
+}
+.format-ret-options input[type='text'] {
+  width: 6em;
+}
+.format-json,
+.format-paste textarea {
+  display: block;
+  width: 100%;
+  min-height: 140px;
+  padding: 6px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.format-paste {
+  margin: 8px 0;
+}
+.format-paste textarea {
+  min-height: 80px;
+}
+.format-paste .out-button + .out-button,
+.format-actions .out-button {
+  margin-right: 6px;
+}
+.format-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.format-actions a.out-button {
+  text-decoration: none;
+}
+.format-actions .out-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Test case dialog in solution mode (dialogs are light in both themes). */
+.case-scroll {
+  max-height: 55vh;
+  overflow: auto;
+}
+.case-table-fn textarea {
+  min-height: 32px;
+}
+.case-type {
+  font-weight: 400;
+  font-size: 12px;
+  color: #5f7f90;
+  font-family: var(--font-mono);
+}
+.case-error {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #c62828;
+}
+.case-raw-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #5f7f90;
+}
+.case-table textarea[aria-invalid='true'] {
+  border-color: #c62828;
+}

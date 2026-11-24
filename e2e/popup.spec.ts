@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs';
 import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
+// The backup test counts stored settings: keep the solution switch at its default so the
+// fixture writes nothing to storage.
+test.use({ solutionMode: true });
+
 interface Tab {
   id?: number;
   url?: string;
