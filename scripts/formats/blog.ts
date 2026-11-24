@@ -13,7 +13,7 @@ import { parseReadme } from './lib/readme.ts';
 import { emptyRecord, isComplete, mergePartial, type ProblemRecord } from './lib/record.ts';
 import { eachConcurrently } from './lib/pool.ts';
 import type { TopProblem } from './solvedac.ts';
-import { markPlainHeadings, titleHasId } from './velog.ts';
+import { markPlainHeadings, titleHasId, withoutCode } from './velog.ts';
 
 const SEARCH = 'https://dapi.kakao.com/v2/search/blog';
 const GAP_MS = 1000;
@@ -136,8 +136,8 @@ export async function fetchFromBlogs(
       if (!html) continue;
       const parsed = parseReadme(articleText(html));
       const part = {
-        input: parsed.input,
-        output: parsed.output,
+        input: withoutCode(parsed.input),
+        output: withoutCode(parsed.output),
         samples: parsed.samples,
         ...(parsed.constraints ? { constraints: parsed.constraints } : {}),
       };

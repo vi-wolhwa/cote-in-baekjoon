@@ -50,15 +50,21 @@ export function parseSearchPage(body: unknown): TopProblem[] {
 /** Loads the top `count` problems, reusing pages already in the cache. */
 export async function loadTop(cache: Cache, count: number): Promise<TopProblem[]> {
   const cached = cache.readJson<TopProblem[]>(['top.json'], []);
-  if (cached.length >= count) return cached.slice(0, count);
+  // `top-end.json`: the list ran out before `count` (every problem is in the cache).
+  const ended = cache.readJson<{ total: number } | null>(['top-end.json'], null);
+  if (cached.length >= count || (ended && ended.total === cached.length)) {
+    return cached.slice(0, count);
+  }
 
   const pacer = createPacer(1500);
-  const list: TopProblem[] = [];
+  // Whole pages already cached are kept; fetching resumes after them.
+  const keptPages = Math.floor(cached.length / PER_PAGE);
+  const list: TopProblem[] = cached.slice(0, keptPages * PER_PAGE);
   const pages = Math.ceil(count / PER_PAGE);
   let browser: Browser | null = null;
   let page: Page | null = null;
   try {
-    for (let n = 1; n <= pages; n++) {
+    for (let n = keptPages + 1; n <= pages; n++) {
       await pacer.wait();
       counters.solvedac++;
       let body: unknown = null;
@@ -87,8 +93,15 @@ export async function loadTop(cache: Cache, count: number): Promise<TopProblem[]
         }
         body = JSON.parse(await res.text());
       }
-      list.push(...parseSearchPage(body));
+      const items = parseSearchPage(body);
+      list.push(...items);
       console.log(`solved.ac ${n}/${pages}쪽`);
+      if (items.length < PER_PAGE) {
+        cache.writeJson(['top-end.json'], { total: list.length });
+        break;
+      }
+      // Saved as it goes, so an interrupted run resumes.
+      if (n % 20 === 0) cache.writeJson(['top.json'], list);
     }
   } finally {
     await browser?.close();
