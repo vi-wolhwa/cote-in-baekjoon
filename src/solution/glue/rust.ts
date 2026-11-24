@@ -88,10 +88,6 @@ const rows = (n: Rows) =>
 const words = (t: Scalar, q: string, w: string) =>
   `${w}.iter().map(|&(__cib_s, __cib_e)| ${CONVERT[t](`&${q}.d[__cib_s..__cib_e]`)}).collect()`;
 
-/** The ROWS helpers: rows counted ahead, end lines and raw lines (rawl, also for counted raw lines). */
-const needsRows = (plan: Plan) =>
-  usesRows(plan) || allSteps(plan.steps).some((s) => s.op === 'rawLines');
-
 /** Block lists are filled by pushing, so they are declared `mut`. */
 const blockLists = (plan: Plan) =>
   new Set(
@@ -260,7 +256,7 @@ export function rustGlue(plan: Plan, ret: RetSpec): string {
   return [
     '// ---- 입출력 코드 ----',
     RUST_RUNTIME,
-    ...(needsRows(plan) ? [RUST_ROWS] : []),
+    ...(usesRows(plan) ? [RUST_ROWS] : []),
     '',
     '#[allow(unused_mut, unused_variables)]',
     'fn main() {',

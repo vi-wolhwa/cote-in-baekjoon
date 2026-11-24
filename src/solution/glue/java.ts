@@ -7,6 +7,7 @@ import { labelParts, retSep, type ParamType, type RetSpec, type RetType } from '
 import {
   quote,
   renderCount,
+  planVar,
   renderRows,
   usesRows,
   type CountRef,
@@ -123,13 +124,76 @@ const ROWS = `    static boolean __cib_at(String[] w) {
         while (e > s && __cib_ws(__cib_d[e - 1])) e--;
         return new String(__cib_d, s, e - s, java.nio.charset.StandardCharsets.UTF_8);
     }
-    static int __cib_rowsLine(String e, boolean raw) {
+    static boolean __cib_isNum(String f) {
+        int i = 0, n = f.length(), k = 0;
+        if (i < n && (f.charAt(i) == '+' || f.charAt(i) == '-')) i++;
+        while (i < n && f.charAt(i) >= '0' && f.charAt(i) <= '9') { i++; k++; }
+        if (i < n && f.charAt(i) == '.') for (i++; i < n && f.charAt(i) >= '0' && f.charAt(i) <= '9'; i++) k++;
+        if (k == 0) return false;
+        if (i < n && (f.charAt(i) == 'e' || f.charAt(i) == 'E')) {
+            int x = 0;
+            if (++i < n && (f.charAt(i) == '+' || f.charAt(i) == '-')) i++;
+            for (; i < n && f.charAt(i) >= '0' && f.charAt(i) <= '9'; i++) x++;
+            if (x == 0) return false;
+        }
+        return i == n;
+    }
+    static boolean __cib_isEnd(String t, int m, String e) {
+        if (m == 1) return t.equals(e);
+        if (m == 4) return t.startsWith(e);
+        if (m != 2 && m != 3) return false;
+        String s = t.trim();
+        int k = 0;
+        while (k < s.length() && !Character.isWhitespace(s.charAt(k))) k++;
+        String f = s.substring(0, k);
+        if (!__cib_isNum(f)) return false;
+        double x = Double.parseDouble(f);
+        return m == 2 ? x < 0 : x <= 0;
+    }
+    static int __cib_rowsLine(int m, String e, boolean text) {
         int s = __cib_p, r = 0;
         for (;;) {
             __cib_nl();
-            if (!__cib_has()) { if (e != null) throw __cib_fail(); break; }
-            String t = raw ? __cib_raw() : __cib_line();
-            if (e != null && t.equals(e)) break;
+            if (!__cib_has()) { if (m != 0) throw __cib_fail(); break; }
+            String t = text ? __cib_raw() : __cib_line();
+            if (m != 0 && __cib_isEnd(t, m, e)) break;
+            r++;
+        }
+        __cib_p = s;
+        return r;
+    }
+    static boolean __cib_endl(int m, String e) {
+        int s = __cib_p;
+        __cib_nl();
+        if (__cib_has() && __cib_isEnd(__cib_line(), m, e)) return true;
+        __cib_p = s;
+        return false;
+    }
+    static void __cib_bol() {
+        if (__cib_p > 0 && __cib_d[__cib_p - 1] != '\\n') {
+            while (__cib_p < __cib_n && __cib_d[__cib_p] != '\\n') __cib_p++;
+            if (__cib_p < __cib_n) __cib_p++;
+        }
+    }
+    static String __cib_rawl() {
+        __cib_bol();
+        if (__cib_p >= __cib_n) throw __cib_fail();
+        int e = __cib_p;
+        while (e < __cib_n && __cib_d[e] != '\\n') e++;
+        int end = e > __cib_p && __cib_d[e - 1] == '\\r' ? e - 1 : e;
+        String s = new String(__cib_d, __cib_p, end - __cib_p, java.nio.charset.StandardCharsets.UTF_8);
+        __cib_p = e < __cib_n ? e + 1 : __cib_n;
+        return s;
+    }
+    static int __cib_rowsPhys(int m, String e) {
+        int s = __cib_p, r = 0;
+        __cib_bol();
+        for (;;) {
+            if (__cib_p >= __cib_n) { if (m != 0) throw __cib_fail(); break; }
+            String t = __cib_rawl();
+            int k = t.length();
+            while (k > 0 && Character.isWhitespace(t.charAt(k - 1))) k--;
+            if (m != 0 && __cib_isEnd(t.substring(0, k), m, e)) break;
             r++;
         }
         __cib_p = s;
@@ -160,11 +224,71 @@ const count = (c: CountRef) => `(int) (${renderCount(c, variable)})`;
 const rows = (n: Rows) =>
   renderRows(n, count, {
     tok: (end, k) => `__cib_rowsTok(new String[] {${end.map(quote).join(', ')}}, ${k})`,
-    line: (end, raw) => `__cib_rowsLine(${end === null ? 'null' : quote(end)}, ${raw})`,
+    line: (end, text) => `__cib_rowsLine(${end.mode}, ${quote(end.text)}, ${text})`,
+    phys: (end) => `__cib_rowsPhys(${end.mode}, ${quote(end.text)})`,
   });
 
-function step(s: Step): string {
+const BOXED: Record<string, string> = { int: 'Integer', long: 'Long', double: 'Double' };
+
+/**
+ * A block: each pass reads the block's variables and adds them to lists, which become the
+ * parameter arrays after the loop. Braces keep the block's own names out of the case body.
+ */
+function block(plan: Plan, s: Extract<Step, { op: 'block' }>): string {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return `int __cib_bn = ${count(s.loop.n)}; if (__cib_bn < 0) throw __cib_fail(); for (int __cib_bi = 0; __cib_bi < __cib_bn; __cib_bi++)`;
+      case 'eof':
+        return 'while (__cib_has())';
+      case 'tok':
+        return `while (!__cib_at(new String[] {${s.loop.end.map(quote).join(', ')}}))`;
+      case 'line':
+        return `while (!__cib_endl(${s.loop.end.mode}, ${quote(s.loop.end.text)}))`;
+    }
+  })();
+  const type = (v: number) => JAVA_TYPES[planVar(plan, v).type];
+  const list = (v: number) => `__cib_l${v}`;
+  const toArray = (x: { list: number; item: number }) => {
+    const t = type(x.item);
+    if (BOXED[t]) {
+      return `${variable(x.list)} = new ${t}[${list(x.list)}.size()]; for (int __cib_i = 0; __cib_i < ${variable(x.list)}.length; __cib_i++) ${variable(x.list)}[__cib_i] = ${list(x.list)}.get(__cib_i);`;
+    }
+    const base = t.replace(/\[.*$/, '');
+    return `${variable(x.list)} = ${list(x.list)}.toArray(new ${base}[0]${t.slice(base.length)});`;
+  };
+  return [
+    '{',
+    ...s.items.map((x) => {
+      const t = type(x.item);
+      return `    java.util.ArrayList<${BOXED[t] ?? t}> ${list(x.list)} = new java.util.ArrayList<>();`;
+    }),
+    `    ${head} {`,
+    ...s.items.map((x) => {
+      const t = type(x.item);
+      const init = BOXED[t] ? (t === 'double' ? '0.0' : '0') : 'null';
+      return `        ${t} ${variable(x.item)} = ${init};`;
+    }),
+    ...s.steps.flatMap((x) => step(plan, x).split('\n')).map((l) => `        ${l}`),
+    ...s.items.map((x) => `        ${list(x.list)}.add(${variable(x.item)});`),
+    '    }',
+    ...s.items.map((x) => `    ${toArray(x)}`),
+    '}',
+  ].join('\n');
+}
+
+function step(plan: Plan, s: Step): string {
   switch (s.op) {
+    case 'block':
+      return block(plan, s);
+    case 'raw':
+      return `${variable(s.v)} = __cib_rawl();`;
+    case 'rawLines': {
+      const v = variable(s.v);
+      return `${v} = new String[${rows(s.n)}]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) ${v}[__cib_i] = __cib_rawl();`;
+    }
+    case 'endRaw':
+      return '__cib_rawl();';
     case 'nl':
       return '__cib_nl();';
     case 'scalar':
@@ -249,7 +373,7 @@ export function javaGlue(plan: Plan, ret: RetSpec): string {
     [
       ...decls,
       'try {',
-      ...plan.steps.map((s) => `    ${step(s)}`),
+      ...plan.steps.flatMap((s) => step(plan, s).split('\n')).map((l) => `    ${l}`),
       '} catch (RuntimeException __cib_e) {',
       '    throw __cib_fail();',
       '}',
@@ -271,6 +395,10 @@ export function javaGlue(plan: Plan, ret: RetSpec): string {
         return `        int __cib_t = __cib_int();\n        for (int __cib_k = 0; __cib_k < __cib_t; __cib_k++) {\n${body(12)}\n        }`;
       case 'eof':
         return `        while (__cib_has()) {\n${body(12)}\n        }`;
+      case 'line': {
+        const { mode, text } = plan.loop.end;
+        return `        while (__cib_has() && !__cib_endl(${mode}, ${quote(text)})) {\n${body(12)}\n        }`;
+      }
       case 'until': {
         const words = plan.loop.tokens.map(quote).join(', ');
         return [

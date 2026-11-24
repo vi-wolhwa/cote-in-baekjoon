@@ -227,16 +227,98 @@ static size_t __cib_raw(size_t* len) {
     *len = e - s;
     return s;
 }
-static size_t __cib_rowsLine(const char* e, bool raw) {
+static bool __cib_isNum(const char* f, size_t n) {
+    size_t i = 0, k = 0;
+    if (i < n && (f[i] == '+' || f[i] == '-')) i++;
+    while (i < n && f[i] >= '0' && f[i] <= '9') { i++; k++; }
+    if (i < n && f[i] == '.') for (i++; i < n && f[i] >= '0' && f[i] <= '9'; i++) k++;
+    if (k == 0) return false;
+    if (i < n && (f[i] == 'e' || f[i] == 'E')) {
+        size_t x = 0;
+        if (++i < n && (f[i] == '+' || f[i] == '-')) i++;
+        for (; i < n && f[i] >= '0' && f[i] <= '9'; i++) x++;
+        if (x == 0) return false;
+    }
+    return i == n;
+}
+/* Whether the line at t (length l) ends the reading: end mode m with text e (plan.ts). */
+static bool __cib_isEnd(size_t t, size_t l, int m, const char* e) {
+    const char* s = __cib_d + t;
+    size_t i = 0, b;
+    if (m == 1) return strlen(e) == l && memcmp(s, e, l) == 0;
+    if (m == 4) return strlen(e) <= l && memcmp(s, e, strlen(e)) == 0;
+    if (m != 2 && m != 3) return false;
+    while (i < l && __cib_ws(s[i])) i++;
+    b = i;
+    while (i < l && !__cib_ws(s[i])) i++;
+    if (!__cib_isNum(s + b, i - b)) return false;
+    return m == 2 ? strtod(s + b, NULL) < 0 : strtod(s + b, NULL) <= 0;
+}
+static size_t __cib_rowsLine(int m, const char* e, bool text) {
     size_t s = __cib_p, r = 0;
     for (;;) {
         size_t l, t;
         __cib_nl();
-        if (!__cib_has()) { if (e) __cib_fail(); break; }
-        t = raw ? __cib_raw(&l) : __cib_span(&l);
-        if (e && strlen(e) == l && memcmp(__cib_d + t, e, l) == 0) break;
+        if (!__cib_has()) { if (m) __cib_fail(); break; }
+        t = text ? __cib_raw(&l) : __cib_span(&l);
+        if (m && __cib_isEnd(t, l, m, e)) break;
         r++;
     }
     __cib_p = s;
     return r;
+}
+/* True when the next line ends the reading; it is then read. */
+static bool __cib_endl(int m, const char* e) {
+    size_t s = __cib_p, l, t;
+    __cib_nl();
+    if (__cib_has()) {
+        t = __cib_span(&l);
+        if (__cib_isEnd(t, l, m, e)) return true;
+    }
+    __cib_p = s;
+    return false;
+}
+static void __cib_bol(void) {
+    if (__cib_p > 0 && __cib_d[__cib_p - 1] != '\\n') {
+        while (__cib_p < __cib_n && __cib_d[__cib_p] != '\\n') __cib_p++;
+        if (__cib_p < __cib_n) __cib_p++;
+    }
+}
+/* The next physical line, blank or not (a trailing '\\r' dropped): its start and length. */
+static size_t __cib_rawspan(size_t* len) {
+    size_t s, e;
+    __cib_bol();
+    if (__cib_p >= __cib_n) __cib_fail();
+    s = e = __cib_p;
+    while (e < __cib_n && __cib_d[e] != '\\n') e++;
+    __cib_p = e < __cib_n ? e + 1 : __cib_n;
+    if (e > s && __cib_d[e - 1] == '\\r') e--;
+    *len = e - s;
+    return s;
+}
+static const char* __cib_rawl(void) {
+    size_t l, s = __cib_rawspan(&l);
+    return __cib_dup(s, l);
+}
+static size_t __cib_rowsPhys(int m, const char* e) {
+    size_t s = __cib_p, r = 0;
+    __cib_bol();
+    for (;;) {
+        size_t l, t;
+        if (__cib_p >= __cib_n) { if (m) __cib_fail(); break; }
+        t = __cib_rawspan(&l);
+        while (l > 0 && __cib_ws(__cib_d[t + l - 1])) l--;
+        if (m && __cib_isEnd(t, l, m, e)) break;
+        r++;
+    }
+    __cib_p = s;
+    return r;
+}`;
+
+/** Growing arrays for blocks (only when used): room for twice as many at 0 and powers of two. */
+export const C_GROW = `static void* __cib_grow(void* a, size_t n, size_t size) {
+    if (n & (n - 1)) return a;
+    a = realloc(a, (n ? 2 * n : 1) * size);
+    if (!a) __cib_fail();
+    return a;
 }`;

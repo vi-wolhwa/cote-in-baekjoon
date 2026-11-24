@@ -8,6 +8,7 @@ import { labelParts, retSep, type ParamType, type RetSpec, type RetType } from '
 import {
   quote,
   renderCount,
+  planVar,
   renderRows,
   usesRows,
   type CountRef,
@@ -166,14 +167,78 @@ static std::string __cib_raw() {
     while (e > s && __cib_ws(__cib_d[e - 1])) e--;
     return __cib_d.substr(s, e - s);
 }
-static int __cib_rowsLine(const char* e, bool raw) {
+static bool __cib_isNum(const std::string& f) {
+    size_t i = 0, n = f.size(), k = 0;
+    if (i < n && (f[i] == '+' || f[i] == '-')) i++;
+    while (i < n && f[i] >= '0' && f[i] <= '9') { i++; k++; }
+    if (i < n && f[i] == '.') for (i++; i < n && f[i] >= '0' && f[i] <= '9'; i++) k++;
+    if (k == 0) return false;
+    if (i < n && (f[i] == 'e' || f[i] == 'E')) {
+        size_t x = 0;
+        if (++i < n && (f[i] == '+' || f[i] == '-')) i++;
+        for (; i < n && f[i] >= '0' && f[i] <= '9'; i++) x++;
+        if (x == 0) return false;
+    }
+    return i == n;
+}
+static bool __cib_isEnd(const std::string& t, int m, const char* e) {
+    if (m == 1) return t == e;
+    if (m == 4) return t.compare(0, std::strlen(e), e) == 0;
+    if (m != 2 && m != 3) return false;
+    size_t i = 0;
+    while (i < t.size() && __cib_ws(t[i])) i++;
+    size_t s = i;
+    while (i < t.size() && !__cib_ws(t[i])) i++;
+    std::string f = t.substr(s, i - s);
+    if (!__cib_isNum(f)) return false;
+    double x = std::strtod(f.c_str(), nullptr);
+    return m == 2 ? x < 0 : x <= 0;
+}
+static int __cib_rowsLine(int m, const char* e, bool text) {
     size_t s = __cib_p;
     int r = 0;
     for (;;) {
         __cib_nl();
-        if (!__cib_has()) { if (e) __cib_fail(); break; }
-        std::string t = raw ? __cib_raw() : __cib_line();
-        if (e && t == e) break;
+        if (!__cib_has()) { if (m) __cib_fail(); break; }
+        std::string t = text ? __cib_raw() : __cib_line();
+        if (m && __cib_isEnd(t, m, e)) break;
+        r++;
+    }
+    __cib_p = s;
+    return r;
+}
+static bool __cib_endl(int m, const char* e) {
+    size_t s = __cib_p;
+    __cib_nl();
+    if (__cib_has() && __cib_isEnd(__cib_line(), m, e)) return true;
+    __cib_p = s;
+    return false;
+}
+static void __cib_bol() {
+    if (__cib_p > 0 && __cib_d[__cib_p - 1] != '\\n') {
+        size_t e = __cib_d.find('\\n', __cib_p);
+        __cib_p = e == std::string::npos ? __cib_d.size() : e + 1;
+    }
+}
+static std::string __cib_rawl() {
+    __cib_bol();
+    if (__cib_p >= __cib_d.size()) __cib_fail();
+    size_t e = __cib_d.find('\\n', __cib_p);
+    size_t end = e == std::string::npos ? __cib_d.size() : e;
+    std::string s = __cib_d.substr(__cib_p, end - __cib_p);
+    if (!s.empty() && s.back() == '\\r') s.pop_back();
+    __cib_p = e == std::string::npos ? __cib_d.size() : e + 1;
+    return s;
+}
+static int __cib_rowsPhys(int m, const char* e) {
+    size_t s = __cib_p;
+    int r = 0;
+    __cib_bol();
+    for (;;) {
+        if (__cib_p >= __cib_d.size()) { if (m) __cib_fail(); break; }
+        std::string t = __cib_rawl();
+        while (!t.empty() && __cib_ws(t.back())) t.pop_back();
+        if (m && __cib_isEnd(t, m, e)) break;
         r++;
     }
     __cib_p = s;
@@ -194,12 +259,47 @@ const count = (c: CountRef) => `(int)(${renderCount(c, variable)})`;
 const rows = (n: Rows) =>
   renderRows(n, count, {
     tok: (end, k) => `__cib_rowsTok({${end.map(quote).join(', ')}}, ${k})`,
-    line: (end, raw) => `__cib_rowsLine(${end === null ? 'nullptr' : quote(end)}, ${raw})`,
+    line: (end, text) => `__cib_rowsLine(${end.mode}, ${quote(end.text)}, ${text})`,
+    phys: (end) => `__cib_rowsPhys(${end.mode}, ${quote(end.text)})`,
   });
 
-function step(s: Step): string {
+/** A block: its lists start empty; each pass reads the block's variables and appends them. */
+function block(plan: Plan, s: Extract<Step, { op: 'block' }>): string {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return `for (int __cib_b = 0, __cib_bn = ${count(s.loop.n)}; __cib_bn < 0 ? (__cib_fail(), false) : __cib_b < __cib_bn; __cib_b++)`;
+      case 'eof':
+        return 'while (__cib_has())';
+      case 'tok':
+        return `while (!__cib_at({${s.loop.end.map(quote).join(', ')}}))`;
+      case 'line':
+        return `while (!__cib_endl(${s.loop.end.mode}, ${quote(s.loop.end.text)}))`;
+    }
+  })();
+  return [
+    ...s.items.map((x) => `${variable(x.list)}.clear();`),
+    `${head} {`,
+    ...s.items.map(
+      (x) => `    ${qualified(CPP_TYPES[planVar(plan, x.item).type])} ${variable(x.item)}{};`,
+    ),
+    ...s.steps.flatMap((x) => step(plan, x).split('\n')).map((l) => `    ${l}`),
+    ...s.items.map((x) => `    ${variable(x.list)}.push_back(std::move(${variable(x.item)}));`),
+    '}',
+  ].join('\n');
+}
+
+function step(plan: Plan, s: Step): string {
   const v = variable('v' in s ? s.v : 0);
   switch (s.op) {
+    case 'block':
+      return block(plan, s);
+    case 'raw':
+      return `${v} = __cib_rawl();`;
+    case 'rawLines':
+      return `${v}.assign(${rows(s.n)}, {}); for (auto& __cib_x : ${v}) __cib_x = __cib_rawl();`;
+    case 'endRaw':
+      return '__cib_rawl();';
     case 'nl':
       return '__cib_nl();';
     case 'scalar':
@@ -252,7 +352,7 @@ export function cppGlue(plan: Plan, ret: RetSpec): string {
   const body = (n: number) =>
     [
       ...decls,
-      ...plan.steps.map(step),
+      ...plan.steps.flatMap((s) => step(plan, s).split('\n')),
       `auto __cib_r = solution(${vars.join(', ')});`,
       "if (__cib_cases++) __cib_o += '\\n';",
       ...(label
@@ -271,6 +371,10 @@ export function cppGlue(plan: Plan, ret: RetSpec): string {
         return `    int __cib_t = __cib_int(__cib_tok());\n    for (int __cib_i = 0; __cib_i < __cib_t; __cib_i++) {\n${body(8)}\n    }`;
       case 'eof':
         return `    while (__cib_has()) {\n${body(8)}\n    }`;
+      case 'line': {
+        const { mode, text } = plan.loop.end;
+        return `    while (__cib_has() && !__cib_endl(${mode}, ${quote(text)})) {\n${body(8)}\n    }`;
+      }
       case 'until': {
         const words = plan.loop.tokens.map(quote).join(', ');
         return [

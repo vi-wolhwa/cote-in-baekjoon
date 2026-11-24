@@ -94,10 +94,6 @@ const rows = (n: Rows) =>
     phys: (end) => `__cib_rowsPhys(${end.mode}, ${goQuote(end.text)})`,
   });
 
-/** The ROWS helpers: rows counted ahead, end lines and raw lines (rawl, also for counted raw lines). */
-const needsRows = (plan: Plan) =>
-  usesRows(plan) || allSteps(plan.steps).some((s) => s.op === 'rawLines');
-
 /** A block: its lists start empty; each pass reads the block's variables and appends them. */
 function block(plan: Plan, s: Extract<Step, { op: 'block' }>): string[] {
   const head = (() => {
@@ -277,7 +273,7 @@ export function goGlue(plan: Plan, ret: RetSpec): string {
   return [
     '// ---- 입출력 코드 ----',
     GO_RUNTIME,
-    ...(needsRows(plan) ? [GO_ROWS] : []),
+    ...(usesRows(plan) ? [GO_ROWS] : []),
     '',
     'func main() {',
     '    __cib_d, _ = __cib_io.ReadAll(__cib_os.Stdin)',
