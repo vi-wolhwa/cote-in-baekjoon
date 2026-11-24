@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.6.0...v0.7.0) (2026-11-24)
+
+
+### 기능
+
+* **solution:** 표 하나로 형식 편집, 형식 오류 신고, 입출력 코드 구분 ([#128](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/128)) ([27e8a62](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/27e8a6245d218f7def7d37b0e435da403bd288a7))
+* **solution:** 형식 표현 넓히기와 표현할 수 없던 문제 다시 검토 ([#132](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/132)) ([3ce60b5](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/3ce60b5ab9563536c08233e138eb2f4e08697a40))
+* 채점 대기가 길면 백준 서버 상태 안내 ([#129](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/129)) ([e796396](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/e7963969622824b202e9ae51ff39ca4a46026007))
+
 ## [0.6.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.5.0...v0.6.0) (2026-11-24)
 
 
