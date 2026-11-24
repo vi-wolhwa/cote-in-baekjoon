@@ -66,6 +66,12 @@ async function api<T>(pathAndQuery: string, search = false): Promise<T> {
       await sleep(wait);
       continue;
     }
+    // Code search answers 502/503 now and then under load; back off and retry.
+    if (res.status >= 500 && attempt < 4) {
+      console.log(`GitHub ${res.status}: ${30 * (attempt + 1)}초 뒤 다시 시도합니다`);
+      await sleep(30_000 * (attempt + 1));
+      continue;
+    }
     throw new Error(`GitHub API ${res.status} ${pathAndQuery}`);
   }
 }

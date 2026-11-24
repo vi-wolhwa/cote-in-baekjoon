@@ -7,7 +7,7 @@
  *
  * Requests: search 1 per problem, then at most MAX_POSTS pages; one request per second.
  */
-import { Window } from 'happy-dom';
+import { parseHTML } from 'linkedom';
 import type { Cache } from './lib/cache.ts';
 import { parseReadme } from './lib/readme.ts';
 import { emptyRecord, isComplete, mergePartial, type ProblemRecord } from './lib/record.ts';
@@ -18,8 +18,11 @@ import { markPlainHeadings, titleHasId } from './velog.ts';
 const SEARCH = 'https://dapi.kakao.com/v2/search/blog';
 const GAP_MS = 1000;
 const MAX_POSTS = 8;
+/** Pages are cut at this length; some blogs inline megabytes of images or scripts. */
+const MAX_HTML = 1_000_000;
 
 export const blogCounters = { search: 0, page: 0 };
+let refusedInRow = 0;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -28,7 +31,7 @@ interface BlogDoc {
   url: string;
 }
 
-async function search(key: string, p: TopProblem): Promise<BlogDoc[]> {
+async function search(key: string, p: TopProblem): Promise<BlogDoc[] | null> {
   await sleep(GAP_MS);
   blogCounters.search++;
   const params = new URLSearchParams({ query: `백준 ${p.id} ${p.title} 예제 입력`, size: '10' });
@@ -36,8 +39,20 @@ async function search(key: string, p: TopProblem): Promise<BlogDoc[]> {
     headers: { Authorization: `KakaoAK ${key}` },
   });
   if (res.status === 429) throw new Error('kakao 429: 오늘 무료 한도를 다 썼습니다');
-  if (!res.ok) throw new Error(`kakao ${res.status}`);
-  const json = (await res.json()) as { documents: BlogDoc[] };
+  const json = (await res.json().catch(() => ({}))) as {
+    documents?: BlogDoc[];
+    errorType?: string;
+    message?: string;
+  };
+  if (!json.documents) {
+    // Bursts are refused now and then: skip the problem for this run (not marked tried), wait,
+    // and stop when refusals keep coming (daily free quota used up).
+    console.log(`kakao ${res.status} ${json.errorType ?? ''} ${json.message ?? ''}`.trim());
+    if (++refusedInRow >= 20) throw new Error('kakao: 계속 거절합니다(무료 한도 소진?)');
+    await sleep(10_000);
+    return null;
+  }
+  refusedInRow = 0;
   const strip = (s: string) => s.replace(/<[^>]+>/g, '');
   return json.documents
     .map((d) => ({ title: strip(d.title), url: d.url }))
@@ -49,9 +64,8 @@ async function search(key: string, p: TopProblem): Promise<BlogDoc[]> {
  * section-name lines become `###` headings, `<pre>` blocks become code fences.
  */
 export function articleText(html: string): string {
-  const window = new Window();
-  const doc = window.document;
-  doc.body.innerHTML = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+  const clean = html.slice(0, MAX_HTML).replace(/<(script|style|svg)\b[\s\S]*?<\/\1>/gi, '');
+  const doc = parseHTML(`<!doctype html><html><body>${clean}</body></html>`).document;
   const root =
     doc.querySelector(
       '.tt_article_useless_p_margin, .entry-content, #article-view, .se-main-container, #postViewArea, article',
@@ -74,7 +88,6 @@ export function articleText(html: string): string {
     }
   };
   walk(root as unknown as Element);
-  window.close();
   return markPlainHeadings(out.join('\n'));
 }
 
@@ -114,8 +127,10 @@ export async function fetchFromBlogs(
       cache.readJson<ProblemRecord | null>(path, null) ??
       emptyRecord(p.id, p.title, new Date().toISOString());
     if (isComplete(record) || state.tried[p.id]) return;
+    const docs = await search(key, p);
+    if (!docs) return;
     const read: string[] = [];
-    for (const doc of (await search(key, p)).slice(0, MAX_POSTS)) {
+    for (const doc of docs.slice(0, MAX_POSTS)) {
       const html = await page(doc.url);
       read.push(doc.url);
       if (!html) continue;
