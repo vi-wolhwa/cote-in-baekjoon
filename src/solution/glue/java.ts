@@ -4,7 +4,17 @@
  * after it. A new Solution is made per case, like a fresh test on the coding-test site.
  */
 import { retSep, type ParamType, type RetSpec, type RetType } from '../dsl';
-import { quote, renderCount, type CountRef, type Plan, type Scalar, type Step } from './plan';
+import {
+  quote,
+  renderCount,
+  renderRows,
+  usesRows,
+  type CountRef,
+  type Plan,
+  type Rows,
+  type Scalar,
+  type Step,
+} from './plan';
 
 export const JAVA_PREFIX = 'import java.util.*; import java.io.*;\n';
 
@@ -79,6 +89,51 @@ const RUNTIME = `    static byte[] __cib_d;
     static String[] __cib_rest() {
         String s = __cib_line();
         return s.isEmpty() ? new String[0] : s.split("\\\\s+");
+    }
+    static boolean __cib_has() {
+        int q = __cib_p;
+        while (q < __cib_n && __cib_ws(__cib_d[q])) q++;
+        return q < __cib_n;
+    }`;
+
+/** Counting rows ahead for end-line and end-of-input repeats (only when used). */
+const ROWS = `    static boolean __cib_at(String[] w) {
+        int s = __cib_p;
+        boolean ok = true;
+        for (String x : w) if (!__cib_more() || !__cib_tok().equals(x)) { ok = false; break; }
+        __cib_p = s;
+        return ok;
+    }
+    static int __cib_rowsTok(String[] w, long k) {
+        int s = __cib_p, r = 0;
+        for (;;) {
+            if (w.length == 0 ? !__cib_has() : __cib_at(w)) break;
+            if (k < 1 || !__cib_has()) throw __cib_fail();
+            for (long i = 0; i < k; i++) __cib_tok();
+            r++;
+        }
+        __cib_p = s;
+        return r;
+    }
+    static String __cib_raw() {
+        int e = __cib_p;
+        while (e < __cib_n && __cib_d[e] != '\\n') e++;
+        int s = __cib_p;
+        __cib_p = e;
+        while (e > s && __cib_ws(__cib_d[e - 1])) e--;
+        return new String(__cib_d, s, e - s, java.nio.charset.StandardCharsets.UTF_8);
+    }
+    static int __cib_rowsLine(String e, boolean raw) {
+        int s = __cib_p, r = 0;
+        for (;;) {
+            __cib_nl();
+            if (!__cib_has()) { if (e != null) throw __cib_fail(); break; }
+            String t = raw ? __cib_raw() : __cib_line();
+            if (e != null && t.equals(e)) break;
+            r++;
+        }
+        __cib_p = s;
+        return r;
     }`;
 
 const READ: Record<Scalar, string> = {
@@ -102,6 +157,11 @@ const ELEMENT: Record<Scalar, string> = {
 
 const variable = (v: number) => `__cib_v${v}`;
 const count = (c: CountRef) => `(int) (${renderCount(c, variable)})`;
+const rows = (n: Rows) =>
+  renderRows(n, count, {
+    tok: (end, k) => `__cib_rowsTok(new String[] {${end.map(quote).join(', ')}}, ${k})`,
+    line: (end, raw) => `__cib_rowsLine(${end === null ? 'null' : quote(end)}, ${raw})`,
+  });
 
 function step(s: Step): string {
   switch (s.op) {
@@ -113,7 +173,7 @@ function step(s: Step): string {
       return `${variable(s.v)} = __cib_line();`;
     case 'array': {
       const v = variable(s.v);
-      return `${v} = new ${ELEMENT[s.t]}[${count(s.n)}]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) ${v}[__cib_i] = ${READ[s.t]};`;
+      return `${v} = new ${ELEMENT[s.t]}[${rows(s.n)}]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) ${v}[__cib_i] = ${READ[s.t]};`;
     }
     case 'rest': {
       const v = variable(s.v);
@@ -121,20 +181,24 @@ function step(s: Step): string {
     }
     case 'chars': {
       const v = variable(s.v);
-      return `${v} = new char[${count(s.n)}][]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) ${v}[__cib_i] = __cib_tok().toCharArray();`;
+      return `${v} = new char[${rows(s.n)}][]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) ${v}[__cib_i] = __cib_tok().toCharArray();`;
     }
     case 'grid': {
       const v = variable(s.v);
       const e = ELEMENT[s.t];
       if (s.cols) {
-        return `${v} = new ${e}[${count(s.n)}][${count(s.cols)}]; for (${e}[] __cib_r : ${v}) for (int __cib_j = 0; __cib_j < __cib_r.length; __cib_j++) __cib_r[__cib_j] = ${READ[s.t]};`;
+        return `${v} = new ${e}[${rows(s.n)}][${count(s.cols)}]; for (${e}[] __cib_r : ${v}) for (int __cib_j = 0; __cib_j < __cib_r.length; __cib_j++) __cib_r[__cib_j] = ${READ[s.t]};`;
       }
-      return `${v} = new ${e}[${count(s.n)}][]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) { __cib_nl(); String[] __cib_w = __cib_rest(); ${v}[__cib_i] = new ${e}[__cib_w.length]; for (int __cib_j = 0; __cib_j < __cib_w.length; __cib_j++) ${v}[__cib_i][__cib_j] = ${PARSE[s.t]('__cib_w[__cib_j]')}; }`;
+      return `${v} = new ${e}[${rows(s.n)}][]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) { __cib_nl(); String[] __cib_w = __cib_rest(); ${v}[__cib_i] = new ${e}[__cib_w.length]; for (int __cib_j = 0; __cib_j < __cib_w.length; __cib_j++) ${v}[__cib_i][__cib_j] = ${PARSE[s.t]('__cib_w[__cib_j]')}; }`;
     }
     case 'lines': {
       const v = variable(s.v);
-      return `${v} = new String[${count(s.n)}]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) { __cib_nl(); ${v}[__cib_i] = __cib_line(); }`;
+      return `${v} = new String[${rows(s.n)}]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) { __cib_nl(); ${v}[__cib_i] = __cib_line(); }`;
     }
+    case 'endTok':
+      return Array(s.k).fill('__cib_tok();').join(' ');
+    case 'endLine':
+      return '__cib_nl(); __cib_line();';
   }
 }
 
@@ -201,12 +265,12 @@ export function javaGlue(plan: Plan, ret: RetSpec): string {
       case 'count':
         return `        int __cib_t = __cib_int();\n        for (int __cib_k = 0; __cib_k < __cib_t; __cib_k++) {\n${body(12)}\n        }`;
       case 'eof':
-        return `        while (__cib_more()) {\n${body(12)}\n        }`;
+        return `        while (__cib_has()) {\n${body(12)}\n        }`;
       case 'until': {
         const words = plan.loop.tokens.map(quote).join(', ');
         return [
           `        String[] __cib_end = {${words}};`,
-          '        while (__cib_more()) {',
+          '        while (__cib_has()) {',
           '            int __cib_s = __cib_p;',
           '            boolean __cib_stop = true;',
           '            for (String __cib_w : __cib_end) {',
@@ -224,6 +288,7 @@ export function javaGlue(plan: Plan, ret: RetSpec): string {
     '// ---- 입출력 코드 ----',
     'public class Main {',
     RUNTIME,
+    ...(usesRows(plan) ? [ROWS] : []),
     '',
     '    public static void main(String[] __cib_a) throws Exception {',
     '        java.io.InputStream __cib_in = System.in;',

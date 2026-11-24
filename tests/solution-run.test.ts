@@ -128,6 +128,45 @@ const COMMANDS = f({
 // No input; the output keeps leading spaces.
 const NO_INPUT = f({ v: 1, params: [], lines: [], cases: null, ret: { type: 'line[]' } });
 
+// Rows up to an end line ("-1 -1"), then whole lines to the end of input.
+const UNTIL_EOF = f({
+  v: 1,
+  params: [
+    { name: 'n', type: 'int' },
+    { name: 'pairs', type: 'int[][]', cols: 2 },
+    { name: 'names', type: 'line[]' },
+  ],
+  lines: [['n'], { until: '-1 -1', of: 'pairs' }, { until: 'EOF', of: 'names' }],
+  cases: null,
+  ret: { type: 'line[]' },
+});
+// Numbers up to "0", then lines up to "." where " ." is data, not the end line.
+const UNTIL_DOT = f({
+  v: 1,
+  params: [
+    { name: 'nums', type: 'int[]' },
+    { name: 'texts', type: 'line[]' },
+  ],
+  lines: [
+    { until: '0', of: 'nums' },
+    { until: '.', of: 'texts' },
+  ],
+  cases: null,
+  ret: { type: 'int' },
+});
+// An empty array whose line is missing, then numbers to the end of input.
+const EMPTY_THEN_EOF = f({
+  v: 1,
+  params: [
+    { name: 'n', type: 'int' },
+    { name: 'arr', type: 'int[]', len: 'n' },
+    { name: 'rest', type: 'long[]' },
+  ],
+  lines: [['n'], ['arr'], { until: 'EOF', of: 'rest' }],
+  cases: null,
+  ret: { type: 'long' },
+});
+
 interface Case {
   format: Format;
   input: string;
@@ -236,6 +275,39 @@ const CASES: Record<string, Case> = {
       python: "def solution():\n    return [' *', '***']",
       cpp: 'vector<string> solution() {\n    return {" *", "***"};\n}',
       java: 'class Solution {\n    public String[] solution() {\n        return new String[] {" *", "***"};\n    }\n}',
+    },
+  },
+  'rows up to an end line, then lines to the end of input': {
+    format: UNTIL_EOF,
+    input: '2\n1 2\n3 4\n-1 -1\n  Alice Kim\nBob\n',
+    output: '3\n7\nAlice Kim\nBob\n',
+    code: {
+      js: 'function solution(n, pairs, names) {\n  return [...pairs.map((p) => String(p[0] + p[1])), ...names];\n}',
+      python: 'def solution(n, pairs, names):\n    return [str(a + b) for a, b in pairs] + names',
+      cpp: 'vector<string> solution(int n, vector<vector<int>> pairs, vector<string> names) {\n    vector<string> out;\n    for (auto& p : pairs) out.push_back(to_string(p[0] + p[1]));\n    for (auto& s : names) out.push_back(s);\n    return out;\n}',
+      java: 'class Solution {\n    public String[] solution(int n, int[][] pairs, String[] names) {\n        List<String> out = new ArrayList<>();\n        for (int[] p : pairs) out.add(String.valueOf(p[0] + p[1]));\n        out.addAll(Arrays.asList(names));\n        return out.toArray(new String[0]);\n    }\n}',
+    },
+  },
+  'numbers up to 0 and lines up to "." with " ." as data': {
+    format: UNTIL_DOT,
+    input: '5\n7\n0\nhello world\n .\n.\n',
+    output: '122\n',
+    code: {
+      js: 'function solution(nums, texts) {\n  return (nums[0] + nums[1]) * 10 + texts.length;\n}',
+      python: 'def solution(nums, texts):\n    return sum(nums) * 10 + len(texts)',
+      cpp: 'int solution(vector<int> nums, vector<string> texts) {\n    return (nums[0] + nums[1]) * 10 + (int)texts.size();\n}',
+      java: 'class Solution {\n    public int solution(int[] nums, String[] texts) {\n        return (nums[0] + nums[1]) * 10 + texts.length;\n    }\n}',
+    },
+  },
+  'an empty array line left out, then numbers to the end of input': {
+    format: EMPTY_THEN_EOF,
+    input: '0\n50\n30\n9000000000\n',
+    output: '9000000080\n',
+    code: {
+      js: 'function solution(n, arr, rest) {\n  return rest.reduce((a, b) => BigInt(a) + BigInt(b), 0n).toString();\n}',
+      python: 'def solution(n, arr, rest):\n    return sum(rest)',
+      cpp: 'long long solution(int n, vector<int> arr, vector<long long> rest) {\n    long long s = 0;\n    for (auto x : rest) s += x;\n    return s;\n}',
+      java: 'class Solution {\n    public long solution(int n, int[] arr, long[] rest) {\n        long s = 0;\n        for (long x : rest) s += x;\n        return s;\n    }\n}',
     },
   },
 };

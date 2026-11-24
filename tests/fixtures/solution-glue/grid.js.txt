@@ -46,6 +46,7 @@ function solution(n, m, board) {
   const __cib_dbl = (s) => { const n = +s; if (n !== n) __cib_fail(); return n; };
   const __cib_str = (s) => s;
   const __cib_rep = (n, f) => { const a = new Array(n); for (let i = 0; i < n; i++) a[i] = f(); return a; };
+  const __cib_has = () => { let q = __cib_p; while (q < __cib_n && __cib_ws(__cib_d.charCodeAt(q))) q++; return q < __cib_n; };
   if (typeof solution !== 'function') throw new Error('__cib_nosolution');
   const __cib_f = (r) => (r ? "YES" : "NO");
   const __cib_o = [];

@@ -8,8 +8,11 @@ import {
   needsLines,
   quote,
   renderCount,
+  renderRows,
+  usesRows,
   type CountRef,
   type Plan,
+  type Rows,
   type Scalar,
   type Step,
 } from './plan';
@@ -42,6 +45,8 @@ const FAST = `    __cib_t = __cib_sys.stdin.buffer.read().split()
 
     def __cib_more():
         return __cib_P[0] < __cib_n
+
+    __cib_has = __cib_more
 
     def __cib_s(b):
         return b.decode()`;
@@ -91,10 +96,67 @@ const LINES = `    import re as __cib_re
         return __cib_d[p:e].strip()
 
     def __cib_s(s):
-        return s`;
+        return s
+
+    __cib_has = __cib_more
+`;
+
+/** Counting rows ahead for end-line and end-of-input repeats (only when used). */
+const ROWS_TOK = `
+    def __cib_raw():
+        p = __cib_P[0]
+        e = __cib_d.find('\\n', p)
+        e = __cib_n if e < 0 else e
+        __cib_P[0] = e
+        return __cib_d[p:e].rstrip()
+
+    def __cib_rowsLine(e, raw):
+        s = __cib_P[0]
+        r = 0
+        while True:
+            __cib_nl()
+            if not __cib_has():
+                if e is not None:
+                    raise EOFError
+                break
+            t = __cib_raw() if raw else __cib_line()
+            if e is not None and t == e:
+                break
+            r += 1
+        __cib_P[0] = s
+        return r
+
+    def __cib_at(w):
+        s = __cib_P[0]
+        try:
+            ok = all(__cib_s(__cib_tok()) == x for x in w)
+        except EOFError:
+            ok = False
+        __cib_P[0] = s
+        return ok
+
+    def __cib_rowsTok(w, k):
+        s = __cib_P[0]
+        r = 0
+        while True:
+            if (__cib_at(w) if w else not __cib_has()):
+                break
+            if k < 1 or not __cib_has():
+                raise EOFError
+            for _ in range(k):
+                __cib_tok()
+            r += 1
+        __cib_P[0] = s
+        return r`;
 
 const variable = (v: number) => `__cib_v${v}`;
 const count = (c: CountRef) => renderCount(c, variable);
+const rows = (n: Rows) =>
+  renderRows(n, count, {
+    tok: (end, k) => `__cib_rowsTok([${end.map(quote).join(', ')}], ${k})`,
+    line: (end, raw) =>
+      `__cib_rowsLine(${end === null ? 'None' : quote(end)}, ${raw ? 'True' : 'False'})`,
+  });
 
 function step(s: Step): string {
   switch (s.op) {
@@ -105,17 +167,21 @@ function step(s: Step): string {
     case 'line':
       return `${variable(s.v)} = __cib_line()`;
     case 'array':
-      return `${variable(s.v)} = __cib_many(${count(s.n)}, ${CONVERT[s.t]})`;
+      return `${variable(s.v)} = __cib_many(${rows(s.n)}, ${CONVERT[s.t]})`;
     case 'rest':
       return `${variable(s.v)} = list(map(${CONVERT[s.t]}, __cib_line().split()))`;
     case 'grid':
       return s.cols
-        ? `${variable(s.v)} = [__cib_many(${count(s.cols)}, ${CONVERT[s.t]}) for _ in range(${count(s.n)})]`
-        : `${variable(s.v)} = [(__cib_nl(), list(map(${CONVERT[s.t]}, __cib_line().split())))[1] for _ in range(${count(s.n)})]`;
+        ? `${variable(s.v)} = [__cib_many(${count(s.cols)}, ${CONVERT[s.t]}) for _ in range(${rows(s.n)})]`
+        : `${variable(s.v)} = [(__cib_nl(), list(map(${CONVERT[s.t]}, __cib_line().split())))[1] for _ in range(${rows(s.n)})]`;
     case 'lines':
-      return `${variable(s.v)} = [(__cib_nl(), __cib_line())[1] for _ in range(${count(s.n)})]`;
+      return `${variable(s.v)} = [(__cib_nl(), __cib_line())[1] for _ in range(${rows(s.n)})]`;
     case 'chars':
-      return `${variable(s.v)} = __cib_many(${count(s.n)}, __cib_s)`;
+      return `${variable(s.v)} = __cib_many(${rows(s.n)}, __cib_s)`;
+    case 'endTok':
+      return Array(s.k).fill('__cib_tok()').join('; ');
+    case 'endLine':
+      return '__cib_nl(); __cib_line()';
   }
 }
 
@@ -186,6 +252,7 @@ export function pythonGlue(plan: Plan, ret: RetSpec): string {
     "    if 'solution' not in globals():",
     "        raise NameError('__cib_nosolution')",
     needsLines(plan) ? LINES : FAST,
+    ...(usesRows(plan) ? [ROWS_TOK] : []),
     '',
     '    def __cib_f(r):',
     `        return ${formatter(ret)}`,

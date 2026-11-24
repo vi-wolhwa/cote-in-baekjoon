@@ -31,6 +31,8 @@ def __cib_main():
     def __cib_more():
         return __cib_P[0] < __cib_n
 
+    __cib_has = __cib_more
+
     def __cib_s(b):
         return b.decode()
 

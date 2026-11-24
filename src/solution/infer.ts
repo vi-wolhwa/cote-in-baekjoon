@@ -212,7 +212,9 @@ function applyNames(
   const lines = format.lines.map((l) =>
     Array.isArray(l)
       ? l.map((n) => map.get(n) as string)
-      : { repeat: rename(l.repeat), of: map.get(l.of) as string },
+      : 'repeat' in l
+        ? { repeat: rename(l.repeat), of: map.get(l.of) as string }
+        : { until: l.until, of: map.get(l.of) as string },
   );
   const longIn = params.some((p) => p.type === 'long' || p.type === 'long[]');
   // Numbers past 64 bits in, so the answer is one too ("10^10000 이하의 A, B").

@@ -176,7 +176,9 @@ function shapeKey(format: Format): string {
   return JSON.stringify({
     params: format.params.map((p) => [p.type, ref(p.len), ref(p.cols)]),
     lines: format.lines.map((l) =>
-      Array.isArray(l) ? l.map((n) => names.get(n)) : [ref(l.repeat), names.get(l.of)],
+      Array.isArray(l)
+        ? l.map((n) => names.get(n))
+        : ['repeat' in l ? ref(l.repeat) : { until: l.until }, names.get(l.of)],
     ),
     cases: format.cases,
     ret: format.ret,

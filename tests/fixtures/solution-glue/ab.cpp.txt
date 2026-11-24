@@ -87,6 +87,11 @@ template <class T>
 static typename std::enable_if<std::is_arithmetic<T>::value>::type __cib_put(std::string& o, T v) {
     o += std::to_string(v);
 }
+static bool __cib_has() {
+    size_t q = __cib_p;
+    while (q < __cib_d.size() && __cib_ws(__cib_d[q])) q++;
+    return q < __cib_d.size();
+}
 template <class C>
 static void __cib_join(std::string& o, const C& c, const char* sep) {
     bool first = true;

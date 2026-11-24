@@ -28,7 +28,9 @@ function structure(format: Format): string {
     lines: format.lines.map((l) =>
       Array.isArray(l)
         ? l.map((n) => names.get(n) as string)
-        : { repeat: rename(l.repeat), of: names.get(l.of) as string },
+        : 'repeat' in l
+          ? { repeat: rename(l.repeat), of: names.get(l.of) as string }
+          : { until: l.until, of: names.get(l.of) as string },
     ),
   });
 }

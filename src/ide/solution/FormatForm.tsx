@@ -18,6 +18,8 @@ import {
   addRow,
   casesChoice,
   casesFor,
+  isMultiMode,
+  setCases,
   modeOptions,
   moveRow,
   removeRow,
@@ -39,15 +41,23 @@ const MODE_LABELS: Record<RowMode, string> = {
   new: '새 줄에서',
   same: '같은 줄에서',
   repeat: '여러 줄에서',
+  until: '끝내는 줄까지',
+  eof: '입력 끝까지',
 };
 
-/** What "여러 줄에서" means for a type, shown as the select's tooltip. */
+/** What a mode means for a type, shown as the select's tooltip. */
 function modeHint(mode: RowMode, type: ParamType): string {
   if (mode === 'new') return '새 줄을 시작해 읽어요';
   if (mode === 'same') return '앞 매개변수와 같은 줄에서 이어 읽어요';
-  if (isGridType(type)) return '한 줄에 한 행씩 여러 줄을 읽어요';
-  if (type === 'line[]') return '여러 줄을 한 줄씩 통째로 읽어요 (공백 포함)';
-  return '한 줄에 하나씩 여러 줄을 읽어요';
+  const each = isGridType(type)
+    ? '한 줄에 한 행씩'
+    : type === 'line[]'
+      ? '한 줄씩 통째로 (공백 포함)'
+      : '한 줄에 하나씩';
+  if (mode === 'until')
+    return `끝내는 줄이 나올 때까지 ${each} 읽어요. 끝내는 줄은 값에 넣지 않아요`;
+  if (mode === 'eof') return `입력이 끝날 때까지 ${each} 읽어요`;
+  return `정한 줄 수만큼 ${each} 읽어요`;
 }
 
 export function FormatForm({ table, onChange }: Props) {
@@ -213,7 +223,6 @@ function ReadOptions(props: {
 }) {
   const { row, index, modes, onChange } = props;
   const n = index + 1;
-  const repeat = row.mode === 'repeat';
   const grid = isGridType(row.type);
   return (
     <div class="format-read">
@@ -231,7 +240,7 @@ function ReadOptions(props: {
           </option>
         ))}
       </select>
-      {isArrayType(row.type) && !repeat && (
+      {isArrayType(row.type) && !isMultiMode(row.mode) && (
         <CountInput
           label={`${n}번째 매개변수 개수`}
           prefix="개수"
@@ -240,11 +249,21 @@ function ReadOptions(props: {
           onChange={(count) => onChange({ count })}
         />
       )}
-      {repeat && (
+      {row.mode === 'repeat' && (
         <CountInput
           label={`${n}번째 매개변수 줄 수`}
           prefix={grid ? '행' : '줄 수'}
           placeholder="예: n"
+          value={row.count}
+          onChange={(count) => onChange({ count })}
+        />
+      )}
+      {row.mode === 'until' && (
+        <CountInput
+          label={`${n}번째 매개변수를 끝내는 줄`}
+          prefix="끝"
+          placeholder="예: 0"
+          title="이 줄이 나오면 읽기를 멈춰요 (예: 0, -1 -1)"
           value={row.count}
           onChange={(count) => onChange({ count })}
         />
@@ -266,6 +285,7 @@ function CountInput(props: {
   label: string;
   prefix: string;
   placeholder: string;
+  title?: string;
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -279,7 +299,7 @@ function CountInput(props: {
         class="format-count"
         aria-label={props.label}
         placeholder={props.placeholder}
-        title="숫자나 앞에서 읽은 정수 이름 (n, n-1, n*m, m+k)"
+        title={props.title ?? '숫자나 앞에서 읽은 정수 이름 (n, n-1, n*m, m+k)'}
         spellcheck={false}
         value={props.value}
         onInput={(e) => props.onChange(e.currentTarget.value)}
@@ -305,10 +325,7 @@ function CasesOptions({ table, onChange }: Props) {
         aria-label="입력 반복"
         value={choice}
         onChange={(e) =>
-          onChange({
-            ...table,
-            cases: casesFor(e.currentTarget.value as CasesChoice, table.cases),
-          })
+          onChange(setCases(table, casesFor(e.currentTarget.value as CasesChoice, table.cases)))
         }
       >
         {(Object.keys(CASES_LABELS) as CasesChoice[]).map((c) => (
