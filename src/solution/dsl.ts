@@ -65,9 +65,7 @@ export type LineSpec = string[] | RepeatLine;
 
 /** How many lines a repeat line reads. */
 export type RepeatSize =
-  | { kind: 'count'; count: Count }
-  | { kind: 'until'; end: string }
-  | { kind: 'eof' };
+  { kind: 'count'; count: Count } | { kind: 'until'; end: string } | { kind: 'eof' };
 
 export function repeatSize(line: RepeatLine): RepeatSize {
   if ('repeat' in line) return { kind: 'count', count: line.repeat };
@@ -323,7 +321,11 @@ function parseLines(
       continue;
     }
     const hasUntil = isRecord(line) && typeof line.until === 'string';
-    if (!isRecord(line) || typeof line.of !== 'string' || (line.repeat === undefined && !hasUntil)) {
+    if (
+      !isRecord(line) ||
+      typeof line.of !== 'string' ||
+      (line.repeat === undefined && !hasUntil)
+    ) {
       fail(`${where}은(는) 파라미터 이름 배열이나 { "repeat", "of" }, { "until", "of" }여야 해요.`);
       continue;
     }

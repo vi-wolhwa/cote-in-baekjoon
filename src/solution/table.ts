@@ -67,8 +67,7 @@ export function toTable(format: Format): FormatTable {
       if (size.kind === 'count') push(line.of, 'repeat', size.count);
       else if (size.kind === 'until') push(line.of, 'until', size.end);
       else push(line.of, 'eof', '');
-    }
-    else line.forEach((name, i) => push(name, i === 0 ? 'new' : 'same'));
+    } else line.forEach((name, i) => push(name, i === 0 ? 'new' : 'same'));
   }
   return { rows, cases: format.cases, ret: format.ret };
 }
