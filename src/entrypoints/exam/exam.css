@@ -8,6 +8,7 @@
   --exam-flag: #ffc857;
   --exam-card: #202b3d;
   --rail-hover: #56697f;
+  --rail-unread: #8a9bb0;
   --ok-fg: #5dd39e;
   --ok-bg: #12372a;
   --bad-fg: #ff7a85;
@@ -34,6 +35,7 @@
   --exam-flag: #a15c00;
   --exam-card: #f7f7fb;
   --rail-hover: #d7e2eb;
+  --rail-unread: #8ea0b2;
   --ok-fg: #137333;
   --ok-bg: #e6f4ea;
   --bad-fg: #c5221f;
@@ -140,6 +142,39 @@
 .rail-item:focus-visible {
   outline: 2px solid var(--exam-accent);
   outline-offset: 2px;
+}
+/* Not read yet: dimmed; being read: a thin spinning ring around the number. */
+.rail-item.is-unread:not(.is-current),
+.rail-item.is-loading:not(.is-current) {
+  color: var(--rail-unread);
+}
+.rail-spinner {
+  position: absolute;
+  inset: 4px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: rail-spin 0.9s linear infinite;
+}
+@keyframes rail-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-spinner {
+    animation: none;
+    border-color: currentColor;
+    border-style: dotted;
+  }
+}
+/* Footer note: the editor no longer holds the saved answer. */
+.answer-differs {
+  align-self: center;
+  margin-right: 4px;
+  color: var(--warn);
+  font-size: 13px;
 }
 .rail-badge {
   position: absolute;
@@ -371,6 +406,34 @@
 .result-text.is-judging,
 .result-text.is-none {
   color: var(--none-fg);
+}
+.result-progress {
+  margin: 16px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--exam-card);
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 600;
+}
+.result-progress.is-running {
+  border-color: var(--exam-accent);
+}
+.result-text.is-failed,
+.result-text.is-manual {
+  color: var(--warn);
+}
+.result-reason {
+  max-width: 280px;
+  color: var(--out-hint);
+  font-size: 12px;
+}
+.result-action {
+  height: 30px;
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 13px;
 }
 .result-retry {
   flex: none;

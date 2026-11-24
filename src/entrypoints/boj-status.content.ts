@@ -10,7 +10,6 @@ import {
   type StatusRow,
 } from '@/boj/status';
 import { diagnoseStatusPage } from '@/boj/diagnosis';
-import { showExamCover } from '@/boj/exam-cover';
 import { rememberHandle } from '@/shared/handle';
 import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
 import { fetchSolutionStatus } from '@/boj/status-ajax';
@@ -28,14 +27,11 @@ const DEBOUNCE_MS = 100;
 
 export default defineContentScript({
   matches: ['https://acmicpc.net/status*', 'https://www.acmicpc.net/status*'],
-  // Early, so a mock exam's result is covered before the table is drawn (ADR-0005).
-  runAt: 'document_start',
+  runAt: 'document_idle',
   async main(ctx) {
     const query: WatchQueryMessage = { type: 'cib:watch-query' };
     const answer: unknown = await browser.runtime.sendMessage(query).catch(() => undefined);
     const response = isWatchQueryResponse(answer) && answer.watches.length > 0 ? answer : undefined;
-    if (response?.hideResult) showExamCover(document);
-    await domReady(document);
     void rememberHandle(document);
     if (!response) return;
     // A result is awaited but the table cannot be read: the layout changed (#87).
@@ -87,8 +83,7 @@ export default defineContentScript({
     const limit = setTimeout(stop, OBSERVE_LIMIT_MS);
     ctx.onInvalidated(stop);
 
-    // Under the exam cover the judging notice would only repeat what the cover says.
-    if (response.inSubmitWindow && !response.hideResult) notice = showJudgingNotice(document);
+    if (response.inSubmitWindow) notice = showJudgingNotice(document);
     poller.start();
     if (poller.isStopped) return stop();
     log('채점 결과를 기다립니다.');
@@ -101,13 +96,6 @@ export default defineContentScript({
     });
   },
 });
-
-function domReady(doc: Document): Promise<void> {
-  if (doc.readyState !== 'loading') return Promise.resolve();
-  return new Promise((resolve) =>
-    doc.addEventListener('DOMContentLoaded', () => resolve(), { once: true }),
-  );
-}
 
 function log(message: string) {
   console.info(`[코딩테스트 in 백준] ${message}`);

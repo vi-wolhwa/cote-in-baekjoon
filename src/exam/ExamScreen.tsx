@@ -1,7 +1,9 @@
 /**
  * The exam screen, exam.html#{id} (#101, docs/design/ide-spec.md §8): the top bar with
  * '시험 종료', the problem rail, one ProblemWorkspace and the sidebar with the remaining
- * time. When the time is up the exam ends by itself and the result screen opens.
+ * time. The problems are read one after another in the background (prefetch.ts). When the
+ * time is up the exam ends by itself and the result screen opens, which submits the saved
+ * answers (batch.ts).
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Modal } from '@/ide/Modal';
@@ -10,15 +12,9 @@ import { SandboxRunner } from '@/runner/client';
 import { DEFAULT_LANGUAGE, type LanguageId } from '@/shared/languages';
 import type { Theme } from '@/shared/theme';
 import { ExamSidebar, ProblemRail } from './ExamChrome';
-import {
-  endExam,
-  examLabel,
-  isOver,
-  recordSubmission,
-  remainingMs,
-  toggleFlag,
-  type Exam,
-} from './model';
+import { answeredProblems, finishExam, saveAnswer } from './batch';
+import { examLabel, isOver, remainingMs, toggleFlag, type Exam } from './model';
+import { useCaptureQueue } from './prefetch';
 import { ProblemWorkspace } from './ProblemWorkspace';
 import { useExamRecord, useNow } from './useExam';
 
@@ -47,6 +43,8 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
   const exam = state.status === 'ready' ? state.exam : undefined;
   const now = useNow(exam !== undefined && exam.endedAt === undefined);
   const over = exam ? isOver(exam, now) : false;
+  const opened = exam?.problems[Math.min(index, exam.problems.length - 1)]?.id;
+  const reading = useCaptureQueue(exam, opened, over);
 
   useEffect(() => {
     void Promise.all([store.loadLanguage(), store.loadKeymap()]).then(([lang, km]) => {
@@ -60,7 +58,7 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
   useEffect(() => {
     if (!exam || !over || finishing.current) return;
     finishing.current = true;
-    void update((e) => endExam(e, Date.now()))
+    void update((e) => finishExam(e, Date.now()))
       .catch(() => undefined)
       .then(onFinished);
   }, [exam, over]);
@@ -72,7 +70,8 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
 
   const problem = exam.problems[Math.min(index, exam.problems.length - 1)];
   if (!problem) return <MissingExam />;
-  const unsubmitted = exam.problems.filter((p) => !exam.submissions[p.id]).length;
+  const answered = answeredProblems(exam).length;
+  const unanswered = exam.problems.length - answered;
   const change = (fn: (e: Exam) => Exam) => void update(fn).catch(() => undefined);
 
   return (
@@ -95,14 +94,20 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
         </div>
       </nav>
       <div class="ide-body">
-        <ProblemRail exam={exam} current={index} onSelect={setIndex} />
+        <ProblemRail
+          exam={exam}
+          current={index}
+          onSelect={setIndex}
+          {...(reading.loading !== undefined ? { loading: reading.loading } : {})}
+        />
         <ProblemWorkspace
           key={problem.id}
           examId={exam.id}
           problem={problem}
           index={exam.problems.indexOf(problem)}
           flagged={exam.flagged.includes(problem.id)}
-          {...(exam.submissions[problem.id] ? { submission: exam.submissions[problem.id] } : {})}
+          {...(exam.answers?.[problem.id] ? { answer: exam.answers[problem.id] } : {})}
+          {...(reading.errors.has(problem.id) ? { loadError: reading.errors.get(problem.id) } : {})}
           startedAt={exam.startedAt}
           over={over}
           language={language}
@@ -115,7 +120,10 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
             void store.saveLanguage(next);
           }}
           onFlag={() => change((e) => toggleFlag(e, problem.id))}
-          onSubmitted={(lang, at) => change((e) => recordSubmission(e, problem.id, lang, at))}
+          onRetry={() => reading.retry(problem.id)}
+          onSaveAnswer={(code, lang) =>
+            change((e) => saveAnswer(e, problem.id, code, lang, Date.now()))
+          }
         />
         <ExamSidebar remainingMs={remainingMs(exam, now)} theme={theme} onTheme={onTheme} />
       </div>
@@ -134,7 +142,7 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
                 class="btn btn-danger"
                 onClick={() => {
                   setConfirmEnd(false);
-                  change((e) => endExam(e, Date.now()));
+                  change((e) => finishExam(e, Date.now()));
                 }}
               >
                 시험 종료
@@ -142,8 +150,15 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
             </>
           }
         >
-          <p>시험을 끝낼까요? 끝내면 더 제출할 수 없고 결과 화면으로 넘어갑니다.</p>
-          {unsubmitted > 0 && <p>아직 제출하지 않은 문제가 {unsubmitted}개 있습니다.</p>}
+          <p>시험을 끝낼까요? 끝내면 답안을 바꿀 수 없고 결과 화면으로 넘어갑니다.</p>
+          <p data-testid="end-summary">
+            {answered > 0
+              ? `저장한 답안 ${answered}개를 백준에 제출합니다.`
+              : '저장한 답안이 없어 백준에 제출하지 않습니다.'}
+            {unanswered > 0 && answered > 0
+              ? ` 답안이 없는 문제 ${unanswered}개는 제출하지 않습니다.`
+              : ''}
+          </p>
         </Modal>
       )}
     </div>

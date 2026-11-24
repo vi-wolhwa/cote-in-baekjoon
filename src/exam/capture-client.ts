@@ -4,7 +4,9 @@
  * statement itself arrives in the exam record (`exam:{id}`), which the page already follows.
  */
 import {
+  CAPTURE_TIMEOUT_MS,
   captureKey,
+  describeCaptureError,
   isCaptureRecord,
   isCaptureResponse,
   type CaptureCancelMessage,
@@ -56,4 +58,52 @@ export function watchCapture(
     live = false;
     browser.storage.onChanged.removeListener(listener);
   };
+}
+
+export type CaptureOutcome = { ok: true } | { ok: false; reason: string };
+
+/**
+ * Reads one problem and resolves once its statement is in the exam record, or with the
+ * reason it could not be read. Gives up after the timeout and closes the background tab.
+ */
+export function captureAndWait(
+  examId: string,
+  problemId: number,
+  hasBody: (storedExam: unknown) => boolean,
+): Promise<CaptureOutcome> {
+  return new Promise((resolve) => {
+    const examKey = `exam:${examId}`;
+    let settled = false;
+    let stopWatch = () => {};
+    const onExam = (changes: Record<string, { newValue?: unknown }>, area: string) => {
+      if (area === 'local' && examKey in changes && hasBody(changes[examKey]?.newValue)) {
+        finish({ ok: true });
+      }
+    };
+    const timer = setTimeout(() => {
+      void cancelCapture(examId, problemId);
+      finish({ ok: false, reason: describeCaptureError('timeout') });
+    }, CAPTURE_TIMEOUT_MS + 1000);
+    function finish(outcome: CaptureOutcome) {
+      if (settled) return;
+      settled = true;
+      stopWatch();
+      browser.storage.onChanged.removeListener(onExam);
+      clearTimeout(timer);
+      resolve(outcome);
+    }
+    browser.storage.onChanged.addListener(onExam);
+    void requestCapture(examId, problemId).then(async (response) => {
+      if (!response.ok) return finish(response);
+      // Read already (another tab), or before the listener started.
+      const stored = (await browser.storage.local.get(examKey))[examKey];
+      if (hasBody(stored)) return finish({ ok: true });
+      if (settled) return;
+      stopWatch = watchCapture(examId, problemId, (record) => {
+        if (record?.state === 'error') {
+          finish({ ok: false, reason: describeCaptureError(record.error) });
+        }
+      });
+    });
+  });
 }

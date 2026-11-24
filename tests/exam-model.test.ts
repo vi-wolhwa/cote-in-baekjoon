@@ -222,14 +222,16 @@ describe('during the exam', () => {
     expect(toggleFlag(flagged, 9999)).toBe(flagged);
   });
 
-  it('records submissions until the end', () => {
+  it('records submissions, also after the end (the batch submits then)', () => {
     const e = recordSubmission(exam(), 2001, 'python3', NOW + 5 * MIN);
     expect(e.submissions).toEqual({ 2001: { language: 'python3', at: NOW + 5 * MIN } });
     const again = recordSubmission(e, 2001, 'cpp17', NOW + 9 * MIN);
     expect(again.submissions[2001]).toEqual({ language: 'cpp17', at: NOW + 9 * MIN });
-    expect(recordSubmission(e, 2002, 'python3', NOW + 60 * MIN)).toBe(e);
     const ended = endExam(e, NOW + 10 * MIN);
-    expect(recordSubmission(ended, 2002, 'python3', NOW + 11 * MIN)).toBe(ended);
+    expect(recordSubmission(ended, 2002, 'python3', NOW + 11 * MIN).submissions[2002]).toEqual({
+      language: 'python3',
+      at: NOW + 11 * MIN,
+    });
     expect(recordSubmission(e, 9999, 'python3', NOW + MIN)).toBe(e);
     expect(isExam(again)).toBe(true);
   });

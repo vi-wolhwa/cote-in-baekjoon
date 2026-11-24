@@ -17,12 +17,7 @@ export type SubmitState =
   | { phase: 'error'; reason: string };
 
 /** Submission flow on the IDE side (ADR-0002): open the official page, then show its result. */
-export function useSubmit(
-  problemId: number,
-  getCode: () => string,
-  language: SubmitLanguage,
-  options: { hideResult?: boolean } = {},
-) {
+export function useSubmit(problemId: number, getCode: () => string, language: SubmitLanguage) {
   const [state, setState] = useState<SubmitState>({ phase: 'idle' });
   /** Results older than the latest 제출하기 click belong to an earlier submission. */
   const startedAt = useRef(0);
@@ -51,13 +46,7 @@ export function useSubmit(
     const warnings = findBlockedPatterns(code);
     startedAt.current = Date.now();
     setState({ phase: 'opening', warnings });
-    const res = await requestSubmit({
-      problemId,
-      language,
-      code,
-      autoSubmit: true,
-      ...(options.hideResult ? { hideResult: true } : {}),
-    });
+    const res = await requestSubmit({ problemId, language, code, autoSubmit: true });
     setState(res.ok ? { phase: 'waiting', warnings } : { phase: 'error', reason: res.reason });
     return res.ok;
   };

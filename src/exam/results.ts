@@ -5,6 +5,7 @@
  */
 import { languageInfo } from '@/shared/languages';
 import type { JudgeResult } from '@/shared/submission';
+import type { QueueState } from './answers';
 import {
   examLabel,
   finishTime,
@@ -19,16 +20,22 @@ import {
 /** ✓ green, ✕ red, – grey (not submitted, or no result yet). */
 export type Outcome = 'accepted' | 'wrong' | 'judging' | 'none';
 
+/** Where the saved answer is in the submit queue after the end (batch.ts). */
+export type RowStage = 'none' | 'saved' | QueueState;
+
 export interface ProblemRow {
   index: number;
   problem: ExamProblem;
+  stage: RowStage;
+  /** Why submitting failed, for 'failed'. */
+  reason?: string;
   submission?: ExamSubmission;
   judge?: JudgeResult;
   outcome: Outcome;
   /** Shown in the row: the judge text, or why there is none. */
   resultText: string;
   language?: string;
-  /** Time from the exam start to the last submission. */
+  /** Time from the exam start to when the answer was saved. */
   submittedAfterMs?: number;
 }
 
@@ -55,6 +62,15 @@ export function outcomeOf(judge: JudgeResult | undefined): Outcome {
   return judge.resultCode === 'ac' ? 'accepted' : 'wrong';
 }
 
+const STAGE_TEXT: Partial<Record<RowStage, string>> = {
+  none: '제출 안 함',
+  saved: '제출 대기',
+  pending: '제출 대기',
+  submitting: '제출 중',
+  manual: '직접 제출이 필요해요',
+  failed: '제출 실패',
+};
+
 export function summarizeExam(
   exam: Exam,
   judges: ReadonlyMap<number, JudgeResult>,
@@ -62,25 +78,35 @@ export function summarizeExam(
 ): ExamSummary {
   const rows = exam.problems.map((problem, index): ProblemRow => {
     const submission = exam.submissions[problem.id];
-    const judge = submission ? judgeFor(exam, problem.id, judges.get(problem.id)) : undefined;
-    const outcome = outcomeOf(judge);
+    const answer = exam.answers?.[problem.id];
+    const entry = exam.submitQueue?.[problem.id];
+    // Older exams submitted during the exam and have no answers.
+    const stage: RowStage = entry
+      ? entry.state
+      : answer
+        ? 'saved'
+        : submission
+          ? 'submitted'
+          : 'none';
+    const judge =
+      submission && (stage === 'submitted' || stage === 'manual' || stage === 'submitting')
+        ? judgeFor(exam, problem.id, judges.get(problem.id))
+        : undefined;
+    const language = answer?.language ?? submission?.language;
+    const savedAt = answer?.savedAt ?? submission?.at;
     return {
       index,
       problem,
-      ...(submission
-        ? {
-            submission,
-            language: languageInfo(submission.language).label,
-            submittedAfterMs: Math.max(0, submission.at - exam.startedAt),
-          }
-        : {}),
+      stage,
+      ...(entry?.reason ? { reason: entry.reason } : {}),
+      ...(submission ? { submission } : {}),
+      ...(language ? { language: languageInfo(language).label } : {}),
+      ...(savedAt !== undefined ? { submittedAfterMs: Math.max(0, savedAt - exam.startedAt) } : {}),
       ...(judge ? { judge } : {}),
-      outcome,
-      resultText: judge
-        ? judge.resultText
-        : submission
-          ? '채점 결과를 기다리는 중'
-          : '제출하지 않음',
+      outcome: outcomeOf(judge),
+      resultText:
+        judge?.resultText ??
+        (stage === 'submitted' ? '채점 결과를 기다리는 중' : (STAGE_TEXT[stage] ?? '')),
     };
   });
   const accepted = rows.filter((r) => r.outcome === 'accepted');

@@ -10,14 +10,19 @@ import { formatClock, type Exam } from './model';
 /** Under five minutes the remaining time turns red. */
 export const WARN_MS = 5 * 60_000;
 
-/** "1번 문제 · 제목 · 제출함 · 다시 볼 문제": the rail button's name and tooltip. */
-export function railLabel(exam: Exam, index: number): string {
+/** A saved answer, or a submission made during the exam by older versions. */
+const hasAnswer = (exam: Exam, problemId: number) =>
+  Boolean(exam.answers?.[problemId] ?? exam.submissions[problemId]);
+
+/** "1번 문제 · 제목 · 답안 저장함 · 다시 볼 문제": the rail button's name and tooltip. */
+export function railLabel(exam: Exam, index: number, loading?: number): string {
   const p = exam.problems[index];
   if (!p) return '';
   return [
     `${index + 1}번 문제`,
     p.title,
-    exam.submissions[p.id] ? '제출함' : '',
+    p.body ? '' : p.id === loading ? '불러오는 중' : '불러오기 전',
+    hasAnswer(exam, p.id) ? '답안 저장함' : '',
     exam.flagged.includes(p.id) ? '다시 볼 문제' : '',
   ]
     .filter(Boolean)
@@ -26,18 +31,22 @@ export function railLabel(exam: Exam, index: number): string {
 
 /**
  * The problem rail left of the problem pane (product owner, 2026-11-24): one rounded square
- * per problem, top to bottom. A green check sits on the bottom-right corner of a submitted
- * problem (the result stays hidden), a yellow flag on the top-right corner of a
- * '다시 볼 문제'. Up/Down move between problems.
+ * per problem, top to bottom. A green check sits on the bottom-right corner of a problem
+ * with a saved answer, a yellow flag on the top-right corner of a '다시 볼 문제'. A problem
+ * not read yet is dimmed, with a small spinner while its background tab is open. Up/Down
+ * move between problems.
  */
 export function ProblemRail({
   exam,
   current,
   onSelect,
+  loading,
 }: {
   exam: Exam;
   current: number;
   onSelect: (index: number) => void;
+  /** The problem being read now (prefetch.ts). */
+  loading?: number;
 }) {
   const list = useRef<HTMLOListElement>(null);
   const move = (to: number) => {
@@ -56,12 +65,13 @@ export function ProblemRail({
         }}
       >
         {exam.problems.map((p, i) => {
-          const label = railLabel(exam, i);
+          const label = railLabel(exam, i, loading);
+          const state = p.body ? '' : p.id === loading ? ' is-loading' : ' is-unread';
           return (
             <li key={p.id}>
               <button
                 type="button"
-                class={`rail-item${i === current ? ' is-current' : ''}`}
+                class={`rail-item${i === current ? ' is-current' : ''}${state}`}
                 aria-current={i === current ? 'step' : undefined}
                 aria-label={label}
                 title={label}
@@ -70,6 +80,9 @@ export function ProblemRail({
                 onClick={() => onSelect(i)}
               >
                 {i + 1}
+                {p.id === loading && !p.body && (
+                  <span class="rail-spinner" data-testid="rail-loading" aria-hidden="true" />
+                )}
                 {exam.flagged.includes(p.id) && (
                   <span
                     class="rail-badge rail-flagged"
@@ -79,7 +92,7 @@ export function ProblemRail({
                     <FlagIcon size={10} />
                   </span>
                 )}
-                {exam.submissions[p.id] && (
+                {hasAnswer(exam, p.id) && (
                   <span
                     class="rail-badge rail-submitted"
                     data-testid="rail-submitted"

@@ -12,6 +12,7 @@ import type { Problem } from '@/boj/problem';
 import { isLanguageId, type LanguageId } from '@/shared/languages';
 import { isJudgeResult, type JudgeResult } from '@/shared/submission';
 import { isHandle } from '@/shared/handle';
+import { isAnswer, isQueueEntry, type ExamAnswer, type QueueEntry } from './answers';
 import {
   isTagChipId,
   isTierGroup,
@@ -151,7 +152,7 @@ export interface ExamProblem extends PickedProblem {
 
 export interface ExamSubmission {
   language: LanguageId;
-  /** When 제출하기 was pressed. */
+  /** When the answer was sent to Baekjoon (after the exam; during it for older exams). */
   at: number;
   /** The judge result seen for this submission, kept even if practice overwrites judge:{id}. */
   judge?: JudgeResult;
@@ -176,8 +177,12 @@ export interface Exam {
   problems: ExamProblem[];
   /** Problem ids marked '다시 볼 문제'. */
   flagged: number[];
-  /** The last submission per problem id. */
+  /** The submission to Baekjoon per problem id. */
   submissions: Record<string, ExamSubmission>;
+  /** The answer saved with 제출하기 per problem id; submitted when the exam ends. */
+  answers?: Record<string, ExamAnswer>;
+  /** Submitting the saved answers after the end, one at a time (batch.ts). */
+  submitQueue?: Record<string, QueueEntry>;
 }
 
 export function createExam(input: {
@@ -286,14 +291,14 @@ export function toggleFlag(exam: Exam, problemId: number): Exam {
   return { ...exam, flagged };
 }
 
-/** A submission made now; refused after the end, so nothing counts after time is up. */
+/** A submission to Baekjoon made now (the batch after the end, batch.ts). */
 export function recordSubmission(
   exam: Exam,
   problemId: number,
   language: LanguageId,
   now: number,
 ): Exam {
-  if (isOver(exam, now) || !exam.problems.some((p) => p.id === problemId)) return exam;
+  if (!exam.problems.some((p) => p.id === problemId)) return exam;
   return {
     ...exam,
     submissions: { ...exam.submissions, [problemId]: { language, at: now } },
@@ -308,18 +313,19 @@ export function setProblemBody(exam: Exam, body: Problem): Exam {
   };
 }
 
-/** How long after the end a judge result can still arrive (judging takes time). */
+/** How long after its submission (or the end) a judge result can still arrive. */
 export const LATE_RESULT_MS = 30 * MINUTE;
 
 /**
  * True when a stored judge result belongs to the exam's submission for that problem: seen
- * after 제출하기 was pressed and not long after the exam ended. Older results (practice before
+ * after it was sent and not long after it (or after the end). Older results (practice before
  * the exam) and much later ones (practice after it) are not the exam's.
  */
 export function judgeBelongs(exam: Exam, judge: JudgeResult): boolean {
   const submission = exam.submissions[judge.problemId];
   if (!submission) return false;
-  return judge.updatedAt >= submission.at && judge.updatedAt <= finishTime(exam) + LATE_RESULT_MS;
+  const latest = Math.max(submission.at, finishTime(exam)) + LATE_RESULT_MS;
+  return judge.updatedAt >= submission.at && judge.updatedAt <= latest;
 }
 
 /** The newer of two results for the same problem: a larger solution id, else the later one. */
@@ -440,6 +446,13 @@ export function isExam(v: unknown): v is Exam {
   }
   if (!Array.isArray(v.flagged) || !v.flagged.every((id) => ids.has(id as number))) return false;
   if (!isRecord(v.submissions)) return false;
+  const byProblem = (value: unknown, check: (x: unknown) => boolean) =>
+    value === undefined ||
+    (isRecord(value) &&
+      Object.entries(value).every(
+        ([key, x]) => ids.has(Number(key)) && String(Number(key)) === key && check(x),
+      ));
+  if (!byProblem(v.answers, isAnswer) || !byProblem(v.submitQueue, isQueueEntry)) return false;
   return Object.entries(v.submissions).every(
     ([key, s]) => ids.has(Number(key)) && String(Number(key)) === key && isSubmission(s, +key),
   );

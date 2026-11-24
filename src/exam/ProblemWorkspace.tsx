@@ -3,6 +3,9 @@
  * IDE (docs/design/ide-spec.md §8). The exam screen mounts one per problem (keyed by id), so
  * the editor, its undo history and the run output never leak between problems. Code is saved
  * under the practice keys `code:{id}:{group}`.
+ *
+ * 제출하기 does not submit: it saves the code as this problem's answer. The saved answers are
+ * submitted to Baekjoon one after another when the exam ends (batch.ts).
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Sample } from '@/boj/problem';
@@ -14,22 +17,26 @@ import { runCases } from '@/ide/run-cases';
 import { RunOutput, type RunOutputProps } from '@/ide/RunOutput';
 import { SplitPane } from '@/ide/SplitPane';
 import * as store from '@/ide/storage';
-import { useSubmit, Warnings, type SubmitState } from '@/ide/submit';
+import { Warnings } from '@/ide/submit';
+import { findBlockedPatterns } from '@/boj/waf';
 import type { SandboxRunner } from '@/runner/client';
 import { LANGUAGES, languageInfo, type LanguageId } from '@/shared/languages';
 import type { Theme } from '@/shared/theme';
-import { CAPTURE_TIMEOUT_MS, describeCaptureError } from './capture-contract';
-import { cancelCapture, requestCapture, watchCapture } from './capture-client';
-import { formatClock, type ExamProblem, type ExamSubmission } from './model';
+import type { ExamAnswer } from './answers';
+import { answerDiffers } from './batch';
+import { formatClock, type ExamProblem } from './model';
 
-export const HIDDEN_RESULT = '제출했습니다. 결과는 시험이 끝나면 공개됩니다.';
+export const ANSWER_SAVED = '답안을 저장했습니다. 시험이 끝나면 한꺼번에 제출합니다.';
+export const ANSWER_DIFFERS = '저장한 답안과 달라요';
 
 interface Props {
   examId: string;
   problem: ExamProblem;
   index: number;
   flagged: boolean;
-  submission?: ExamSubmission;
+  answer?: ExamAnswer;
+  /** Why the statement could not be read, if it could not. */
+  loadError?: string;
   startedAt: number;
   over: boolean;
   language: LanguageId;
@@ -39,7 +46,9 @@ interface Props {
   warmEngines: Set<string>;
   onLanguage: (language: LanguageId) => void;
   onFlag: () => void;
-  onSubmitted: (language: LanguageId, at: number) => void;
+  /** '다시 시도' after the statement could not be read. */
+  onRetry: () => void;
+  onSaveAnswer: (code: string, language: LanguageId) => void;
 }
 
 type Tab = 'run' | 'submit';
@@ -48,8 +57,7 @@ type Dialog = 'reset' | 'cases' | undefined;
 export function ProblemWorkspace(props: Props) {
   const { problem, language, runner } = props;
   const body = problem.body;
-  const [loadError, setLoadError] = useState<string>();
-  const [attempt, setAttempt] = useState(0);
+  const { loadError } = props;
   const [split, setSplit] = useState(store.DEFAULT_SPLIT);
   const [cases, setCases] = useState<Sample[]>([]);
   const [output, setOutput] = useState<RunOutputProps>({ state: 'empty' });
@@ -58,43 +66,16 @@ export function ProblemWorkspace(props: Props) {
   const [dialog, setDialog] = useState<Dialog>();
   const [ready, setReady] = useState(false);
   const [saveError, setSaveError] = useState<string>();
+  /** The editor no longer holds the saved answer: only the saved one will be submitted. */
+  const [differs, setDiffers] = useState(false);
+  const [answerError, setAnswerError] = useState<string>();
+  const answerRef = useRef(props.answer);
+  answerRef.current = props.answer;
   const editorHost = useRef<HTMLDivElement>(null);
   const editor = useRef<EditorHandle | undefined>(undefined);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const languageRef = useRef(language);
-  const submit = useSubmit(problem.id, () => editor.current?.getCode() ?? '', language, {
-    hideResult: true,
-  });
   const info = languageInfo(language);
-
-  // The statement: read the first time this problem is opened (the user opened it), by a
-  // background tab the extension opens and closes (ADR-0005). It then stays in the exam.
-  useEffect(() => {
-    if (body) return;
-    let live = true;
-    let stopWatch = () => {};
-    setLoadError(undefined);
-    void requestCapture(props.examId, problem.id).then((response) => {
-      if (!live) return;
-      if (!response.ok) {
-        setLoadError(response.reason);
-        return;
-      }
-      stopWatch = watchCapture(props.examId, problem.id, (record) => {
-        if (record?.state === 'error') setLoadError(describeCaptureError(record.error));
-      });
-    });
-    // The background gives up after the timeout too; this covers a stopped service worker.
-    const timer = setTimeout(
-      () => void cancelCapture(props.examId, problem.id),
-      CAPTURE_TIMEOUT_MS + 1000,
-    );
-    return () => {
-      live = false;
-      stopWatch();
-      clearTimeout(timer);
-    };
-  }, [problem.id, attempt, body === undefined]);
 
   // Saved code and cases, then the editor (once: this component is keyed by problem).
   useEffect(() => {
@@ -113,6 +94,7 @@ export function ProblemWorkspace(props: Props) {
         engine: info.engine,
         theme: props.theme,
         onChange: (text) => {
+          setDiffers(answerDiffers(answerRef.current, text, languageRef.current));
           clearTimeout(saveTimer.current);
           const group = languageInfo(languageRef.current).codeGroup;
           saveTimer.current = setTimeout(() => {
@@ -145,6 +127,12 @@ export function ProblemWorkspace(props: Props) {
   }, [problem.id]);
 
   useEffect(() => editor.current?.setTheme(props.theme), [props.theme]);
+
+  // A new answer, or another language: compare again.
+  useEffect(() => {
+    const code = editor.current?.getCode();
+    if (code !== undefined) setDiffers(answerDiffers(props.answer, code, language));
+  }, [props.answer, language, ready]);
 
   const changeLanguage = async (next: LanguageId) => {
     if (next === language) return;
@@ -193,15 +181,19 @@ export function ProblemWorkspace(props: Props) {
     setOutput({ state: 'message', text: '코드를 초기화하였습니다.' });
   };
 
-  const startSubmit = async () => {
+  const saveAnswer = () => {
     if (props.over) return;
     setTab('submit');
-    const at = Date.now();
-    if (await submit.start()) props.onSubmitted(language, at);
+    const code = editor.current?.getCode() ?? '';
+    if (code.trim() === '') {
+      setAnswerError('코드를 작성한 뒤 제출해 주세요.');
+      return;
+    }
+    setAnswerError(undefined);
+    props.onSaveAnswer(code, language);
   };
 
   const note = body ? runNote(body.labels) : undefined;
-  const busy = submit.state.phase === 'opening';
   return (
     <div class="ide-main">
       <header class="titlebar">
@@ -250,11 +242,7 @@ export function ProblemWorkspace(props: Props) {
                 {loadError ? (
                   <div class="exam-load-error" role="alert">
                     <p>{loadError}</p>
-                    <button
-                      type="button"
-                      class="btn btn-dark"
-                      onClick={() => setAttempt((n) => n + 1)}
-                    >
+                    <button type="button" class="btn btn-dark" onClick={props.onRetry}>
                       다시 시도
                     </button>
                   </div>
@@ -311,9 +299,9 @@ export function ProblemWorkspace(props: Props) {
                         <RunOutput {...output} />
                       </>
                     ) : (
-                      <ExamSubmitPanel
-                        state={submit.state}
-                        {...(props.submission ? { submission: props.submission } : {})}
+                      <AnswerPanel
+                        {...(props.answer ? { answer: props.answer } : {})}
+                        {...(answerError ? { error: answerError } : {})}
                         startedAt={props.startedAt}
                       />
                     )}
@@ -333,6 +321,11 @@ export function ProblemWorkspace(props: Props) {
           </button>
         </div>
         <div class="buttons-right">
+          {differs && (
+            <span class="answer-differs" role="status" data-testid="answer-differs">
+              {ANSWER_DIFFERS}
+            </span>
+          )}
           <button
             type="button"
             class="btn btn-dark"
@@ -353,8 +346,9 @@ export function ProblemWorkspace(props: Props) {
           <button
             type="button"
             class="btn btn-primary"
-            disabled={running || busy || props.over || !ready}
-            onClick={() => void startSubmit()}
+            disabled={running || props.over || !ready}
+            title="지금 코드를 이 문제의 답안으로 저장합니다. 시험이 끝나면 한꺼번에 제출합니다."
+            onClick={saveAnswer}
           >
             제출하기
           </button>
@@ -379,48 +373,33 @@ export function ProblemWorkspace(props: Props) {
   );
 }
 
-/** The '제출' tab: never the judge result while the exam runs (ADR-0005). */
-function ExamSubmitPanel({
-  state,
-  submission,
+/** The '제출' tab: the saved answer. Nothing goes to Baekjoon before the end (ADR-0005). */
+function AnswerPanel({
+  answer,
+  error,
   startedAt,
 }: {
-  state: SubmitState;
-  submission?: ExamSubmission;
+  answer?: ExamAnswer;
+  error?: string;
   startedAt: number;
 }) {
-  if (state.phase === 'opening') {
+  if (error) return <p class="out-fail">{error}</p>;
+  if (!answer) {
     return (
-      <>
-        <Warnings items={state.warnings} />
-        <p class="out-muted">백준 제출 페이지를 여는 중입니다…</p>
-      </>
-    );
-  }
-  if (state.phase === 'error') return <p class="out-fail">{state.reason}</p>;
-  if (state.phase === 'closed') {
-    return (
-      <p class="out-muted">제출 창이 닫혔습니다. 제출되지 않았다면 제출하기를 다시 눌러 주세요.</p>
-    );
-  }
-  if (state.phase === 'waiting' || state.phase === 'result' || submission) {
-    return (
-      <div data-testid="exam-submitted">
-        {state.phase === 'waiting' && <Warnings items={state.warnings} />}
-        <p class="out-pass">{HIDDEN_RESULT}</p>
-        {submission && (
-          <p class="out-note">
-            마지막 제출: 시작 후 {formatClock(submission.at - startedAt)},{' '}
-            {languageInfo(submission.language).label}. 다시 제출하면 마지막 제출로 채점합니다.
-          </p>
-        )}
-      </div>
+      <p class="out-muted">
+        제출하기를 누르면 지금 코드가 이 문제의 답안으로 저장됩니다. 시험이 끝나면 저장한 답안을
+        백준에 한꺼번에 제출하고, 결과는 결과 화면에서 공개됩니다.
+      </p>
     );
   }
   return (
-    <p class="out-muted">
-      제출하기를 누르면 백준 제출 창이 열리고 자동으로 제출됩니다. 채점 결과는 시험이 끝나면 결과
-      화면에서 공개됩니다. 여러 번 제출하면 마지막 제출로 채점합니다.
-    </p>
+    <div data-testid="exam-answer">
+      <p class="out-pass">{ANSWER_SAVED}</p>
+      <Warnings items={findBlockedPatterns(answer.code)} />
+      <p class="out-note">
+        저장한 답안: 시작 후 {formatClock(answer.savedAt - startedAt)},{' '}
+        {languageInfo(answer.language).label}. 다시 누르면 지금 코드로 바뀝니다.
+      </p>
+    </div>
   );
 }

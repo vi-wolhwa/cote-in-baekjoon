@@ -1,20 +1,32 @@
 /**
  * The result screen, exam.html#{id}/result (#101): accepted count, time taken, the hardest
- * accepted problem and a row per problem. Judge results can still arrive after the exam
- * ended; useExamRecord() keeps the page live.
+ * accepted problem and a row per problem. This page also submits the saved answers, one
+ * after another (useBatch.ts), and shows each one's progress; judge results arrive as they
+ * come, and useExamRecord() keeps the page live.
  */
 import type { ComponentChildren } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
 import { CheckIcon, CrossIcon, DashIcon } from '@/ide/icons';
+import { batchProgress, finishExam, retrySubmission } from './batch';
 import { examLabel, formatClock, formatDuration, isOver } from './model';
 import { summarizeExam, type Outcome, type ProblemRow } from './results';
 import { PRACTICE_HASH, problemPageUrl } from './routes';
 import { tierName } from './solvedac';
+import { focusSubmitWindow, useBatchSubmit } from './useBatch';
 import { useExamRecord, useNow } from './useExam';
 
 export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => void }) {
-  const { state } = useExamRecord(id);
+  const { state, update } = useExamRecord(id);
   const exam = state.status === 'ready' ? state.exam : undefined;
   const now = useNow(exam !== undefined && !isOver(exam, Date.now()), 1000);
+  const over = exam ? isOver(exam, now) : false;
+  // Opened after the end without the exam screen having queued the answers: queue them now.
+  useEffect(() => {
+    if (exam && over && !exam.submitQueue) {
+      void update((e) => finishExam(e, Date.now())).catch(() => undefined);
+    }
+  }, [exam, over]);
+  useBatchSubmit(exam);
 
   if (state.status === 'loading') return <div class="ide-loading">결과를 불러오는 중입니다…</div>;
   if (!exam || state.status !== 'ready') {
@@ -24,13 +36,13 @@ export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => voi
       </ResultShell>
     );
   }
-  const over = isOver(exam, now);
   const full = summarizeExam(exam, state.judges, now);
   // Opened during the exam (a bookmarked URL): nothing about results until it ends.
   const summary = over ? full : { ...full, accepted: 0, hardest: undefined };
   const date = new Date(exam.startedAt);
+  const progress = batchProgress(exam);
   const waiting = summary.rows.some(
-    (r) => r.submission && r.outcome !== 'accepted' && r.outcome !== 'wrong',
+    (r) => r.stage === 'submitted' && r.outcome !== 'accepted' && r.outcome !== 'wrong',
   );
 
   return (
@@ -69,7 +81,24 @@ export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => voi
         </div>
       </section>
 
-      {over && waiting && (
+      {over && progress.label && (
+        <p
+          class={`result-progress${progress.running ? ' is-running' : ''}`}
+          role="status"
+          data-testid="batch-progress"
+        >
+          {progress.label}
+          {progress.running &&
+            ' · 저장한 답안을 하나씩 백준에 제출하고 있어요. 이 화면을 닫지 말아 주세요.'}
+        </p>
+      )}
+      {over && !progress.label && (
+        <p class="result-note" role="status">
+          저장한 답안이 없어 백준에 제출하지 않았습니다.
+        </p>
+      )}
+
+      {over && waiting && !progress.running && (
         <p class="result-note" role="status">
           채점이 끝나지 않은 제출이 있습니다. 결과가 들어오면 바로 반영됩니다.
         </p>
@@ -77,7 +106,16 @@ export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => voi
 
       <ol class="result-rows" aria-label="문제별 결과">
         {summary.rows.map((row) => (
-          <ResultRow key={row.problem.id} row={row} hidden={!over} />
+          <ResultRow
+            key={row.problem.id}
+            row={row}
+            hidden={!over}
+            onRetry={() =>
+              void update((e) => retrySubmission(e, row.problem.id, Date.now())).catch(
+                () => undefined,
+              )
+            }
+          />
         ))}
       </ol>
 
@@ -97,8 +135,18 @@ const OUTCOME_LABEL: Record<Outcome, string> = {
   none: '결과 없음',
 };
 
-function ResultRow({ row, hidden }: { row: ProblemRow; hidden: boolean }) {
+function ResultRow({
+  row,
+  hidden,
+  onRetry,
+}: {
+  row: ProblemRow;
+  hidden: boolean;
+  onRetry: () => void;
+}) {
+  const [focusFailed, setFocusFailed] = useState(false);
   const outcome: Outcome = hidden ? 'none' : row.outcome;
+  const stageClass = row.stage === 'failed' || row.stage === 'manual' ? ` is-${row.stage}` : '';
   const Icon = outcome === 'accepted' ? CheckIcon : outcome === 'wrong' ? CrossIcon : DashIcon;
   const meta = [tierName(row.problem.level), row.language].filter(Boolean).join(' · ');
   return (
@@ -113,9 +161,29 @@ function ResultRow({ row, hidden }: { row: ProblemRow; hidden: boolean }) {
         <span class="result-meta">{meta}</span>
       </span>
       <span class="result-judge">
-        <span class={`result-text is-${outcome}`}>
-          {hidden ? (row.submission ? '제출함' : '제출하지 않음') : row.resultText}
+        <span class={`result-text is-${outcome}${stageClass}`} data-testid="result-text">
+          {hidden ? (row.stage === 'none' ? '제출 안 함' : '답안 저장함') : row.resultText}
         </span>
+        {!hidden && row.reason && <span class="result-reason">{row.reason}</span>}
+        {!hidden && row.stage === 'manual' && (
+          <button
+            type="button"
+            class="btn btn-primary result-action"
+            onClick={() => void focusSubmitWindow(row.problem.id).then((ok) => setFocusFailed(!ok))}
+          >
+            제출 창 보기
+          </button>
+        )}
+        {focusFailed && row.stage === 'manual' && (
+          <span class="result-reason">
+            제출 창을 찾지 못했어요. 창이 닫혔다면 잠시 뒤 다시 제출할 수 있어요.
+          </span>
+        )}
+        {!hidden && row.stage === 'failed' && (
+          <button type="button" class="btn btn-primary result-action" onClick={onRetry}>
+            다시 제출
+          </button>
+        )}
         {row.submittedAfterMs !== undefined && (
           <span class="result-at">시작 후 {formatClock(row.submittedAfterMs)}</span>
         )}

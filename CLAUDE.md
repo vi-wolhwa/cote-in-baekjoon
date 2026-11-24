@@ -195,8 +195,12 @@ milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
 - Never use the Programmers or Baekjoon logo or other brand assets, and never use the Programmers name (PRD §8). Their colors appear only where the product owner decided: the IDE theme and the extension icon
 - Docs, issues and PRs are written in Korean
 - Only send requests to acmicpc.net on a direct user action; no background crawling.
-  The one exception is ADR-0002's judge-result fallback: `/status/ajax` for the user's
-  own just-made submission, backed off, until final, at most 10 minutes
+  Exceptions:
+  - ADR-0002's judge-result fallback: `/status/ajax` for the user's own just-made
+    submission, backed off, until final, at most 10 minutes
+  - Mock exam (ADR-0005): after the user starts an exam, its problems (≤ 8) are opened one
+    at a time in a background tab to read them. When the exam ends, its saved answers are
+    submitted one at a time through the official submit window
 - Ask the product owner (the user) only for decisions they must make:
   product direction, design approval, costs, publishing, big structural changes.
   Decide technical and process choices yourself and record them as ADRs in `docs/adr/`
