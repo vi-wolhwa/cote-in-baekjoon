@@ -1,0 +1,189 @@
+/* Left pane tabs and the '제출 기록' tab (ide-spec.md §7.3, ADR-0012). Tokens are in style.css. */
+.left-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.left-body {
+  flex: 1;
+  min-height: 0;
+}
+.left-body[hidden] {
+  display: none;
+}
+
+.history {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.history-section + .history-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.history-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+.history-head h4 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-strong);
+}
+.history-head .out-button {
+  margin: 0 0 0 auto;
+}
+.history-count {
+  color: var(--out-hint);
+  font-size: 13px;
+}
+.history-note {
+  margin: 8px 0 0;
+  color: var(--out-hint);
+  font-size: 13px;
+}
+.history-error {
+  margin: 8px 0 0;
+  color: var(--fail);
+  font-size: 13px;
+}
+.history-busy {
+  margin-top: 8px;
+}
+
+.history-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.history-list > li + li {
+  border-top: 1px solid var(--line);
+}
+.history-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+button.history-item {
+  cursor: pointer;
+}
+button.history-item:hover {
+  background: var(--icon-hover-bg);
+}
+.history-badge {
+  flex: none;
+  max-width: 12em;
+  overflow: hidden;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.history-badge.is-pass {
+  color: var(--pass);
+}
+.history-badge.is-fail {
+  color: var(--fail);
+}
+.history-badge.is-partial {
+  color: var(--warn);
+}
+.history-badge.is-wait,
+.history-badge.is-none {
+  color: var(--out-hint);
+}
+.history-lang {
+  color: var(--text-strong);
+}
+.history-metrics {
+  color: var(--out-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.history-time {
+  margin-left: auto;
+  color: var(--out-hint);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.history-tag {
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--chip-active-bg);
+  color: var(--chip-active-text);
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.history-source {
+  color: var(--link);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.history-source:hover {
+  text-decoration: underline;
+}
+
+/* One submission */
+.history-back {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font-size: 13px;
+  cursor: pointer;
+}
+.history-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 12px;
+}
+.history-detail-head .history-time {
+  margin-left: 0;
+}
+.history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+}
+.history-actions .history-note {
+  margin-top: 8px;
+}
+.history-code {
+  margin: 12px 0 0;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid var(--pre-border);
+  border-radius: 4px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 4;
+}

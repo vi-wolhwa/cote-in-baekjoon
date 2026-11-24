@@ -10,7 +10,9 @@ import { ResetDialog, TestCaseDialog } from './dialogs';
 import { createEditor, type EditorHandle } from './editor';
 import { BackArrowIcon } from './icons';
 import { LanguageSelect, RunButton, SubmitOnlyNote } from './language-controls';
-import { ProblemPane, runBlockReason, runNote } from './ProblemPane';
+import { useHistoryLoad } from './history/useHistoryLoad';
+import { LeftPane } from './LeftPane';
+import { runBlockReason, runNote } from './ProblemPane';
 import { ideReportUrl } from './report-link';
 import { runCases } from './run-cases';
 import { RunOutput, type RunOutputProps } from './RunOutput';
@@ -92,7 +94,11 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
   const [formatOpen, setFormatOpen] = useState(false);
   const submit = useSubmit(
     problem.id,
-    () => sol.submission(editor.current?.getCode() ?? '', languageRef.current),
+    () => {
+      const text = editor.current?.getCode() ?? '';
+      const code = sol.submission(text, languageRef.current);
+      return { code, ...(sol.fn ? { fnCode: text } : {}) };
+    },
     language,
   );
   const blockReason = runBlockReason(problem.labels);
@@ -175,6 +181,18 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     }
     setOutput({ state: 'empty' });
   };
+
+  const history = useHistoryLoad({
+    problemId: problem.id,
+    editor,
+    sol,
+    language: languageRef,
+    changeLanguage,
+    onLoaded: () => {
+      setTab('run');
+      setOutput({ state: 'message', text: '제출 기록의 코드를 불러왔습니다.' });
+    },
+  });
 
   const changeKeymap = (km: store.Keymap) => {
     setKeymap(km);
@@ -317,7 +335,13 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
               size={split.horizontal}
               onResize={(h) => setSplit((s) => ({ ...s, horizontal: h }))}
               onResizeEnd={saveSplit}
-              first={<ProblemPane problem={problem} format={sol.fn ? sol.format : undefined} />}
+              first={
+                <LeftPane
+                  problem={problem}
+                  format={sol.fn ? sol.format : undefined}
+                  onLoad={history.load}
+                />
+              }
               second={
                 <SplitPane
                   direction="vertical"
@@ -445,6 +469,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       </div>
 
       {dialog === 'reset' && <ResetDialog onConfirm={reset} onClose={() => setDialog(undefined)} />}
+      {history.dialog}
       {dialog === 'cases' && sol.fn && sol.format && (
         <SolutionCaseDialog
           format={sol.format}

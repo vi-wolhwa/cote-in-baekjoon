@@ -142,8 +142,7 @@ export function isSubmitRequestMessage(v: unknown): v is SubmitRequestMessage {
     v.code.length > 0 &&
     v.code.length <= MAX_CODE_LENGTH &&
     (v.autoSubmit === undefined || typeof v.autoSubmit === 'boolean') &&
-    (v.fnCode === undefined ||
-      (typeof v.fnCode === 'string' && v.fnCode.length <= MAX_CODE_LENGTH))
+    (v.fnCode === undefined || (typeof v.fnCode === 'string' && v.fnCode.length <= MAX_CODE_LENGTH))
   );
 }
 
