@@ -35,12 +35,19 @@ interface Props {
   onChange: (table: FormatTable) => void;
 }
 
-function modeLabel(mode: RowMode, type: ParamType): string {
-  if (mode === 'new') return '새 줄에서';
-  if (mode === 'same') return '앞과 같은 줄에서';
-  if (isGridType(type)) return '여러 줄에서 (한 줄에 한 행)';
-  if (type === 'line[]') return '여러 줄에서 (한 줄씩 통째로)';
-  return '여러 줄에서 (한 줄에 하나씩)';
+const MODE_LABELS: Record<RowMode, string> = {
+  new: '새 줄에서',
+  same: '같은 줄에서',
+  repeat: '여러 줄에서',
+};
+
+/** What "여러 줄에서" means for a type, shown as the select's tooltip. */
+function modeHint(mode: RowMode, type: ParamType): string {
+  if (mode === 'new') return '새 줄을 시작해 읽어요';
+  if (mode === 'same') return '앞 매개변수와 같은 줄에서 이어 읽어요';
+  if (isGridType(type)) return '한 줄에 한 행씩 여러 줄을 읽어요';
+  if (type === 'line[]') return '여러 줄을 한 줄씩 통째로 읽어요 (공백 포함)';
+  return '한 줄에 하나씩 여러 줄을 읽어요';
 }
 
 export function FormatForm({ table, onChange }: Props) {
@@ -49,11 +56,21 @@ export function FormatForm({ table, onChange }: Props) {
   return (
     <div class="format-form">
       <table class="format-table">
+        <colgroup>
+          <col class="format-col-name" />
+          <col class="format-col-type" />
+          <col />
+          <col class="format-col-line" />
+          <col class="format-col-actions" />
+        </colgroup>
         <thead>
           <tr>
             <th scope="col">매개변수</th>
             <th scope="col">타입</th>
             <th scope="col">읽는 방법</th>
+            <th scope="col" class="format-line-head">
+              줄
+            </th>
             <th scope="col">
               <span class="visually-hidden">순서와 삭제</span>
             </th>
@@ -85,15 +102,15 @@ export function FormatForm({ table, onChange }: Props) {
                 </select>
               </td>
               <td>
-                <div class="format-read">
-                  <span class="format-where">{where[i]}</span>
-                  <ReadOptions
-                    row={row}
-                    index={i}
-                    modes={modeOptions(table, i)}
-                    onChange={(patch) => onChange(setRow(table, i, patch))}
-                  />
-                </div>
+                <ReadOptions
+                  row={row}
+                  index={i}
+                  modes={modeOptions(table, i)}
+                  onChange={(patch) => onChange(setRow(table, i, patch))}
+                />
+              </td>
+              <td class="format-line" title="입력에서 읽는 위치">
+                {where[i]}
               </td>
               <td class="format-row-actions">
                 <button
@@ -130,13 +147,13 @@ export function FormatForm({ table, onChange }: Props) {
           ))}
           {table.rows.length === 0 && (
             <tr>
-              <td colSpan={4} class="format-where">
+              <td colSpan={5} class="format-where">
                 입력이 없는 문제예요. solution()을 매개변수 없이 불러요.
               </td>
             </tr>
           )}
           <tr class="format-add-row">
-            <td colSpan={4}>
+            <td>
               <button
                 type="button"
                 class="format-add"
@@ -148,12 +165,14 @@ export function FormatForm({ table, onChange }: Props) {
                 +
               </button>
             </td>
+            <td colSpan={4} />
           </tr>
           <tr class="format-cases">
             <th scope="row">입력 반복</th>
-            <td colSpan={3}>
+            <td colSpan={2}>
               <CasesOptions table={table} onChange={onChange} />
             </td>
+            <td colSpan={2} />
           </tr>
           <tr class="format-ret">
             <th scope="row">반환값</th>
@@ -175,9 +194,10 @@ export function FormatForm({ table, onChange }: Props) {
                 ))}
               </select>
             </td>
-            <td colSpan={2}>
+            <td>
               <RetOptions ret={table.ret} onChange={(ret) => onChange({ ...table, ret })} />
             </td>
+            <td colSpan={2} />
           </tr>
         </tbody>
       </table>
@@ -194,23 +214,23 @@ function ReadOptions(props: {
   const { row, index, modes, onChange } = props;
   const n = index + 1;
   const repeat = row.mode === 'repeat';
+  const grid = isGridType(row.type);
   return (
-    <span class="format-ret-options">
-      {modes.length > 1 ? (
-        <select
-          aria-label={`${n}번째 매개변수 읽는 방법`}
-          value={row.mode}
-          onChange={(e) => onChange({ mode: e.currentTarget.value as RowMode })}
-        >
-          {modes.map((m) => (
-            <option key={m} value={m}>
-              {modeLabel(m, row.type)}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <span class="format-where">{modeLabel(row.mode, row.type)}</span>
-      )}
+    <div class="format-read">
+      <select
+        class="format-mode"
+        aria-label={`${n}번째 매개변수 읽는 방법`}
+        title={modeHint(row.mode, row.type)}
+        value={row.mode}
+        disabled={modes.length < 2}
+        onChange={(e) => onChange({ mode: e.currentTarget.value as RowMode })}
+      >
+        {modes.map((m) => (
+          <option key={m} value={m}>
+            {MODE_LABELS[m]}
+          </option>
+        ))}
+      </select>
       {isArrayType(row.type) && !repeat && (
         <CountInput
           label={`${n}번째 매개변수 개수`}
@@ -223,13 +243,13 @@ function ReadOptions(props: {
       {repeat && (
         <CountInput
           label={`${n}번째 매개변수 줄 수`}
-          prefix={isGridType(row.type) ? '행' : '줄 수'}
+          prefix={grid ? '행' : '줄 수'}
           placeholder="예: n"
           value={row.count}
           onChange={(count) => onChange({ count })}
         />
       )}
-      {isGridType(row.type) && (
+      {grid && (
         <CountInput
           label={`${n}번째 매개변수 열 수`}
           prefix="열"
@@ -238,7 +258,7 @@ function ReadOptions(props: {
           onChange={(cols) => onChange({ cols })}
         />
       )}
-    </span>
+    </div>
   );
 }
 
@@ -250,27 +270,29 @@ function CountInput(props: {
   onChange: (v: string) => void;
 }) {
   return (
-    <>
-      {props.prefix}
+    <span class="format-field">
+      <span class="format-field-label" aria-hidden="true">
+        {props.prefix}
+      </span>
       <input
         type="text"
         class="format-count"
         aria-label={props.label}
         placeholder={props.placeholder}
-        title="숫자나 앞에서 읽은 정수 이름 (n, n-1, n*m)"
+        title="숫자나 앞에서 읽은 정수 이름 (n, n-1, n*m, m+k)"
         spellcheck={false}
         value={props.value}
         onInput={(e) => props.onChange(e.currentTarget.value)}
       />
-    </>
+    </span>
   );
 }
 
 const CASES_LABELS: Record<CasesChoice, string> = {
-  once: '한 번 (케이스 하나)',
+  once: '한 번',
   count: '첫 줄의 수만큼',
   eof: '입력이 끝날 때까지',
-  until: '이 줄이 나올 때까지',
+  until: '끝내는 줄까지',
 };
 
 function CasesOptions({ table, onChange }: Props) {
@@ -279,6 +301,7 @@ function CasesOptions({ table, onChange }: Props) {
   return (
     <span class="format-ret-options">
       <select
+        class="format-cases-select"
         aria-label="입력 반복"
         value={choice}
         onChange={(e) =>
@@ -297,6 +320,8 @@ function CasesOptions({ table, onChange }: Props) {
       {choice === 'until' && (
         <input
           type="text"
+          class="format-count"
+          placeholder="예: 0 0"
           aria-label="입력을 끝내는 줄"
           spellcheck={false}
           value={until}

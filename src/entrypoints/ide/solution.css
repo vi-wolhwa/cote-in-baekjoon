@@ -146,26 +146,51 @@
   padding-left: 18px;
 }
 .format-table {
+  /* Fixed columns: changing a type or how it is read never moves the other columns. */
+  table-layout: fixed;
   border-collapse: collapse;
   width: 100%;
+  min-width: 560px;
+}
+.format-col-name {
+  width: 104px;
+}
+.format-col-type {
+  width: 100px;
+}
+.format-col-line {
+  width: 84px;
+}
+.format-col-actions {
+  width: 72px;
 }
 .format-table th,
 .format-table td {
-  padding: 3px 6px;
+  height: 32px;
+  padding: 4px 8px 4px 0;
   border-bottom: 1px solid var(--line);
   text-align: left;
   font-weight: 400;
   vertical-align: middle;
 }
+.format-table th:first-child,
+.format-table td:first-child {
+  padding-left: 0;
+}
 .format-table thead th {
+  height: 24px;
   color: var(--out-label);
   font-size: 12px;
 }
-.format-ret th {
+.format-ret th,
+.format-cases th {
   color: var(--text-strong);
+  white-space: nowrap;
 }
 .format-table input,
 .format-table select {
+  box-sizing: border-box;
+  height: 24px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--select-text);
@@ -173,15 +198,25 @@
   border: 1px solid var(--select-border);
   border-radius: 4px;
 }
-.format-table input[type='text'] {
-  width: 9em;
-  padding: 2px 6px;
-}
-.format-table input[type='number'] {
-  width: 4em;
+.format-table input {
+  padding: 0 6px;
 }
 .format-table select {
-  height: 22px;
+  padding: 0 4px;
+}
+.format-table select:disabled {
+  opacity: 1;
+  color: var(--out-text);
+  cursor: default;
+}
+/* The name, type and add button fill their column. */
+.format-table td > input[type='text'],
+.format-table td > select,
+.format-add {
+  width: 100%;
+}
+.format-table input[type='number'] {
+  width: 56px;
 }
 .format-where {
   color: var(--out-text);
@@ -189,20 +224,40 @@
 .format-ret-options {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   color: var(--out-text);
 }
 .format-ret-options input[type='text'] {
-  width: 6em;
-}
-.format-ret-options input.format-count {
-  width: 5em;
+  width: 80px;
 }
 .format-read {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
+  gap: 4px 8px;
+  min-height: 24px;
+}
+.format-mode {
+  flex: none;
+  width: 100px;
+}
+.format-field {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--out-text);
+  white-space: nowrap;
+}
+.format-table input.format-count {
+  width: 68px;
+}
+.format-table td.format-line {
+  overflow: hidden;
+  color: var(--out-hint);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .format-row-actions {
   white-space: nowrap;
@@ -228,8 +283,8 @@
   cursor: default;
 }
 .format-add {
-  width: 9em;
-  height: 22px;
+  box-sizing: border-box;
+  height: 24px;
   padding: 0;
   border: 1px dashed var(--select-border);
   border-radius: 4px;
@@ -248,8 +303,8 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
-.format-cases th {
-  color: var(--text-strong);
+.format-add-row td {
+  border-bottom-style: dashed;
 }
 .format-actions {
   margin-top: 8px;
@@ -296,4 +351,21 @@
 }
 .case-table textarea[aria-invalid='true'] {
   border-color: #c62828;
+}
+.format-form {
+  container-type: inline-size;
+  overflow-x: auto;
+}
+/* A narrow code pane: drop the line column so the table still fits. */
+@container (max-width: 600px) {
+  .format-table {
+    min-width: 0;
+  }
+  .format-table .format-col-line {
+    width: 0;
+  }
+  .format-table .format-line,
+  .format-table .format-line-head {
+    display: none;
+  }
 }
