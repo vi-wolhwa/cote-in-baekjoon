@@ -50,13 +50,22 @@ async function api<T>(pathAndQuery: string, search = false): Promise<T> {
     await (search ? searchPacer : apiPacer).wait();
     if (search) counters.githubSearch++;
     else counters.githubApi++;
-    const res = await fetch(`${API}${pathAndQuery}`, {
-      headers: {
-        Authorization: `Bearer ${cachedToken}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'cote-in-baekjoon-format-data',
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API}${pathAndQuery}`, {
+        headers: {
+          Authorization: `Bearer ${cachedToken}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'cote-in-baekjoon-format-data',
+        },
+      });
+    } catch (e) {
+      // Dropped connections (ECONNRESET, timeouts): back off and retry a few times.
+      if (attempt >= 4) throw e;
+      console.log(`GitHub 연결 오류: ${30 * (attempt + 1)}초 뒤 다시 시도합니다`);
+      await sleep(30_000 * (attempt + 1));
+      continue;
+    }
     if (res.ok) return (await res.json()) as T;
     const remaining = res.headers.get('x-ratelimit-remaining');
     if ((res.status === 403 || res.status === 429) && remaining === '0' && attempt < 2) {
