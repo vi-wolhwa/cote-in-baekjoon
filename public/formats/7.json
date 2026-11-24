@@ -1,0 +1,23 @@
+{"v":1,"formats":{
+"7420":{"v":1,"params":[{"name":"n","type":"int"},{"name":"l","type":"int"},{"name":"points","type":"int[][]","cols":2}],"lines":[["n","l"],{"repeat":"n","of":"points"}],"cases":null,"ret":{"type":"int"}},
+"7432":{"v":1,"params":[{"name":"n","type":"int"},{"name":"paths","type":"string[]"}],"lines":[["n"],{"repeat":"n","of":"paths"}],"cases":null,"ret":{"type":"line[]","sep":"\n"}},
+"7453":{"v":1,"params":[{"name":"n","type":"int"},{"name":"rows","type":"int[][]","cols":4}],"lines":[["n"],{"repeat":"n","of":"rows"}],"cases":null,"ret":{"type":"long"}},
+"7469":{"v":1,"params":[{"name":"n","type":"int"},{"name":"m","type":"int"},{"name":"a","type":"int[]","len":"n"},{"name":"queries","type":"int[][]","cols":3}],"lines":[["n","m"],["a"],{"repeat":"m","of":"queries"}],"cases":null,"ret":{"type":"int[]","sep":"\n"}},
+"7490":{"v":1,"params":[{"name":"t","type":"int"},{"name":"ns","type":"int[]"}],"lines":[["t"],{"repeat":"t","of":"ns"}],"cases":null,"ret":{"type":"line[]"}},
+"7562":{"v":1,"params":[{"name":"l","type":"int"},{"name":"x1","type":"int"},{"name":"y1","type":"int"},{"name":"x2","type":"int"},{"name":"y2","type":"int"}],"lines":[["l"],["x1","y1"],["x2","y2"]],"cases":{"count":"T"},"ret":{"type":"int"}},
+"7567":{"v":1,"params":[{"name":"bowls","type":"string"}],"lines":[["bowls"]],"cases":null,"ret":{"type":"int"}},
+"7568":{"v":1,"params":[{"name":"n","type":"int"},{"name":"people","type":"int[][]","cols":2}],"lines":[["n"],{"repeat":"n","of":"people"}],"cases":null,"ret":{"type":"int[]","sep":" "}},
+"7569":{"v":1,"params":[{"name":"m","type":"int"},{"name":"n","type":"int"},{"name":"h","type":"int"},{"name":"boxes","type":"int[][]","cols":"m"}],"lines":[["m","n","h"],{"repeat":"n*h","of":"boxes"}],"cases":null,"ret":{"type":"int"}},
+"7570":{"v":1,"params":[{"name":"n","type":"int"},{"name":"kids","type":"int[]","len":"n"}],"lines":[["n"],["kids"]],"cases":null,"ret":{"type":"int"}},
+"7572":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":null,"ret":{"type":"string"}},
+"7573":{"v":1,"params":[{"name":"n","type":"int"},{"name":"l","type":"int"},{"name":"m","type":"int"},{"name":"fish","type":"int[][]","cols":2}],"lines":[["n","l","m"],{"repeat":"m","of":"fish"}],"cases":null,"ret":{"type":"int"}},
+"7576":{"v":1,"params":[{"name":"m","type":"int"},{"name":"n","type":"int"},{"name":"box","type":"int[][]","cols":"m"}],"lines":[["m","n"],{"repeat":"n","of":"box"}],"cases":null,"ret":{"type":"int"}},
+"7579":{"v":1,"params":[{"name":"n","type":"int"},{"name":"m","type":"int"},{"name":"memories","type":"int[]","len":"n"},{"name":"costs","type":"int[]","len":"n"}],"lines":[["n","m"],["memories"],["costs"]],"cases":null,"ret":{"type":"int"}},
+"7662":{"v":1,"params":[{"name":"k","type":"int"},{"name":"ops","type":"string[][]","cols":2}],"lines":[["k"],{"repeat":"k","of":"ops"}],"cases":{"count":"T"},"ret":{"type":"string"}},
+"7677":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":{"until":"-1"},"ret":{"type":"int"}},
+"7682":{"v":1,"params":[{"name":"board","type":"string"}],"lines":[["board"]],"cases":{"until":"end"},"ret":{"type":"bool","yes":"valid","no":"invalid"}},
+"7770":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":null,"ret":{"type":"int"}},
+"7785":{"v":1,"params":[{"name":"n","type":"int"},{"name":"logs","type":"string[][]","cols":2}],"lines":[["n"],{"repeat":"n","of":"logs"}],"cases":null,"ret":{"type":"string[]","sep":"\n"}},
+"7795":{"v":1,"params":[{"name":"n","type":"int"},{"name":"m","type":"int"},{"name":"a","type":"int[]","len":"n"},{"name":"b","type":"int[]","len":"m"}],"lines":[["n","m"],["a"],["b"]],"cases":{"count":"T"},"ret":{"type":"int"}},
+"7891":{"v":1,"params":[{"name":"x","type":"int"},{"name":"y","type":"int"}],"lines":[["x","y"]],"cases":{"count":"t"},"ret":{"type":"long"}}
+}}

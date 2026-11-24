@@ -4,8 +4,7 @@
  * sample validation; interactive and function-implementation problems never use one.
  */
 import type { Problem } from '@/boj/problem';
-import bundledData from '@/data/formats.json';
-import { checkFormat, type Format } from './dsl';
+import type { Format } from './dsl';
 import { inferFormat } from './infer';
 import { validateFormat } from './validate';
 
@@ -32,40 +31,19 @@ export interface Resolved {
   savedInvalid?: string[];
 }
 
-/** Bundled formats by problem id; entries that fail the DSL checks are dropped. */
-export function parseBundled(raw: unknown): Map<number, Format> {
-  const out = new Map<number, Format>();
-  if (typeof raw !== 'object' || raw === null) return out;
-  const { v, formats } = raw as { v?: unknown; formats?: unknown };
-  if (v !== 1 || typeof formats !== 'object' || formats === null) return out;
-  for (const [id, value] of Object.entries(formats)) {
-    const n = Number(id);
-    if (!Number.isInteger(n) || n < 1 || n > 9_999_999) continue;
-    const r = checkFormat(value);
-    if (r.ok) out.set(n, r.format);
-  }
-  return out;
-}
-
-let bundled: Map<number, Format> | undefined;
-
-export function bundledFormat(problemId: number): Format | undefined {
-  bundled ??= parseBundled(bundledData);
-  return bundled.get(problemId);
-}
-
 export function isExcluded(labels: readonly string[]): boolean {
   return labels.some((l) => EXCLUDED_LABELS.includes(l));
 }
 
 /**
- * Picks the format for a problem. `saved` is the raw stored value (untrusted). Inference
- * runs only when the first two sources give nothing usable.
+ * Picks the format for a problem. `saved` is the raw stored value (untrusted); `bundled` is the
+ * problem's entry in the format data (`loadBundledFormat`). Inference runs only when the first
+ * two sources give nothing usable.
  */
 export function resolveFormat(
   problem: Pick<Problem, 'id' | 'samples' | 'labels' | 'sections'>,
   saved: unknown,
-  bundledOverride?: Format,
+  bundled?: Format,
 ): Resolved {
   if (isExcluded(problem.labels)) return { reason: EXCLUDED_REASON };
   const out: Resolved = {};
@@ -74,9 +52,8 @@ export function resolveFormat(
     if (v.ok) return { format: v.format, source: 'user' };
     out.savedInvalid = v.reasons;
   }
-  const fromData = bundledOverride ?? bundledFormat(problem.id);
-  if (fromData && validateFormat(fromData, problem.samples).ok) {
-    return { ...out, format: fromData, source: 'bundled' };
+  if (bundled && validateFormat(bundled, problem.samples).ok) {
+    return { ...out, format: bundled, source: 'bundled' };
   }
   const inferred = inferFormat({
     samples: problem.samples,

@@ -1,0 +1,18 @@
+{"v":1,"formats":{
+"32025":{"v":1,"params":[{"name":"h","type":"int"},{"name":"w","type":"int"}],"lines":[["h"],["w"]],"cases":null,"ret":{"type":"int"}},
+"32068":{"v":1,"params":[{"name":"l","type":"int"},{"name":"r","type":"int"},{"name":"s","type":"int"}],"lines":[["l","r","s"]],"cases":{"count":"T"},"ret":{"type":"int"}},
+"32069":{"v":1,"params":[{"name":"l","type":"int"},{"name":"n","type":"int"},{"name":"k","type":"int"},{"name":"a","type":"int[]","len":"n"}],"lines":[["l","n","k"],["a"]],"cases":null,"ret":{"type":"int[]","sep":"\n"}},
+"32154":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":null,"ret":{"type":"line[]","sep":"\n"}},
+"32215":{"v":1,"params":[{"name":"n","type":"int"},{"name":"m","type":"int"},{"name":"k","type":"int"}],"lines":[["n","m","k"]],"cases":null,"ret":{"type":"int"}},
+"32278":{"v":1,"params":[{"name":"n","type":"long"}],"lines":[["n"]],"cases":null,"ret":{"type":"string"}},
+"32288":{"v":1,"params":[{"name":"n","type":"int"},{"name":"s","type":"string"}],"lines":[["n"],["s"]],"cases":null,"ret":{"type":"string"}},
+"32297":{"v":1,"params":[{"name":"n","type":"int"},{"name":"s","type":"string"}],"lines":[["n"],["s"]],"cases":null,"ret":{"type":"bool","yes":"YES","no":"NO"}},
+"32342":{"v":1,"params":[{"name":"s","type":"string"}],"lines":[["s"]],"cases":{"count":"Q"},"ret":{"type":"int"}},
+"32369":{"v":1,"params":[{"name":"n","type":"int"},{"name":"a","type":"int"},{"name":"b","type":"int"}],"lines":[["n","a","b"]],"cases":null,"ret":{"type":"int[]","sep":" "}},
+"32384":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":null,"ret":{"type":"string"}},
+"32399":{"v":1,"params":[{"name":"s","type":"string"}],"lines":[["s"]],"cases":null,"ret":{"type":"int"}},
+"32642":{"v":1,"params":[{"name":"n","type":"int"},{"name":"weather","type":"int[]","len":"n"}],"lines":[["n"],["weather"]],"cases":null,"ret":{"type":"long"}},
+"32684":{"v":1,"params":[{"name":"cho","type":"int[]","len":6},{"name":"han","type":"int[]","len":6}],"lines":[["cho"],["han"]],"cases":null,"ret":{"type":"string"}},
+"32951":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":null,"ret":{"type":"int"}},
+"32978":{"v":1,"params":[{"name":"n","type":"int"},{"name":"ingredients","type":"string[]","len":"n"},{"name":"used","type":"string[]","len":"n-1"}],"lines":[["n"],["ingredients"],["used"]],"cases":null,"ret":{"type":"string"}}
+}}

@@ -14,5 +14,5 @@ tests/fixtures/
 .release-please-manifest.json
 CHANGELOG.md
 vendor/
-src/data/formats.json
+public/formats/
 scripts/formats/formats-reviewed.json

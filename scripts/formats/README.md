@@ -85,7 +85,7 @@ data/boj-cache/
 캐시가 모이면 확장의 추론기와 검증기로 형식을 만든다. 문제 본문은 읽기만 하고, 결과에는 문제 번호와 형식만 남는다.
 
 ```bash
-npm run formats:build                                      # src/data/formats.json, 캐시에 build-report.json
+npm run formats:build                                      # public/formats/*.json(번호 1,000개씩), 캐시에 build-report.json
 npm run formats:build -- --review data/boj-cache/review    # 검토용 시트(문제 100개씩, 로컬)
 npm run formats:check -- data/boj-cache/review/out-01.json # 검토한 형식을 예제로 검증(아무것도 쓰지 않음)
 ```
