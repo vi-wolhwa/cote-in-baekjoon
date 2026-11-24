@@ -62,7 +62,17 @@ async function serveProblem(context: BrowserContext, body = problemHtml) {
  */
 function answerTabs(context: BrowserContext, urls: string[], pages: Pages = defaultPages) {
   const queue = [...urls];
-  const result = { read: [] as string[], opened: 0 };
+  let gate: Promise<void> = Promise.resolve();
+  const result = {
+    read: [] as string[],
+    opened: 0,
+    /** Holds the pages served from now on until the returned function is called. */
+    hold() {
+      let release = () => {};
+      gate = new Promise<void>((resolve) => (release = resolve));
+      return release;
+    },
+  };
   context.on('page', (tab) => {
     const url = queue.shift();
     if (!url) return;
@@ -72,6 +82,7 @@ function answerTabs(context: BrowserContext, urls: string[], pages: Pages = defa
         .route(/^https:\/\/(www\.)?acmicpc\.net\/status\?/, async (route) => {
           const search = new URL(route.request().url()).search;
           if (!result.read.includes(search)) result.read.push(search);
+          await gate;
           // The extension closes the tab as soon as it has read it.
           await route
             .fulfill({
@@ -151,7 +162,7 @@ test('reads my and everyone’s status lists when the tab opens, and pages on', 
 }) => {
   await serveProblem(context);
   const ide = await openIde(page);
-  const tabs = answerTabs(context, [MINE, ALL, `${MINE}&top=6990`]);
+  const tabs = answerTabs(context, [MINE, ALL, `${MINE}&top=6990`, ALL]);
   const { read } = tabs;
   await ide.getByRole('tab', { name: '제출 기록' }).click();
 
@@ -191,6 +202,20 @@ test('reads my and everyone’s status lists when the tab opens, and pages on', 
   await expect(all.getByTestId('all-status-row')).toHaveCount(4);
   await page.waitForTimeout(500);
   expect(tabs.opened).toBe(3);
+
+  // 새로 고침: the old rows go away while the first page loads again, then come back.
+  const release = tabs.hold();
+  await ide
+    .getByRole('region', { name: '채점 현황' })
+    .getByRole('button', { name: '새로 고침' })
+    .click();
+  await expect(all.getByTestId('all-status-row')).toHaveCount(0);
+  await expect(ide.getByRole('region', { name: '채점 현황' })).toContainText(
+    '백준 채점 현황을 불러오는 중',
+  );
+  release();
+  await expect(all.getByTestId('all-status-row')).toHaveCount(4);
+  expect(tabs.opened).toBe(4);
 });
 
 test('shows the IDE’s submissions only when the Baekjoon id is unknown', async ({
