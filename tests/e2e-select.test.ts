@@ -1,7 +1,7 @@
-/** Which E2E specs a pull request runs (scripts/ci/e2e-select.mjs, ADR-0009). */
+/** Which E2E specs a pull request runs (scripts/ci/e2e-select.ts, ADR-0009). */
 import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { needsUnit, outputs, RULES, selectSpecs } from '../scripts/ci/e2e-select.ts';
+import { needsUnit, outputs, RULES, selectSpecs, shardCount } from '../scripts/ci/e2e-select.ts';
 
 const SPECS = readdirSync('e2e')
   .filter((f) => f.endsWith('.spec.ts'))
@@ -28,6 +28,16 @@ describe('selectSpecs', () => {
     ]);
   });
 
+  it('runs only the solution specs for format data and the history spec for its tab', () => {
+    expect(selectSpecs(['public/formats/1.json', 'scripts/formats/formats-reviewed.json'])).toEqual(
+      ['exam', 'solution'],
+    );
+    expect(selectSpecs(['src/ide/history/HistoryPane.tsx', 'src/shared/boj-history.ts'])).toEqual([
+      'history',
+    ]);
+    expect(selectSpecs(['public/icon/16.png', 'third_party/licenses/LLVM.txt'])).toBe('none');
+  });
+
   it('runs everything when a file belongs to no area', () => {
     expect(selectSpecs(['src/ide/App.tsx'])).toBe('all');
     expect(selectSpecs(['package.json', 'docs/a.md'])).toBe('all');
@@ -48,7 +58,17 @@ describe('workflow outputs', () => {
   it('skips unit tests only for documentation', () => {
     expect(needsUnit(['docs/a.md', 'README.md'])).toBe(false);
     expect(needsUnit(['docs/a.md', 'tests/x.test.ts'])).toBe(true);
-    expect(outputs(['src/ide/Sidebar.tsx'])).toBe('e2e=e2e/sidebar.spec.ts\nunit=true\n');
-    expect(outputs(['docs/a.md'])).toBe('e2e=none\nunit=false\n');
+    expect(outputs(['src/ide/Sidebar.tsx'])).toBe(
+      'e2e=e2e/sidebar.spec.ts\nunit=true\nshards=[1]\n',
+    );
+    expect(outputs(['docs/a.md'])).toBe('e2e=none\nunit=false\nshards=[1]\n');
+  });
+
+  it('starts as many E2E shards as the selected specs need', () => {
+    expect(shardCount('all')).toBe(3);
+    expect(shardCount(['solution', 'exam'])).toBe(1);
+    expect(shardCount(['a', 'b', 'c'])).toBe(2);
+    expect(shardCount(['a', 'b', 'c', 'd', 'e', 'f'])).toBe(3);
+    expect(outputs(['src/ide/App.tsx'])).toContain('shards=[1,2,3]');
   });
 });
