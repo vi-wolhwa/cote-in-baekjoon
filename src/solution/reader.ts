@@ -112,6 +112,14 @@ export function readInput(format: Format, text: string): ReadResult {
     return values;
   };
 
+  /** One case; a case that reads no line would repeat forever (or millions of times). */
+  const readCaseOnce = (): Values => {
+    const start = at;
+    const values = readCase();
+    if (at === start) throw new ReadError('케이스 하나가 입력을 한 줄도 읽지 않아요');
+    return values;
+  };
+
   try {
     const cases: Values[] = [];
     const c = format.cases;
@@ -123,7 +131,13 @@ export function readInput(format: Format, text: string): ReadResult {
       if (!tc?.ok || (tc.value as number) < 1) {
         throw new ReadError(`${line.no}번째 줄은 케이스 개수 ${c.count} 하나여야 해요`);
       }
-      for (let k = 0; k < (tc.value as number); k++) cases.push(readCase());
+      // Every case reads at least one line, so more cases than lines left cannot fit.
+      if ((tc.value as number) > lines.length - at) {
+        throw new ReadError(
+          `케이스가 ${tc.value as number}개인데 남은 줄이 ${lines.length - at}줄이에요`,
+        );
+      }
+      for (let k = 0; k < (tc.value as number); k++) cases.push(readCaseOnce());
     } else {
       const sentinel = sentinelOf(c);
       for (;;) {
@@ -136,7 +150,7 @@ export function readInput(format: Format, text: string): ReadResult {
             break;
           }
         }
-        cases.push(readCase());
+        cases.push(readCaseOnce());
       }
       if (cases.length === 0) throw new ReadError('읽은 케이스가 없어요');
     }

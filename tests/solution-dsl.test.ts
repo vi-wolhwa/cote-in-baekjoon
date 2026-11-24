@@ -375,6 +375,12 @@ describe('readInput / writeInput', () => {
       cases: [expect.any(Map), expect.any(Map)],
     });
     expect(readInput(counted, '3\n1 2\n3 4\n')).toMatchObject({ ok: false });
+    // A case that reads no line must not repeat a big first number's worth of times (1019).
+    const none = { v: 1, params: [], lines: [], ret: { type: 'int' } } as const;
+    const emptyCount = { ...none, cases: { count: 'T' } } as unknown as Format;
+    const emptyEof = { ...none, cases: { until: 'EOF' } } as unknown as Format;
+    expect(readInput(emptyCount, '543212345\n')).toMatchObject({ ok: false });
+    expect(readInput(emptyEof, '1\n')).toMatchObject({ ok: false });
     expect(
       writeInput(counted, [
         new Map([
