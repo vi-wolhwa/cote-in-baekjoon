@@ -150,9 +150,11 @@ export function modeOptions(table: FormatTable, index: number): RowMode[] {
   return out;
 }
 
-/** Changes how many cases the input has, keeping every row's mode valid. */
+/** Changes how many cases the input has, keeping every row's mode valid (one case: no label). */
 export function setCases(table: FormatTable, cases: Cases): FormatTable {
-  return normalize({ ...table, cases });
+  const ret = { ...table.ret };
+  if (cases === null) delete ret.label;
+  return normalize({ ...table, cases, ret });
 }
 
 /** Keeps every row's mode one of its options (after a type change, a move or a delete). */

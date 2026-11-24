@@ -3,7 +3,14 @@
  * coding-test site, with their own imports at the top; nothing goes before it. After it,
  * top-level `__cib_` reader functions and `fun main()` that make a new Solution per case.
  */
-import { retSep, type Format, type ParamType, type RetSpec, type RetType } from '../dsl';
+import {
+  labelParts,
+  retSep,
+  type Format,
+  type ParamType,
+  type RetSpec,
+  type RetType,
+} from '../dsl';
 import {
   renderCount,
   renderRows,
@@ -288,6 +295,7 @@ function empty(type: string): string {
 
 export function kotlinGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
+  const label = labelParts(ret);
   const decls = plan.params.map((p, i) => {
     const type = KOTLIN_TYPES[p.type];
     return `var ${variable(i)}: ${type} = ${empty(type)}`;
@@ -302,7 +310,13 @@ export function kotlinGlue(plan: Plan, ret: RetSpec): string {
       '}',
       `val __cib_r = Solution().solution(${vars.join(', ')})`,
       "if (__cib_cases++ > 0) __cib_o.append('\\n')",
+      ...(label
+        ? [
+            `__cib_o.append(${kotlinQuote(label.pre)}).append(__cib_cases).append(${kotlinQuote(label.post)})`,
+          ]
+        : []),
       ...printer(ret),
+      ...(ret.blank ? ["__cib_o.append('\\n')"] : []),
     ]
       .map((l) => ' '.repeat(n) + l)
       .join('\n');

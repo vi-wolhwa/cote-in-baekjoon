@@ -3,7 +3,7 @@
  * prints everything with one console.log. `long` values are numbers while they are safe
  * integers, BigInt beyond that.
  */
-import { retSep, type RetSpec } from '../dsl';
+import { labelParts, retSep, type RetSpec } from '../dsl';
 import {
   quote,
   renderCount,
@@ -161,6 +161,13 @@ function formatter(ret: RetSpec): string {
   }
 }
 
+/** One case's output: its label (the case number is the outputs so far + 1), value, blank line. */
+function caseText(ret: RetSpec, value: string): string {
+  const label = labelParts(ret);
+  const head = label ? `${quote(label.pre)} + (__cib_o.length + 1) + ${quote(label.post)} + ` : '';
+  return `${head}${value}${ret.blank ? " + '\\n'" : ''}`;
+}
+
 export function jsGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
   const read = plan.steps.map((s) => `      ${step(s)}`).join('\n');
@@ -171,7 +178,7 @@ export function jsGlue(plan: Plan, ret: RetSpec): string {
     '    } catch (e) {',
     "      throw new Error('__cib_input');",
     '    }',
-    `    __cib_o.push(__cib_f(solution(${vars.join(', ')})));`,
+    `    __cib_o.push(${caseText(ret, `__cib_f(solution(${vars.join(', ')}))`)});`,
   ].join('\n');
   const loop = (() => {
     switch (plan.loop.kind) {

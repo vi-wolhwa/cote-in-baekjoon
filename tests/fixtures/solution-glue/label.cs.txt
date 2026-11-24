@@ -1,0 +1,137 @@
+using System; using System.Collections.Generic; using System.Linq; using System.Text;
+// 자동 포함: System, System.Collections.Generic, System.Linq, System.Text
+
+public class Solution {
+    public bool solution(int n, int m, char[][] board) {
+        bool answer = true;
+        return answer;
+    }
+}
+
+
+// ---- 입출력 코드 ----
+#nullable disable
+public static class __cib_Main {
+    sealed class __cib_Error : System.Exception { }
+    static byte[] __cib_d;
+    static int __cib_p, __cib_n;
+    static System.Exception __cib_fail() { return new __cib_Error(); }
+    static bool __cib_ws(byte c) { return c == ' ' || c == '\n' || c == '\r' || c == '\t'; }
+    static int __cib_cnt(long x) { if (x < 0 || x > int.MaxValue) throw __cib_fail(); return (int)x; }
+    static string __cib_str(int s, int e) { return System.Text.Encoding.UTF8.GetString(__cib_d, s, e - s); }
+    static bool __cib_more() {
+        while (__cib_p < __cib_n && __cib_ws(__cib_d[__cib_p])) __cib_p++;
+        return __cib_p < __cib_n;
+    }
+    static bool __cib_has() {
+        int q = __cib_p;
+        while (q < __cib_n && __cib_ws(__cib_d[q])) q++;
+        return q < __cib_n;
+    }
+    static string __cib_tok() {
+        if (!__cib_more()) throw __cib_fail();
+        int s = __cib_p;
+        while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) __cib_p++;
+        return __cib_str(s, __cib_p);
+    }
+    static long __cib_ll() {
+        if (!__cib_more()) throw __cib_fail();
+        bool neg = false;
+        if (__cib_d[__cib_p] == '-' || __cib_d[__cib_p] == '+') neg = __cib_d[__cib_p++] == '-';
+        if (__cib_p >= __cib_n || __cib_ws(__cib_d[__cib_p])) throw __cib_fail();
+        long v = 0;
+        while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) {
+            int c = __cib_d[__cib_p++] - '0';
+            if (c < 0 || c > 9) throw __cib_fail();
+            v = unchecked(v * 10 - c);
+        }
+        return neg ? v : unchecked(-v);
+    }
+    static int __cib_int() { return unchecked((int)__cib_ll()); }
+    static long __cib_pl(string s) {
+        long v;
+        if (!long.TryParse(s, System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out v)) throw __cib_fail();
+        return v;
+    }
+    static int __cib_pi(string s) { return unchecked((int)__cib_pl(s)); }
+    static double __cib_pd(string s) {
+        double v;
+        if (!double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v)) throw __cib_fail();
+        return v;
+    }
+    static double __cib_dbl() { return __cib_pd(__cib_tok()); }
+    static void __cib_nl() {
+        if (__cib_p > 0 && __cib_d[__cib_p - 1] != '\n') {
+            while (__cib_p < __cib_n && __cib_d[__cib_p] != '\n') __cib_p++;
+            if (__cib_p < __cib_n) __cib_p++;
+        }
+        for (;;) {
+            int q = __cib_p;
+            while (q < __cib_n && __cib_d[q] != '\n' && __cib_ws(__cib_d[q])) q++;
+            if (q < __cib_n && __cib_d[q] == '\n') __cib_p = q + 1;
+            else break;
+        }
+    }
+    static string __cib_line() {
+        if (__cib_p >= __cib_n) throw __cib_fail();
+        int e = __cib_p;
+        while (e < __cib_n && __cib_d[e] != '\n') e++;
+        int s = __cib_p;
+        __cib_p = e;
+        while (s < e && __cib_ws(__cib_d[s])) s++;
+        while (e > s && __cib_ws(__cib_d[e - 1])) e--;
+        return __cib_str(s, e);
+    }
+    static string[] __cib_rest() {
+        if (__cib_p >= __cib_n) throw __cib_fail();
+        var r = new System.Collections.Generic.List<string>();
+        while (__cib_p < __cib_n && __cib_d[__cib_p] != '\n') {
+            while (__cib_p < __cib_n && __cib_d[__cib_p] != '\n' && __cib_ws(__cib_d[__cib_p])) __cib_p++;
+            int s = __cib_p;
+            while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) __cib_p++;
+            if (__cib_p > s) r.Add(__cib_str(s, __cib_p));
+        }
+        return r.ToArray();
+    }
+
+    static void __cib_run() {
+        var __cib_ms = new System.IO.MemoryStream();
+        using (var __cib_in = System.Console.OpenStandardInput()) __cib_in.CopyTo(__cib_ms);
+        __cib_d = __cib_ms.ToArray();
+        __cib_n = __cib_d.Length;
+        var __cib_o = new System.Text.StringBuilder();
+        int __cib_cases = 0;
+        int __cib_t = __cib_int();
+        for (int __cib_k = 0; __cib_k < __cib_t; __cib_k++) {
+            int __cib_v0 = 0;
+            int __cib_v1 = 0;
+            char[][] __cib_v2 = null;
+            try {
+                __cib_v0 = __cib_int();
+                __cib_v1 = __cib_int();
+                __cib_v2 = new char[__cib_cnt(__cib_v0)][]; for (int __cib_i = 0; __cib_i < __cib_v2.Length; __cib_i++) __cib_v2[__cib_i] = __cib_tok().ToCharArray();
+            } catch (System.Exception __cib_e) when (!(__cib_e is __cib_Error)) {
+                throw __cib_fail();
+            }
+            bool __cib_res = new Solution().solution(__cib_v0, __cib_v1, __cib_v2);
+            if (__cib_cases++ > 0) __cib_o.Append('\n');
+            __cib_o.Append("Scenario #").Append(__cib_cases).Append(":\u000a");
+            __cib_o.Append(__cib_res ? "YES" : "NO");
+            __cib_o.Append('\n');
+        }
+        if (__cib_cases > 0) __cib_o.Append('\n');
+        var __cib_out = new System.IO.StreamWriter(System.Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false));
+        __cib_out.Write(__cib_o.ToString());
+        __cib_out.Flush();
+    }
+
+    public static void Main() {
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+        try {
+            __cib_run();
+        } catch (__cib_Error) {
+            System.Console.Error.WriteLine("__cib_input");
+            System.Environment.Exit(1);
+        }
+    }
+}

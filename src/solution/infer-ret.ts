@@ -132,6 +132,34 @@ function boolRet(lines: string[], hints: TextHints): RetCandidate | undefined {
   return { ret: { type: 'bool', yes, no }, score: 5 };
 }
 
+const LABELED = /^((?:Case|Scenario|Problem|Data|Test) #?)(\d+)(: ?)(\S.*)$/i;
+
+/**
+ * A case label every output line starts with, numbered 1, 2, … in each sample ("Case #1: 3",
+ * one line per case): the label (`Case #{i}: `) and the samples with it taken off the outputs.
+ */
+export function labeledOutputs(
+  samples: readonly Sample[],
+): { label: string; samples: Sample[] } | undefined {
+  const labels = new Set<string>();
+  const plain = samples.map((s) => {
+    const rest = outputRows(s.output).map((row, k) => {
+      const m = LABELED.exec(row.trim());
+      if (!m || Number(m[2]) !== k + 1) return undefined;
+      labels.add(`${m[1]}{i}${m[3]}`);
+      return m[4] as string;
+    });
+    return rest.every((r) => r !== undefined)
+      ? { ...s, output: `${rest.join('\n')}\n` }
+      : undefined;
+  });
+  const [label] = labels;
+  if (labels.size !== 1 || label === undefined || plain.some((s) => s === undefined)) {
+    return undefined;
+  }
+  return { label, samples: plain as Sample[] };
+}
+
 const FORMATTED =
   /형식에\s*맞|형식으로|형태로|형태에|예제\s*출력과\s*같|예제와\s*같은\s*형식|예제를\s*보고|예제\s*출력\s*참고|예제\s*출력을\s*참고|예제를\s*참고/;
 

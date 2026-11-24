@@ -3,7 +3,14 @@
  * Rust allows anywhere); nothing goes before it. After it, a byte reader `__CibIn` and a
  * `main` that calls `solution` per case. Values are passed owned (`Vec<i64>`, `String`).
  */
-import { retSep, type Format, type ParamType, type RetSpec, type RetType } from '../dsl';
+import {
+  labelParts,
+  retSep,
+  type Format,
+  type ParamType,
+  type RetSpec,
+  type RetType,
+} from '../dsl';
 import {
   renderCount,
   renderRows,
@@ -377,6 +384,7 @@ function printer(ret: RetSpec): string[] {
 
 export function rustGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
+  const label = labelParts(ret);
   const decls = plan.params.map((p, i) => `let ${variable(i)}: ${RUST_TYPES[p.type]};`);
   const body = (n: number) =>
     [
@@ -385,7 +393,13 @@ export function rustGlue(plan: Plan, ret: RetSpec): string {
       `let __cib_r = solution(${vars.join(', ')});`,
       "if __cib_cases > 0 { __cib_o.push('\\n'); }",
       '__cib_cases += 1;',
+      ...(label
+        ? [
+            `write!(__cib_o, "{}{}{}", ${rustQuote(label.pre)}, __cib_cases, ${rustQuote(label.post)}).unwrap();`,
+          ]
+        : []),
       ...printer(ret),
+      ...(ret.blank ? ["__cib_o.push('\\n');"] : []),
     ]
       .map((l) => ' '.repeat(n) + l)
       .join('\n');

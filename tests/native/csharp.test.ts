@@ -67,5 +67,7 @@ nativeSuite(
     emptyThenEof: cls(
       'public long solution(int n, int[] arr, long[] rest) {\n        return rest.Sum();\n    }',
     ),
+    caseLabel: cls('public int solution(int a, int b) {\n        return a + b;\n    }'),
+    scenario: cls('public int[] solution(int n, int[] arr) {\n        return arr;\n    }'),
   },
 );

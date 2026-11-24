@@ -3,7 +3,7 @@
  * line goes before it (the line offset) and `public class Main` with a fast byte reader
  * after it. A new Solution is made per case, like a fresh test on the coding-test site.
  */
-import { retSep, type ParamType, type RetSpec, type RetType } from '../dsl';
+import { labelParts, retSep, type ParamType, type RetSpec, type RetType } from '../dsl';
 import {
   quote,
   renderCount,
@@ -239,6 +239,7 @@ function printer(ret: RetSpec): string[] {
 
 export function javaGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
+  const label = labelParts(ret);
   const decls = plan.params.map((p, i) => {
     const type = JAVA_TYPES[p.type];
     const init = type === 'int' || type === 'long' ? '0' : type === 'double' ? '0.0' : 'null';
@@ -254,7 +255,11 @@ export function javaGlue(plan: Plan, ret: RetSpec): string {
       '}',
       `${JAVA_TYPES[ret.type]} __cib_r = new Solution().solution(${vars.join(', ')});`,
       "if (__cib_cases++ > 0) __cib_o.append('\\n');",
+      ...(label
+        ? [`__cib_o.append(${quote(label.pre)}).append(__cib_cases).append(${quote(label.post)});`]
+        : []),
       ...printer(ret),
+      ...(ret.blank ? ["__cib_o.append('\\n');"] : []),
     ]
       .map((l) => ' '.repeat(n) + l)
       .join('\n');

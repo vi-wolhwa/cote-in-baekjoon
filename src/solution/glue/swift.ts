@@ -5,7 +5,14 @@
  * coding-test site, parameters have no labels (`func solution(_ n: Int, _ arr: [Int])`),
  * `int` and `long` are both `Int` (64-bit) and `char[][]` is `[String]`.
  */
-import { retSep, type Format, type ParamType, type RetSpec, type RetType } from '../dsl';
+import {
+  labelParts,
+  retSep,
+  type Format,
+  type ParamType,
+  type RetSpec,
+  type RetType,
+} from '../dsl';
 import {
   renderCount,
   renderRows,
@@ -280,6 +287,7 @@ const DEFAULTS: Record<string, string> = { Int: '0', Double: '0', String: '""' }
 
 export function swiftGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
+  const label = labelParts(ret);
   const decls = plan.params.map((p, i) => {
     const type = SWIFT_TYPES[p.type];
     return `var ${variable(i)}: ${type} = ${DEFAULTS[type] ?? '[]'}`;
@@ -291,7 +299,13 @@ export function swiftGlue(plan: Plan, ret: RetSpec): string {
       `let __cib_res = solution(${vars.join(', ')})`,
       'if __cib_cases > 0 { __cib_o.append(10) }',
       '__cib_cases += 1',
+      ...(label
+        ? [
+            `__cib_o.append(contentsOf: (${swiftQuote(label.pre)} + String(__cib_cases) + ${swiftQuote(label.post)}).utf8)`,
+          ]
+        : []),
       `__cib_o.append(contentsOf: ${formatter(ret)}.utf8)`,
+      ...(ret.blank ? ['__cib_o.append(10)'] : []),
     ]
       .map((l) => ' '.repeat(n) + l)
       .join('\n');

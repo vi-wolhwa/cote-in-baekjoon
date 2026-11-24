@@ -4,8 +4,9 @@
  * A format says how standard input becomes the parameters of `solution(...)` and how its
  * return value becomes standard output. Formats come from untrusted places (user edits,
  * pasted JSON, backups, bundled data), so `checkFormat` validates every field before use.
- * Kept free of extension APIs so it can be unit tested.
+ * Kept free of extension APIs so it can be unit tested. The return value lives in ret.ts.
  */
+import { parseRet, RET_KEYS, type RetSpec } from './ret';
 
 export const PARAM_TYPES = [
   'int',
@@ -26,20 +27,15 @@ export const PARAM_TYPES = [
 ] as const;
 export type ParamType = (typeof PARAM_TYPES)[number];
 
-export const RET_TYPES = [
-  'int',
-  'long',
-  'double',
-  'string',
-  'bool',
-  'int[]',
-  'long[]',
-  'string[]',
-  'line[]',
-  'int[][]',
-  'char[][]',
-] as const;
-export type RetType = (typeof RET_TYPES)[number];
+export {
+  caseLabel,
+  isOneLineRet,
+  labelParts,
+  RET_TYPES,
+  retSep,
+  type RetSpec,
+  type RetType,
+} from './ret';
 
 /** A count: a parameter name, a number, `name±k`, `name*name` or `name+name`. */
 export type Count = string | number;
@@ -73,23 +69,6 @@ export function repeatSize(line: RepeatLine): RepeatSize {
 }
 
 export type Cases = null | { count: string } | { until: string };
-
-export interface RetSpec {
-  type: RetType;
-  /** Arrays: separator between elements (2D: between columns). */
-  sep?: ' ' | '\n' | '';
-  /** bool: the words printed for true and false. */
-  yes?: string;
-  no?: string;
-  /** double: digits after the decimal point. */
-  digits?: number;
-  /**
-   * The error the judge allows for real numbers (1e-6 for "10^-6까지 허용"). A double still prints
-   * with `digits`; samples and run results are compared within it, number by number, so it also
-   * fits answers made of several reals (`string`, `line[]`). Not for `bool`.
-   */
-  tol?: number;
-}
 
 export interface Format {
   v: 1;
@@ -238,7 +217,7 @@ export function checkFormat(value: unknown): CheckResult {
   if (cases && lines?.some((l) => !Array.isArray(l) && 'until' in l && l.until === 'EOF')) {
     fail('입력 끝까지 읽는 매개변수가 있으면 입력 반복을 쓸 수 없어요.');
   }
-  const ret = parseRet(value.ret, fail);
+  const ret = parseRet(value.ret, cases === undefined ? undefined : cases !== null, fail);
   if (errors.length || !lines || cases === undefined || !ret) {
     return { ok: false, errors: errors.length ? errors : ['형식을 읽지 못했어요.'] };
   }
@@ -407,72 +386,6 @@ function parseCases(
   return undefined;
 }
 
-function parseRet(raw: unknown, fail: (e: string) => void): RetSpec | undefined {
-  if (!isRecord(raw) || !RET_TYPES.includes(raw.type as RetType)) {
-    fail(`반환 타입 '${isRecord(raw) ? String(raw.type) : ''}'을(를) 알 수 없어요.`);
-    return undefined;
-  }
-  const type = raw.type as RetType;
-  const ret: RetSpec = { type };
-  const array = type.endsWith('[]');
-  if (raw.sep !== undefined) {
-    if (!array) fail('구분자(sep)는 배열 반환값에만 써요.');
-    else if (type === 'line[]' && raw.sep !== '\n') {
-      fail('line[] 반환값은 원소마다 한 줄씩 출력해요.');
-    } else if (raw.sep !== ' ' && raw.sep !== '\n' && raw.sep !== '') {
-      fail('구분자(sep)는 공백(" "), 줄바꿈("\\n"), 없음("") 중 하나예요.');
-    } else if (raw.sep === '\n' && type.endsWith('[][]')) {
-      fail('2차원 배열의 구분자는 열 사이 구분자라 공백이나 없음만 쓸 수 있어요.');
-    } else if (raw.sep === '' && !type.endsWith('[][]')) {
-      fail('1차원 배열의 구분자는 공백이나 줄바꿈이에요.');
-    } else ret.sep = raw.sep;
-  }
-  if (type === 'bool') {
-    for (const key of ['yes', 'no'] as const) {
-      const word = raw[key];
-      if (typeof word !== 'string' || word.trim() === '' || /[\r\n]/.test(word)) {
-        fail(
-          `참거짓 반환값에는 ${key === 'yes' ? '참' : '거짓'}일 때 출력할 문구(${key})가 필요해요.`,
-        );
-      } else if (word.length > MAX_WORD) fail(`${key} 문구가 너무 길어요.`);
-      else ret[key] = word;
-    }
-    if (ret.yes !== undefined && ret.yes === ret.no) fail('yes와 no 문구가 같아요.');
-  } else if (raw.yes !== undefined || raw.no !== undefined) {
-    fail('yes/no 문구는 bool 반환값에만 써요.');
-  }
-  if (type === 'double') {
-    const d = raw.digits;
-    if (typeof d !== 'number' || !Number.isInteger(d) || d < 0 || d > 15) {
-      fail('실수 반환값에는 소수 자리 수(digits, 0~15)가 필요해요.');
-    } else ret.digits = d;
-  } else if (raw.digits !== undefined) {
-    fail('소수 자리 수(digits)는 double 반환값에만 써요.');
-  }
-  if (raw.tol !== undefined) {
-    const t = raw.tol;
-    if (type === 'bool') fail('허용 오차(tol)는 참거짓 반환값에는 쓰지 않아요.');
-    else if (typeof t !== 'number' || !(t >= 1e-15 && t <= 1)) {
-      fail('허용 오차(tol)는 1e-15~1 사이 수여야 해요.');
-    } else ret.tol = t;
-  }
-  return ret;
-}
-
-/** The separator a return value uses when its format leaves it out. */
-export function retSep(ret: RetSpec): string {
-  if (ret.type === 'line[]') return '\n';
-  if (ret.sep !== undefined) return ret.sep;
-  return ret.type === 'char[][]' ? '' : ' ';
-}
-
-/** True when one case prints exactly one line. */
-export function isOneLineRet(ret: RetSpec): boolean {
-  if (ret.type.endsWith('[][]')) return false;
-  if (ret.type.endsWith('[]')) return retSep(ret) !== '\n';
-  return true;
-}
-
 /** Compact JSON with the key order of the DSL, for storage, prompts and issues. */
 export function formatToJson(format: Format, pretty = false): string {
   const params = format.params.map((p) => {
@@ -482,7 +395,7 @@ export function formatToJson(format: Format, pretty = false): string {
     return out;
   });
   const ret: Record<string, unknown> = { type: format.ret.type };
-  for (const key of ['sep', 'yes', 'no', 'digits', 'tol'] as const) {
+  for (const key of RET_KEYS) {
     if (format.ret[key] !== undefined) ret[key] = format.ret[key];
   }
   const ordered = { v: 1, params, lines: format.lines, cases: format.cases, ret };

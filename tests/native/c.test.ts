@@ -96,6 +96,13 @@ long long* solution(int n, long long arr[], size_t arr_len, size_t* ret_len) {
     for (size_t i = 0; i < rest_len; i++) s += rest[i];
     return s;
 }`,
+  caseLabel: `int solution(int a, int b) {
+    return a + b;
+}`,
+  scenario: `int* solution(int n, int arr[], size_t arr_len, size_t* ret_len) {
+    *ret_len = arr_len;
+    return arr;
+}`,
 };
 
 nativeSuite(

@@ -17,7 +17,7 @@ import {
   type DraftCount,
   type LayoutHints,
 } from './infer-layout';
-import { retCandidates, unprintable } from './infer-ret';
+import { labeledOutputs, retCandidates, unprintable } from './infer-ret';
 import { textHints, type TextHints } from './infer-text';
 export type { DraftCount, DraftLine, DraftParam } from './infer-layout';
 import { caseCountLetter, HUGE, lineDescribed, lineScalars, nameParams } from './infer-names';
@@ -135,7 +135,10 @@ export function inferCandidates(input: InferInput): Candidate[] {
   const { samples } = input;
   if (samples.length === 0 || samples.every((s) => s.input.trim() === '')) return [];
   const hints = textHints(input.inputHtml, input.outputHtml);
-  if (unprintable(samples, hints.output.join(' '))) return [];
+  // "Case #1: 3": the answers without their labels decide the return type.
+  const labeled = labeledOutputs(samples);
+  const answers = labeled?.samples ?? samples;
+  if (unprintable(answers, hints.output.join(' '))) return [];
   const seen = new Set<string>();
   const found: Candidate[] = [];
   // The likeliest layouts only: reading big samples with thousands of layouts would stall the page.
@@ -156,8 +159,10 @@ export function inferCandidates(input: InferInput): Candidate[] {
       const w = writeInput(probe, r.cases);
       return w.ok && sameInput(w.text, s.input);
     });
-    if (!ok) continue;
-    for (const { ret, score } of retCandidates(samples, caseCounts, hints)) {
+    if (!ok || (labeled && layout.cases === null)) continue;
+    for (const candidate of retCandidates(answers, caseCounts, hints)) {
+      const ret = labeled ? { ...candidate.ret, label: labeled.label } : candidate.ret;
+      const score = candidate.score;
       const fits = samples.every((s, i) => {
         const out = parseOutput(ret, s.output, caseCounts[i] as number);
         return (

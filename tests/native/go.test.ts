@@ -113,5 +113,11 @@ func solution(n int, pairs [][]int, names []string) []string {
     }
     return s
 }`,
+    caseLabel: `func solution(a int, b int) int {
+    return a + b
+}`,
+    scenario: `func solution(n int, arr []int) []int {
+    return arr
+}`,
   },
 );
