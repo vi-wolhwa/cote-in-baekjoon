@@ -34,6 +34,8 @@ interface Props {
   /** More rows can be loaded past the last one. */
   hasMore: boolean;
   loading: boolean;
+  /** The first page is being (re)loaded: rows already on hand are not shown meanwhile. */
+  reloading: boolean;
   onMore: () => void;
   /** Opens a row that has IDE code. */
   onOpen?: (row: RecordRow) => void;
@@ -86,7 +88,9 @@ export function StatusTable(props: Props) {
     setAdvance(false);
     if (rows.length > start + size) setStart(start + size);
   }, [advance, loading, rows.length, start, size]);
-  const waiting = loading && shown.length < size;
+  // While the first page loads, or a page that is not full waits for the next one, only the
+  // loading line shows: rows on hand would be drawn under it and change order once it lands.
+  const waiting = loading && (props.reloading || shown.length < size);
 
   return (
     <div class="status-table-wrap">
@@ -102,7 +106,7 @@ export function StatusTable(props: Props) {
             </tr>
           </thead>
           <tbody>
-            {shown.map((row) => {
+            {(waiting ? [] : shown).map((row) => {
               const open = row.entry && props.onOpen;
               return (
                 <tr

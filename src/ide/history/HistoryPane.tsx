@@ -179,6 +179,11 @@ export function HistoryPane({ problemId, onLoad }: Props) {
             now={now}
             hasMore={!!handle && mine.list.nextTop !== undefined}
             loading={mine.list.loading || entries === undefined || handle === undefined}
+            reloading={
+              entries === undefined ||
+              handle === undefined ||
+              (mine.list.loading && mine.list.rows.length === 0)
+            }
             onMore={mine.more}
             onOpen={(row) => row.entry && setSelected(row.entry.submittedAt)}
             resetKey={`${problemId}:${mineReset}`}
@@ -222,6 +227,7 @@ export function HistoryPane({ problemId, onLoad }: Props) {
             now={now}
             hasMore={all.list.nextTop !== undefined}
             loading={all.list.loading || (!all.list.loaded && !all.list.error)}
+            reloading={all.list.rows.length === 0}
             onMore={all.more}
             resetKey={`${problemId}:${allReset}`}
             empty="아직 이 문제에 낸 제출이 없어요."
