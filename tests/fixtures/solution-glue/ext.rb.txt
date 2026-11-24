@@ -1,0 +1,205 @@
+def solution(n, arr, k, name, items, m, vals, words, p)
+  answer = 0
+  return answer
+end
+
+
+# ---- 입출력 코드 ----
+def __cib_fail
+  raise '__cib_input'
+end
+
+def __cib_int(s)
+  Integer(s, 10)
+rescue StandardError
+  __cib_fail
+end
+
+def __cib_dbl(s)
+  Float(s)
+rescue StandardError
+  __cib_fail
+end
+
+require 'strscan'
+$__cib_s = StringScanner.new($stdin.binmode.read.force_encoding(Encoding::UTF_8))
+
+def __cib_more
+  $__cib_s.skip(/[ \t\r\n]+/)
+  !$__cib_s.eos?
+end
+
+def __cib_has
+  !$__cib_s.match?(/[ \t\r\n]*[^ \t\r\n]/).nil?
+end
+
+def __cib_tok
+  $__cib_s.skip(/[ \t\r\n]+/)
+  $__cib_s.scan(/[^ \t\r\n]+/) || __cib_fail
+end
+
+def __cib_take(n)
+  Array.new(n) { __cib_tok }
+end
+
+def __cib_nl
+  s = $__cib_s
+  if s.pos > 0 && s.string.getbyte(s.pos - 1) != 10
+    s.skip_until(/\n/) || s.terminate
+  end
+  nil while s.skip(/[ \t\r]*\n/)
+end
+
+def __cib_line
+  __cib_fail if $__cib_s.eos?
+  $__cib_s.scan(/[^\n]*/).strip
+end
+
+def __cib_pos
+  $__cib_s.pos
+end
+
+def __cib_seek(p)
+  $__cib_s.pos = p
+end
+
+def __cib_at(w)
+  s = __cib_pos
+  ok = w.all? { |x| __cib_more && __cib_tok == x }
+  __cib_seek(s)
+  ok
+end
+
+def __cib_rowsTok(w, k)
+  s = __cib_pos
+  r = 0
+  while true
+    break if w.empty? ? !__cib_has : __cib_at(w)
+    __cib_fail if k < 1 || !__cib_has
+    k.times { __cib_tok }
+    r += 1
+  end
+  __cib_seek(s)
+  r
+end
+
+def __cib_raw
+  $__cib_s.scan(/[^\n]*/).rstrip
+end
+
+def __cib_isEnd(t, m, e)
+  return t == e if m == 1
+  return t.start_with?(e) if m == 4
+  return false unless m == 2 || m == 3
+  f = t.split[0]
+  return false if f.nil? || f !~ /\A[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\z/
+  m == 2 ? f.to_f < 0 : f.to_f <= 0
+end
+
+def __cib_rowsLine(m, e, text)
+  s = __cib_pos
+  r = 0
+  while true
+    __cib_nl
+    unless __cib_has
+      __cib_fail if m != 0
+      break
+    end
+    t = text ? __cib_raw : __cib_line
+    break if m != 0 && __cib_isEnd(t, m, e)
+    r += 1
+  end
+  __cib_seek(s)
+  r
+end
+
+def __cib_endl(m, e)
+  s = __cib_pos
+  __cib_nl
+  return true if __cib_has && __cib_isEnd(__cib_line, m, e)
+  __cib_seek(s)
+  false
+end
+
+def __cib_bol
+  s = $__cib_s
+  return unless s.pos > 0 && s.string.getbyte(s.pos - 1) != 10
+  s.skip_until(/\n/) || s.terminate
+end
+
+def __cib_rawl
+  __cib_bol
+  s = $__cib_s
+  __cib_fail if s.eos?
+  t = s.scan(/[^\n]*/)
+  s.skip(/\n/)
+  t.chomp("\r")
+end
+
+def __cib_rowsPhys(m, e)
+  s = __cib_pos
+  r = 0
+  __cib_bol
+  while true
+    if $__cib_s.eos?
+      __cib_fail if m != 0
+      break
+    end
+    t = __cib_rawl.rstrip
+    break if m != 0 && __cib_isEnd(t, m, e)
+    r += 1
+  end
+  __cib_seek(s)
+  r
+end
+
+def __cib_f(r)
+  r.to_s
+end
+
+def __cib_main
+  __cib_o = []
+  while __cib_has && !__cib_endl(2, '')
+    begin
+      __cib_v0 = __cib_int(__cib_tok)
+      __cib_v1 = __cib_take(2 * __cib_v0 - 1).map { |x| __cib_int(x) }
+      __cib_v2 = []
+      __cib_v3 = []
+      __cib_v4 = []
+      __cib_bn = __cib_v0 - 1
+      __cib_fail if __cib_bn < 0
+      __cib_b = 0
+      while __cib_b < __cib_bn
+        __cib_b += 1
+        __cib_v9 = __cib_int(__cib_tok)
+        __cib_v10 = __cib_tok
+        __cib_v11 = __cib_take(__cib_v9).map { |x| __cib_int(x) }
+        __cib_v2 << __cib_v9
+        __cib_v3 << __cib_v10
+        __cib_v4 << __cib_v11
+      end
+      __cib_v5 = []
+      __cib_v6 = []
+      until __cib_at(['0'])
+        __cib_v12 = __cib_int(__cib_tok)
+        __cib_v13 = __cib_take(__cib_v12).map { |x| __cib_dbl(x) }
+        __cib_v5 << __cib_v12
+        __cib_v6 << __cib_v13
+      end
+      __cib_tok
+      __cib_v7 = Array.new(__cib_rowsLine(4, '#', true)) { __cib_nl; __cib_line }
+      __cib_nl; __cib_line
+      __cib_v8 = []
+      until __cib_endl(3, '')
+        __cib_v14 = __cib_int(__cib_tok)
+        __cib_v8 << __cib_v14
+      end
+    rescue StandardError
+      __cib_fail
+    end
+    __cib_o << __cib_f(solution(__cib_v0, __cib_v1, __cib_v2, __cib_v3, __cib_v4, __cib_v5, __cib_v6, __cib_v7, __cib_v8))
+  end
+  $stdout.write(__cib_o.join("\n"), "\n") unless __cib_o.empty?
+end
+
+__cib_main

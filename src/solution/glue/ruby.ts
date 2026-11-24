@@ -142,17 +142,66 @@ def __cib_raw
   $__cib_s.scan(/[^\\n]*/).rstrip
 end
 
-def __cib_rowsLine(e, raw)
+def __cib_isEnd(t, m, e)
+  return t == e if m == 1
+  return t.start_with?(e) if m == 4
+  return false unless m == 2 || m == 3
+  f = t.split[0]
+  return false if f.nil? || f !~ /\\A[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\z/
+  m == 2 ? f.to_f < 0 : f.to_f <= 0
+end
+
+def __cib_rowsLine(m, e, text)
   s = __cib_pos
   r = 0
   while true
     __cib_nl
     unless __cib_has
-      __cib_fail unless e.nil?
+      __cib_fail if m != 0
       break
     end
-    t = raw ? __cib_raw : __cib_line
-    break if !e.nil? && t == e
+    t = text ? __cib_raw : __cib_line
+    break if m != 0 && __cib_isEnd(t, m, e)
+    r += 1
+  end
+  __cib_seek(s)
+  r
+end
+
+def __cib_endl(m, e)
+  s = __cib_pos
+  __cib_nl
+  return true if __cib_has && __cib_isEnd(__cib_line, m, e)
+  __cib_seek(s)
+  false
+end
+
+def __cib_bol
+  s = $__cib_s
+  return unless s.pos > 0 && s.string.getbyte(s.pos - 1) != 10
+  s.skip_until(/\\n/) || s.terminate
+end
+
+def __cib_rawl
+  __cib_bol
+  s = $__cib_s
+  __cib_fail if s.eos?
+  t = s.scan(/[^\\n]*/)
+  s.skip(/\\n/)
+  t.chomp("\\r")
+end
+
+def __cib_rowsPhys(m, e)
+  s = __cib_pos
+  r = 0
+  __cib_bol
+  while true
+    if $__cib_s.eos?
+      __cib_fail if m != 0
+      break
+    end
+    t = __cib_rawl.rstrip
+    break if m != 0 && __cib_isEnd(t, m, e)
     r += 1
   end
   __cib_seek(s)
@@ -174,12 +223,50 @@ const count = (c: CountRef) => renderCount(c, variable);
 const rows = (n: Rows) =>
   renderRows(n, count, {
     tok: (end, k) => `__cib_rowsTok([${end.map(rubyQuote).join(', ')}], ${k})`,
-    line: (end, raw) => `__cib_rowsLine(${end === null ? 'nil' : rubyQuote(end)}, ${raw})`,
+    line: (end, text) => `__cib_rowsLine(${end.mode}, ${rubyQuote(end.text)}, ${text})`,
+    phys: (end) => `__cib_rowsPhys(${end.mode}, ${rubyQuote(end.text)})`,
   });
+
+/** A block: its lists start empty; each pass reads the block's variables and appends them. */
+function block(s: Extract<Step, { op: 'block' }>): string {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return [
+          `__cib_bn = ${count(s.loop.n)}`,
+          '__cib_fail if __cib_bn < 0',
+          '__cib_b = 0',
+          'while __cib_b < __cib_bn',
+          '  __cib_b += 1',
+        ];
+      case 'eof':
+        return ['while __cib_has'];
+      case 'tok':
+        return [`until __cib_at([${s.loop.end.map(rubyQuote).join(', ')}])`];
+      case 'line':
+        return [`until __cib_endl(${s.loop.end.mode}, ${rubyQuote(s.loop.end.text)})`];
+    }
+  })();
+  return [
+    ...s.items.map((x) => `${variable(x.list)} = []`),
+    ...head,
+    ...s.steps.flatMap((x) => step(x).split('\n')).map((l) => `  ${l}`),
+    ...s.items.map((x) => `  ${variable(x.list)} << ${variable(x.item)}`),
+    'end',
+  ].join('\n');
+}
 
 function step(s: Step): string {
   const v = variable('v' in s ? s.v : 0);
   switch (s.op) {
+    case 'block':
+      return block(s);
+    case 'raw':
+      return `${v} = __cib_rawl`;
+    case 'rawLines':
+      return `${v} = Array.new(${rows(s.n)}) { __cib_rawl }`;
+    case 'endRaw':
+      return '__cib_rawl';
     case 'nl':
       return '__cib_nl';
     case 'scalar':
@@ -247,7 +334,7 @@ export function rubyGlue(plan: Plan, ret: RetSpec): string {
       ...(plan.steps.length
         ? [
             'begin',
-            ...plan.steps.map((s) => `  ${step(s)}`),
+            ...plan.steps.flatMap((s) => step(s).split('\n')).map((l) => `  ${l}`),
             'rescue StandardError',
             '  __cib_fail',
             'end',
@@ -270,6 +357,10 @@ export function rubyGlue(plan: Plan, ret: RetSpec): string {
         ].join('\n');
       case 'eof':
         return `  while __cib_more\n${body(4)}\n  end`;
+      case 'line': {
+        const { mode, text } = plan.loop.end;
+        return `  while __cib_has && !__cib_endl(${mode}, ${rubyQuote(text)})\n${body(4)}\n  end`;
+      }
       case 'until': {
         const words = plan.loop.tokens.map(rubyQuote).join(', ');
         return [

@@ -15,6 +15,7 @@ import {
   NO_SOLUTION_MESSAGE,
 } from '@/solution/program';
 import { solutionFileName, starterCode } from '@/solution/starter';
+import { EXT_CASES } from './native/ext-cases';
 
 const f = (x: unknown): Format => {
   const r = checkFormat(x);
@@ -61,6 +62,35 @@ const LINES = f({
 // A label line before each case and a blank line after it.
 const LABEL = f({ ...GRID, ret: { ...GRID.ret, label: 'Scenario #{i}:\n', blank: true } });
 
+// DSL extensions: a count expression and a flow array, a counted block, a block up to an end
+// line with a repeat inside, lines up to a prefix, a block up to "<=0", cases up to "<0".
+const EXT_FORMAT = f({
+  v: 1,
+  params: [
+    { name: 'n', type: 'int' },
+    { name: 'arr', type: 'int[]', len: '2*n-1', flow: true },
+    { name: 'k', type: 'int' },
+    { name: 'name', type: 'string' },
+    { name: 'items', type: 'int[]', len: 'k' },
+    { name: 'm', type: 'long' },
+    { name: 'vals', type: 'double[]' },
+    { name: 'words', type: 'line[]' },
+    { name: 'p', type: 'int' },
+  ],
+  lines: [
+    ['n'],
+    ['arr'],
+    { repeat: 'n-1', of: [['k', 'name'], ['items']] },
+    { until: '0', of: [['m'], { repeat: 'm', of: 'vals' }] },
+    { until: '#*', of: 'words' },
+    { until: '<=0', of: [['p']] },
+  ],
+  cases: { until: '<0' },
+  ret: { type: 'long' },
+});
+// Raw lines: one line, lines by a count, up to an end line and to the end of input.
+const RAW = EXT_CASES.rawLines.format;
+
 /** Golden file extension per glue language. */
 const EXT = {
   js: 'js',
@@ -84,6 +114,8 @@ describe('generated programs (golden files)', () => {
       ['grid', GRID],
       ['lines', LINES],
       ['label', LABEL],
+      ['ext', EXT_FORMAT],
+      ['raw', RAW],
     ] as const) {
       it(`${name} in ${engine}`, async () => {
         const program = buildProgram(engine, format, starterCode(engine, format));

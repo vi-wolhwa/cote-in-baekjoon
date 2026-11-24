@@ -1,54 +1,75 @@
 /**
- * Strict reading of standard input with a format, and writing values back as input.
- * Used to validate formats against samples (ADR-0006 steps 1 and 3) and to turn the test
- * case dialog's parameters into input (#36). The glue code in the submitted program reads
- * more leniently (tokens may wrap lines); this reader insists on the format's line layout.
+ * Strict reading of standard input with a format. Used to validate formats against samples
+ * (ADR-0006 steps 1 and 3) and to show samples as parameters. The glue code in the submitted
+ * program reads more leniently (tokens may wrap lines); this reader insists on the format's
+ * line layout. Writing values back as input is in writer.ts.
  */
 import {
   evalCount,
   isArrayType,
-  isGridType,
+  isBlock,
   isLinesType,
   isRepeat,
-  repeatSize,
+  lineNames,
+  matchesEnd,
   parseCount,
+  parseEnd,
+  repeatSize,
   sentinelOf,
+  type BlockLine,
   type Count,
+  type End,
   type Format,
+  type LineSpec,
   type Param,
+  type RepeatLine,
 } from './dsl';
-import { elementType, isToken, parseToken, tokenText, type Value, type Values } from './values';
+import { physicalLines, type Line } from './input-lines';
+import { elementType, parseToken, type Value, type Values } from './values';
 
-export type ReadResult = { ok: true; cases: Values[] } | { ok: false; error: string };
+export { inputLines, sameInput } from './input-lines';
+export { writeInput, type WriteResult } from './writer';
 
-/** Lines with their numbers (1-based); blank lines are left out. */
-interface Line {
-  no: number;
-  text: string;
-  tokens: string[];
-}
-
-export function inputLines(text: string): Line[] {
-  return text
-    .replace(/\r\n?/g, '\n')
-    .split('\n')
-    .map((raw, i) => ({ no: i + 1, text: raw.trimEnd(), tokens: raw.trim().split(/\s+/) }))
-    .filter((l) => l.text.trim() !== '');
-}
+/**
+ * The cases read. `ends`: the end lines read for "<0", "<=0" and "#*" ends, in order, so
+ * writing the values back gives the same input.
+ */
+export type ReadResult =
+  { ok: true; cases: Values[]; ends?: string[] } | { ok: false; error: string };
 
 class ReadError extends Error {}
 
 /** Reads every case of `text`. Errors say which line and what was expected, in Korean. */
 export function readInput(format: Format, text: string): ReadResult {
-  const lines = inputLines(text);
+  const lines = physicalLines(text);
   const byName = new Map(format.params.map((p) => [p.name, p]));
+  const ends: string[] = [];
   let at = 0;
-  const lastNo = () => (lines.length ? (lines[lines.length - 1] as Line).no : 0);
+  const lastNo = () => lines.filter((l) => !l.blank).at(-1)?.no ?? 0;
+  const ended = (what: string) =>
+    new ReadError(`${lastNo() + 1}번째 줄에 ${what}이(가) 있어야 하는데 입력이 끝났어요`);
+  /** Index of the next non-blank line (lines.length when none is left). */
+  const peekIndex = () => {
+    let i = at;
+    while (i < lines.length && (lines[i] as Line).blank) i++;
+    return i;
+  };
+  const peek = (): Line | undefined => lines[peekIndex()];
   const next = (what: string): Line => {
+    at = peekIndex();
     const line = lines[at++];
-    if (!line)
-      throw new ReadError(`${lastNo() + 1}번째 줄에 ${what}이(가) 있어야 하는데 입력이 끝났어요`);
+    if (!line) throw ended(what);
     return line;
+  };
+  /** The next physical line, blank or not (raw parameters). */
+  const nextRaw = (what: string): Line => {
+    const line = lines[at++];
+    if (!line) throw ended(what);
+    return line;
+  };
+  /** Keeps the end line read for an end that matches more than one text. */
+  const endRead = (end: End, text: string) => {
+    if (end.kind === 'neg' || end.kind === 'prefix') ends.push(text);
   };
 
   const count = (c: Count, env: Map<string, number>, what: string, line?: Line): number => {
@@ -61,75 +82,133 @@ export function readInput(format: Format, text: string): ReadResult {
     return n;
   };
 
-  const readCase = (): Values => {
-    const values: Values = new Map();
-    const env = new Map<string, number>();
-    const keep = (p: Param, v: Value) => {
-      values.set(p.name, v);
-      if (typeof v === 'number' && Number.isInteger(v)) env.set(p.name, v);
-      if (typeof v === 'bigint') env.set(p.name, Number(v));
-    };
-    for (const spec of format.lines) {
-      if (isRepeat(spec)) {
-        const p = byName.get(spec.of) as Param;
-        const size = repeatSize(spec);
-        const rows: Value[] = [];
-        if (size.kind === 'count') {
-          const n = count(size.count, env, `'${p.name}'`, lines[at]);
-          for (let r = 0; r < n; r++) {
-            const line = next(`'${p.name}'의 ${r + 1}번째 줄`);
-            rows.push(readRow(p, line, env));
-          }
-        } else if (size.kind === 'until') {
-          for (;;) {
-            const line = next(`'${p.name}'을(를) 끝내는 줄 '${size.end}'`);
-            if (isEndLine(p, line, size.end)) break;
-            rows.push(readRow(p, line, env));
-          }
-        } else {
-          while (at < lines.length) rows.push(readRow(p, lines[at++] as Line, env));
+  const keep = (p: Param, v: Value, values: Values, env: Map<string, number>) => {
+    values.set(p.name, v);
+    if (typeof v === 'number' && Number.isInteger(v)) env.set(p.name, v);
+    if (typeof v === 'bigint') env.set(p.name, Number(v));
+  };
+
+  const readLines = (specs: readonly LineSpec[], values: Values, env: Map<string, number>) => {
+    for (const spec of specs) {
+      if (isBlock(spec)) readBlock(spec, values, env);
+      else if (isRepeat(spec)) readRepeat(spec, values, env);
+      else readLine(spec as string[], values, env);
+    }
+  };
+
+  const readRepeat = (spec: RepeatLine, values: Values, env: Map<string, number>) => {
+    const p = byName.get(spec.of) as Param;
+    const size = repeatSize(spec);
+    const take = p.raw ? nextRaw : next;
+    const rows: Value[] = [];
+    if (size.kind === 'count') {
+      const n = count(size.count, env, `'${p.name}'`, peek());
+      for (let r = 0; r < n; r++) rows.push(readRow(p, take(`'${p.name}'의 ${r + 1}번째 줄`), env));
+    } else if (size.kind === 'until') {
+      const end = parseEnd(size.end);
+      for (;;) {
+        const line = take(`'${p.name}'을(를) 끝내는 줄 '${size.end}'`);
+        const text = isLinesType(p.type) ? line.text : line.tokens.join(' ');
+        if (matchesEnd(end, text)) {
+          endRead(end, text);
+          break;
         }
-        keep(p, rows);
-        continue;
+        rows.push(readRow(p, line, env));
       }
-      // An array of length 0 alone on its line: the line may be missing (no tokens to read).
-      const only = byName.get(spec[0] as string) as Param;
-      if (spec.length === 1 && isArrayType(only.type) && only.len !== undefined) {
-        if (count(only.len, env, `'${only.name}'`, lines[at]) === 0) {
-          keep(only, []);
-          continue;
-        }
-      }
-      const line = next(`${spec.join(', ')}`);
-      const first = byName.get(spec[0] as string) as Param;
-      if (first.type === 'line') {
-        keep(first, line.text.trimStart());
-        continue;
-      }
-      let t = 0;
-      const take = (what: string) => {
-        const tok = line.tokens[t++];
-        if (tok === undefined) throw new ReadError(`${line.no}번째 줄에 ${what} 값이 부족해요`);
-        return tok;
-      };
-      for (const name of spec) {
-        const p = byName.get(name) as Param;
-        if (isArrayType(p.type)) {
-          const n =
-            p.len === undefined ? line.tokens.length - t : count(p.len, env, `'${p.name}'`, line);
-          const items: Value[] = [];
-          for (let k = 0; k < n; k++) items.push(token(p, take(`'${p.name}'`), line));
-          keep(p, items);
-        } else {
-          keep(p, token(p, take(`'${p.name}'`), line));
-        }
-      }
-      if (t < line.tokens.length) {
-        throw new ReadError(
-          `${line.no}번째 줄에 남는 값 '${line.tokens.slice(t).join(' ')}'이(가) 있어요`,
-        );
+    } else if (p.raw) {
+      while (at < lines.length) rows.push(readRow(p, lines[at++] as Line, env));
+    } else {
+      while (peek()) rows.push(readRow(p, next(''), env));
+    }
+    keep(p, rows, values, env);
+  };
+
+  const readLine = (spec: string[], values: Values, env: Map<string, number>) => {
+    // An array of length 0 alone on its line: the line may be missing (no tokens to read).
+    const first = byName.get(spec[0] as string) as Param;
+    if (spec.length === 1 && isArrayType(first.type) && first.len !== undefined) {
+      if (count(first.len, env, `'${first.name}'`, peek()) === 0) {
+        keep(first, [], values, env);
+        return;
       }
     }
+    if (first.type === 'line') {
+      const line = first.raw ? nextRaw(first.name) : next(first.name);
+      keep(first, first.raw ? line.raw : line.text.trimStart(), values, env);
+      return;
+    }
+    let line = next(`${spec.join(', ')}`);
+    let t = 0;
+    const take = (what: string) => {
+      const tok = line.tokens[t++];
+      if (tok === undefined) throw new ReadError(`${line.no}번째 줄에 ${what} 값이 부족해요`);
+      return tok;
+    };
+    for (const name of spec) {
+      const p = byName.get(name) as Param;
+      if (!isArrayType(p.type)) {
+        keep(p, token(p, take(`'${p.name}'`), line), values, env);
+        continue;
+      }
+      const n =
+        p.len === undefined ? line.tokens.length - t : count(p.len, env, `'${p.name}'`, line);
+      const items: Value[] = [];
+      for (let k = 0; k < n; k++) {
+        // A flow array goes on over the next lines when its line runs out.
+        if (p.flow && t >= line.tokens.length) {
+          line = next(`'${p.name}'의 ${k + 1}번째 값`);
+          t = 0;
+        }
+        items.push(token(p, take(`'${p.name}'`), line));
+      }
+      keep(p, items, values, env);
+    }
+    if (t < line.tokens.length) {
+      throw new ReadError(
+        `${line.no}번째 줄에 남는 값 '${line.tokens.slice(t).join(' ')}'이(가) 있어요`,
+      );
+    }
+  };
+
+  /** A block: each parameter read in it gets one value per block. */
+  const readBlock = (spec: BlockLine, values: Values, env: Map<string, number>) => {
+    const names = lineNames(spec);
+    const lists = new Map<string, Value[]>(names.map((n) => [n, []]));
+    const once = () => {
+      const start = at;
+      const own: Values = new Map();
+      readLines(spec.of, own, new Map(env));
+      for (const n of names) (lists.get(n) as Value[]).push(own.get(n) as Value);
+      return at !== start;
+    };
+    const size = repeatSize(spec);
+    if (size.kind === 'count') {
+      const n = count(size.count, env, '블록', peek());
+      for (let k = 0; k < n; k++) once();
+    } else {
+      const end = size.kind === 'until' ? parseEnd(size.end) : undefined;
+      for (;;) {
+        const i = peekIndex();
+        const line = lines[i];
+        if (!line) {
+          if (end)
+            throw new ReadError(`블록을 끝내는 줄 '${(size as { end: string }).end}'이(가) 없어요`);
+          break;
+        }
+        if (end && matchesEnd(end, line.tokens.join(' '))) {
+          at = i + 1;
+          endRead(end, line.tokens.join(' '));
+          break;
+        }
+        if (!once()) throw new ReadError('블록 하나가 입력을 한 줄도 읽지 않아요');
+      }
+    }
+    for (const n of names) values.set(n, lists.get(n) as Value[]);
+  };
+
+  const readCase = (): Values => {
+    const values: Values = new Map();
+    readLines(format.lines, values, new Map());
     return values;
   };
 
@@ -161,13 +240,16 @@ export function readInput(format: Format, text: string): ReadResult {
       for (let k = 0; k < (tc.value as number); k++) cases.push(readCaseOnce());
     } else {
       const sentinel = sentinelOf(c);
+      const end = sentinel === undefined ? undefined : parseEnd(sentinel);
       for (;;) {
-        if (sentinel === undefined && at >= lines.length) break;
-        if (sentinel !== undefined) {
-          const line = lines[at];
+        const i = peekIndex();
+        const line = lines[i];
+        if (end === undefined && !line) break;
+        if (end !== undefined) {
           if (!line) throw new ReadError(`입력을 끝내는 줄 '${sentinel}'이(가) 없어요`);
-          if (line.tokens.join(' ') === sentinel) {
-            at++;
+          if (matchesEnd(end, line.tokens.join(' '))) {
+            at = i + 1;
+            endRead(end, line.tokens.join(' '));
             break;
           }
         }
@@ -175,10 +257,9 @@ export function readInput(format: Format, text: string): ReadResult {
       }
       if (cases.length === 0) throw new ReadError('읽은 케이스가 없어요');
     }
-    if (at < lines.length) {
-      throw new ReadError(`${(lines[at] as Line).no}번째 줄부터 읽지 않은 입력이 남아요`);
-    }
-    return { ok: true, cases };
+    const left = peek();
+    if (left) throw new ReadError(`${left.no}번째 줄부터 읽지 않은 입력이 남아요`);
+    return ends.length ? { ok: true, cases, ends } : { ok: true, cases };
   } catch (e) {
     if (e instanceof ReadError) return { ok: false, error: e.message };
     throw e;
@@ -190,14 +271,9 @@ export function readInput(format: Format, text: string): ReadResult {
     return r.value;
   }
 
-  /** The end line of an `until` repeat: whole text for line[] (" ." is data, "." ends), else tokens. */
-  function isEndLine(p: Param, line: Line, end: string): boolean {
-    return isLinesType(p.type) ? line.text === end : line.tokens.join(' ') === end;
-  }
-
   function readRow(p: Param, line: Line, env: Map<string, number>): Value {
-    // line[]: the whole line, spaces kept (outer spaces trimmed, like `line`).
-    if (isLinesType(p.type)) return line.text.trim();
+    // line[]: the whole line, spaces kept (outer spaces trimmed, like `line`; raw: as it is).
+    if (isLinesType(p.type)) return p.raw ? line.raw : line.text.trim();
     if (isArrayType(p.type)) {
       if (line.tokens.length !== 1) {
         throw new ReadError(`${line.no}번째 줄에는 '${p.name}'의 값 하나만 있어야 해요`);
@@ -224,115 +300,4 @@ export function readInput(format: Format, text: string): ReadResult {
     }
     return line.tokens.map((tok) => token(p, tok, line));
   }
-}
-
-// ---- Writing values back as input (round trip, test case dialog) ----
-
-export type WriteResult = { ok: true; text: string } | { ok: false; error: string };
-
-/** Writes cases as standard input. Checks lengths against the counts (e.g. arr has n items). */
-export function writeInput(format: Format, cases: Values[]): WriteResult {
-  const out: string[] = [];
-  const byName = new Map(format.params.map((p) => [p.name, p]));
-  try {
-    if (format.cases && 'count' in format.cases) out.push(String(cases.length));
-    for (const values of cases) {
-      const env = new Map<string, number>();
-      for (const [name, v] of values) {
-        if (typeof v === 'number' && Number.isInteger(v)) env.set(name, v);
-        if (typeof v === 'bigint') env.set(name, Number(v));
-      }
-      const expect = (c: Count, actual: number, what: string) => {
-        const parsed = parseCount(c);
-        const n = parsed ? evalCount(parsed, env) : Number.NaN;
-        if (n !== actual)
-          throw new ReadError(
-            `${what}의 길이가 ${actual}이에요. ${String(c)} = ${n}과(와) 같아야 해요`,
-          );
-      };
-      for (const spec of format.lines) {
-        if (isRepeat(spec)) {
-          const p = byName.get(spec.of) as Param;
-          const rows = values.get(p.name);
-          if (!Array.isArray(rows)) throw new ReadError(`'${p.name}' 값이 없어요`);
-          const size = repeatSize(spec);
-          if (size.kind === 'count') expect(size.count, rows.length, `'${p.name}'`);
-          for (const row of rows) {
-            if (isGridType(p.type) && p.cols !== undefined) {
-              const len =
-                typeof row === 'string' ? row.length : Array.isArray(row) ? row.length : -1;
-              expect(p.cols, len, `'${p.name}'의 행`);
-            }
-            if (isLinesType(p.type)) {
-              if (typeof row !== 'string' || /[\r\n]/.test(row) || row.trim() === '') {
-                throw new ReadError(`'${p.name}'의 원소는 비어 있지 않은 한 줄 문자열이어야 해요`);
-              }
-              out.push(row);
-              continue;
-            }
-            const cells = Array.isArray(row) ? row : [row];
-            if (cells.some((x) => typeof x === 'string' && !isToken(x))) {
-              throw new ReadError(`'${p.name}'의 문자열에는 공백을 넣을 수 없어요`);
-            }
-            out.push(tokenText(row));
-          }
-          if (size.kind === 'until') out.push(size.end);
-          continue;
-        }
-        const only = byName.get(spec[0] as string) as Param;
-        const value = values.get(only.name);
-        if (spec.length === 1 && isArrayType(only.type) && Array.isArray(value)) {
-          if (only.len !== undefined) expect(only.len, value.length, `'${only.name}'`);
-          if (only.len !== undefined && value.length === 0) continue;
-        }
-        const parts: string[] = [];
-        for (const name of spec) {
-          const p = byName.get(name) as Param;
-          const v = values.get(name);
-          if (v === undefined) throw new ReadError(`'${name}' 값이 없어요`);
-          if (isArrayType(p.type)) {
-            if (!Array.isArray(v)) throw new ReadError(`'${name}'은(는) 배열이어야 해요`);
-            if (p.len !== undefined) expect(p.len, v.length, `'${name}'`);
-          }
-          const items = Array.isArray(v) ? v : [v];
-          for (const item of items) {
-            if (p.type !== 'line' && typeof item === 'string' && !isToken(item)) {
-              throw new ReadError(`'${name}'의 문자열은 공백 없이 한 단어여야 해요`);
-            }
-          }
-          parts.push(tokenText(v));
-        }
-        out.push(parts.join(' '));
-      }
-    }
-    const sentinel = sentinelOf(format.cases);
-    if (sentinel !== undefined) out.push(sentinel);
-    return { ok: true, text: `${out.join('\n')}\n` };
-  } catch (e) {
-    if (e instanceof ReadError) return { ok: false, error: e.message };
-    throw e;
-  }
-}
-
-/**
- * True when two inputs hold the same tokens on the same lines. Numbers compare by value,
- * so "3.10" and "3.1", or "+5" and "5", are the same.
- */
-export function sameInput(a: string, b: string): boolean {
-  const la = inputLines(a);
-  const lb = inputLines(b);
-  if (la.length !== lb.length) return false;
-  return la.every((line, i) => {
-    const other = (lb[i] as Line).tokens;
-    return (
-      line.tokens.length === other.length &&
-      line.tokens.every((t, k) => {
-        const u = other[k] as string;
-        if (t === u) return true;
-        const x = Number(t);
-        const y = Number(u);
-        return /^[+-]?[\d.]/.test(t) && /^[+-]?[\d.]/.test(u) && Number.isFinite(x) && x === y;
-      })
-    );
-  });
 }

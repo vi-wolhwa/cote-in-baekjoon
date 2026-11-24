@@ -18,10 +18,12 @@ import {
   type RetSpec,
   type RetType,
 } from '../dsl';
-import { C_ROWS, C_RUNTIME } from './c-runtime';
+import { C_GROW, C_ROWS, C_RUNTIME } from './c-runtime';
 import {
+  allSteps,
   quote,
   renderCount,
+  planVar,
   renderRows,
   usesRows,
   type CountRef,
@@ -57,19 +59,67 @@ const rows = (n: Rows) =>
       end.length === 0
         ? `__cib_rowsTok(NULL, 0, ${k})`
         : `__cib_rowsTok((const char* const[]){${end.map(quote).join(', ')}}, ${end.length}, ${k})`,
-    line: (end, raw) =>
-      `__cib_rowsLine(${end === null ? 'NULL' : quote(end)}, ${raw ? 'true' : 'false'})`,
+    line: (end, text) =>
+      `__cib_rowsLine(${end.mode}, ${quote(end.text)}, ${text ? 'true' : 'false'})`,
+    phys: (end) => `__cib_rowsPhys(${end.mode}, ${quote(end.text)})`,
   });
 const each = (v: number, body: string) =>
   `for (size_t __cib_i = 0; __cib_i < ${length(v)}; __cib_i++) ${body}`;
 
-function step(s: Step): string {
+/**
+ * A block: the parameter arrays start empty and grow as each pass appends the block's
+ * variables (a value, or an array and its length: one row of a ragged 2D array).
+ */
+function block(plan: Plan, s: Extract<Step, { op: 'block' }>): string {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return `for (size_t __cib_b = 0, __cib_bn = ${count(s.loop.n)}; __cib_b < __cib_bn; __cib_b++)`;
+      case 'eof':
+        return 'while (__cib_has())';
+      case 'tok': {
+        const w = s.loop.end;
+        return `while (!__cib_at((const char* const[]){${w.map(quote).join(', ')}}, ${w.length}))`;
+      }
+      case 'line':
+        return `while (!__cib_endl(${s.loop.end.mode}, ${quote(s.loop.end.text)}))`;
+    }
+  })();
+  const push = ({ list, item }: { list: number; item: number }) => {
+    const local = planVar(plan, item);
+    const t = elementTypeOf(local.type);
+    const [v, n, c] = [variable(list), length(list), columns(list)];
+    if (shape(local) === 'scalar') {
+      return `${v} = (${t}*)__cib_grow(${v}, ${n}, sizeof(${t})); ${v}[${n}++] = ${variable(item)};`;
+    }
+    return `${v} = (${t}**)__cib_grow(${v}, ${n}, sizeof(${t}*)); ${c} = (size_t*)__cib_grow(${c}, ${n}, sizeof(size_t)); ${v}[${n}] = ${variable(item)}; ${c}[${n}++] = ${length(item)};`;
+  };
+  return [
+    ...s.items.map((x) => {
+      const ragged = shape(planVar(plan, x.item)) !== 'scalar';
+      return `${variable(x.list)} = NULL; ${length(x.list)} = 0;${ragged ? ` ${columns(x.list)} = NULL;` : ''}`;
+    }),
+    `${head} {`,
+    ...s.items.flatMap((x) => param(planVar(plan, x.item), x.item).decls.map((d) => `    ${d}`)),
+    ...s.steps.flatMap((x) => step(plan, x).split('\n')).map((l) => `    ${l}`),
+    ...s.items.map((x) => `    ${push(x)}`),
+    '}',
+  ].join('\n');
+}
+
+function step(plan: Plan, s: Step): string {
   if (s.op === 'nl') return '__cib_nl();';
   if (s.op === 'endTok') return Array(s.k).fill('__cib_skip();').join(' ');
   if (s.op === 'endLine') return '__cib_nl(); __cib_skipline();';
+  if (s.op === 'endRaw') return '{ size_t __cib_l; __cib_rawspan(&__cib_l); }';
+  if (s.op === 'block') return block(plan, s);
   const v = variable(s.v);
   const n = length(s.v);
   switch (s.op) {
+    case 'raw':
+      return `${v} = __cib_rawl();`;
+    case 'rawLines':
+      return `${n} = ${rows(s.n)}; ${v} = (const char**)__cib_alloc(${n}, sizeof(const char*)); ${each(s.v, `${v}[__cib_i] = __cib_rawl();`)}`;
     case 'scalar':
       return `${v} = __cib_${READ[s.t]}();`;
     case 'line':
@@ -191,7 +241,7 @@ export function cGlue(plan: Plan, ret: RetSpec): string {
   const body = (n: number) =>
     [
       ...params.flatMap((p) => p.decls),
-      ...plan.steps.map(step),
+      ...plan.steps.flatMap((s) => step(plan, s).split('\n')),
       ...callAndPrint(
         ret,
         params.flatMap((p) => p.args),
@@ -214,6 +264,10 @@ export function cGlue(plan: Plan, ret: RetSpec): string {
         return `    int __cib_t = __cib_int();\n${each('for (int __cib_c = 0; __cib_c < __cib_t; __cib_c++)')}`;
       case 'eof':
         return each('while (__cib_has())');
+      case 'line': {
+        const { mode, text } = plan.loop.end;
+        return each(`while (__cib_has() && !__cib_endl(${mode}, ${quote(text)}))`);
+      }
       case 'until': {
         const words = plan.loop.tokens.map(quote).join(', ');
         return [
@@ -227,6 +281,7 @@ export function cGlue(plan: Plan, ret: RetSpec): string {
     '/* ---- 입출력 코드 ---- */',
     C_RUNTIME,
     ...(usesRows(plan) ? [C_ROWS] : []),
+    ...(allSteps(plan.steps).some((s) => s.op === 'block') ? [C_GROW] : []),
     'int main(void) {',
     '    {',
     '        size_t __cib_cap = 1 << 16, __cib_k;',

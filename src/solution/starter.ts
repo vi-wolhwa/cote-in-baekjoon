@@ -2,11 +2,11 @@
  * Starting code and file name for the solution-function mode, per glue language
  * (glue/index.ts): an empty `solution` with the format's parameters and return type.
  */
-import type { Format } from './dsl';
+import { solutionParams, type Format } from './dsl';
 import { glueLanguage, type GlueId } from './glue';
 
 export function starterCode(glue: GlueId, format: Format): string {
-  return glueLanguage(glue).starter(format);
+  return glueLanguage(glue).starter({ ...format, params: solutionParams(format) });
 }
 
 /** File tab name in solution-function mode. */

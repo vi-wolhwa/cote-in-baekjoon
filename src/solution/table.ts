@@ -9,6 +9,7 @@
  */
 import {
   isArrayType,
+  isBlock,
   isGridType,
   isRepeat,
   isRepeatOnly,
@@ -18,6 +19,7 @@ import {
   type Cases,
   type Count,
   type Format,
+  type InnerLine,
   type ParamType,
   type RetSpec,
 } from './dsl';
@@ -36,7 +38,24 @@ export interface ParamRow {
   count: string;
   /** 2D array: columns ('' = every value of the row's line). */
   cols: string;
+  /** 1D array with a length: its values may go on over several lines. */
+  flow?: boolean;
+  /** line, line[]: physical lines as they are (empty lines, outer spaces). */
+  raw?: boolean;
+  /** Read in a block: rows with the same block next to each other form it. */
+  block?: BlockInfo;
 }
+
+/** A block of lines read several times (DSL `{ repeat|until, of: [lines] }`). */
+export interface BlockInfo {
+  id: number;
+  /** repeat: `count` times. until: up to the end line in `count`. eof: to the end of input. */
+  mode: 'repeat' | 'until' | 'eof';
+  count: string;
+}
+
+const sameBlock = (a: ParamRow | undefined, b: ParamRow | undefined) =>
+  a?.block?.id === b?.block?.id;
 
 export interface FormatTable {
   rows: ParamRow[];
@@ -49,6 +68,7 @@ const countString = (c: Count | undefined) => (c === undefined ? '' : String(c))
 export function toTable(format: Format): FormatTable {
   const byName = new Map(format.params.map((p) => [p.name, p]));
   const rows: ParamRow[] = [];
+  let block: BlockInfo | undefined;
   const push = (name: string, mode: RowMode, repeat?: Count | string) => {
     const p = byName.get(name);
     if (!p) return;
@@ -59,16 +79,31 @@ export function toTable(format: Format): FormatTable {
       mode,
       count: countString(repeat ?? p.len),
       cols: countString(p.cols),
+      ...(p.flow ? { flow: true } : {}),
+      ...(p.raw ? { raw: true } : {}),
+      ...(block ? { block } : {}),
     });
   };
-  for (const line of format.lines) {
+  const read = (line: InnerLine) => {
     if (isRepeat(line)) {
       const size = repeatSize(line);
       if (size.kind === 'count') push(line.of, 'repeat', size.count);
       else if (size.kind === 'until') push(line.of, 'until', size.end);
       else push(line.of, 'eof', '');
-    } else line.forEach((name, i) => push(name, i === 0 ? 'new' : 'same'));
-  }
+    } else (line as string[]).forEach((name, i) => push(name, i === 0 ? 'new' : 'same'));
+  };
+  format.lines.forEach((line, id) => {
+    if (!isBlock(line)) return read(line as InnerLine);
+    const size = repeatSize(line);
+    block =
+      size.kind === 'count'
+        ? { id, mode: 'repeat', count: countString(size.count) }
+        : size.kind === 'until'
+          ? { id, mode: 'until', count: size.end }
+          : { id, mode: 'eof', count: '' };
+    line.of.forEach(read);
+    block = undefined;
+  });
   return { rows, cases: format.cases, ret: format.ret };
 }
 
@@ -82,8 +117,9 @@ function countValue(text: string): Count | undefined {
 /** The raw format object of a table, to be checked like any other format. */
 export function fromTable(table: FormatTable): unknown {
   const params: Record<string, unknown>[] = [];
-  const lines: unknown[] = [];
-  for (const row of table.rows) {
+  const top: unknown[] = [];
+  let lines = top;
+  table.rows.forEach((row, i) => {
     const name = row.name.trim();
     const count = countValue(row.count);
     const param: Record<string, unknown> = { name, type: row.type };
@@ -91,15 +127,36 @@ export function fromTable(table: FormatTable): unknown {
     if (isArrayType(row.type) && onLine && count !== undefined) param.len = count;
     const cols = countValue(row.cols);
     if (isGridType(row.type) && cols !== undefined) param.cols = cols;
+    if (row.flow && param.len !== undefined) param.flow = true;
+    if (row.raw && (row.type === 'line' || row.type === 'line[]')) param.raw = true;
     params.push(param);
+    // The first row of a block starts its lines; the rows after it add to them.
+    if (!sameBlock(row, table.rows[i - 1])) {
+      lines = top;
+      if (row.block) {
+        const b = row.block;
+        lines = [];
+        const of = lines;
+        if (b.mode === 'repeat') top.push({ repeat: countValue(b.count) ?? '', of });
+        else top.push({ until: b.mode === 'eof' ? 'EOF' : b.count.trim(), of });
+      }
+    }
     const last = lines.at(-1);
     if (row.mode === 'repeat') lines.push({ repeat: count ?? '', of: name });
     else if (row.mode === 'until') lines.push({ until: row.count.trim(), of: name });
     else if (row.mode === 'eof') lines.push({ until: 'EOF', of: name });
     else if (row.mode === 'same' && Array.isArray(last)) last.push(name);
     else lines.push([name]);
-  }
-  return { v: 1, params, lines, cases: table.cases, ret: table.ret };
+  });
+  return { v: 1, params, lines: top, cases: table.cases, ret: table.ret };
+}
+
+/** Changes how many times (or up to which end line) a block is read. */
+export function setBlockCount(table: FormatTable, id: number, count: string): FormatTable {
+  const rows = table.rows.map((r) =>
+    r.block?.id === id ? { ...r, block: { ...r.block, count } } : r,
+  );
+  return { ...table, rows };
 }
 
 /** Problems the table can name better than the format checks can. */
@@ -130,6 +187,13 @@ export function tableErrors(table: FormatTable): string[] {
     if (row.mode === 'until' && row.count.trim() === '') {
       errors.add(`'${label}'을(를) 끝내는 줄을 적어 주세요 (예: 0).`);
     }
+    if (row.block && row.block.mode !== 'eof' && row.block.count.trim() === '') {
+      errors.add(
+        row.block.mode === 'repeat'
+          ? '블록을 몇 번 읽는지 적어 주세요.'
+          : '블록을 끝내는 줄을 적어 주세요 (예: 0).',
+      );
+    }
   });
   return [...errors];
 }
@@ -140,10 +204,12 @@ export function modeOptions(table: FormatTable, index: number): RowMode[] {
   if (!row) return [];
   // Several lines: a count, an end line, or (last row of a single-case format) the end of input.
   const multi: RowMode[] = ['repeat', 'until'];
-  if (index === table.rows.length - 1 && table.cases === null) multi.push('eof');
+  if (index === table.rows.length - 1 && table.cases === null && !row.block) multi.push('eof');
   if (isRepeatOnly(row.type)) return multi;
   const prev = table.rows[index - 1];
-  const canShare = prev !== undefined && !isMultiMode(prev.mode) && prev.type !== 'line';
+  // Only a row of the same block (or none) shares a line with the row before.
+  const canShare =
+    prev !== undefined && sameBlock(prev, row) && !isMultiMode(prev.mode) && prev.type !== 'line';
   const out: RowMode[] = ['new'];
   if (canShare && row.type !== 'line') out.push('same');
   if (isArrayType(row.type)) out.push(...multi);
@@ -190,11 +256,14 @@ export function renameRow(table: FormatTable, index: number, name: string): Form
   const old = table.rows[index]?.name;
   if (old === undefined) return table;
   const swap = (text: string) => (old && isValidName(old) ? text.replace(wordRe(old), name) : text);
-  const rows = table.rows.map((r, i) =>
-    i === index
-      ? { ...r, name }
-      : { ...r, count: r.mode === 'until' ? r.count : swap(r.count), cols: swap(r.cols) },
-  );
+  const rows = table.rows.map((r, i) => {
+    const row =
+      i === index
+        ? { ...r, name }
+        : { ...r, count: r.mode === 'until' ? r.count : swap(r.count), cols: swap(r.cols) };
+    if (r.block?.mode === 'repeat') row.block = { ...r.block, count: swap(r.block.count) };
+    return row;
+  });
   return { ...table, rows };
 }
 
@@ -232,6 +301,15 @@ export function rowPositions(table: FormatTable): string[] {
   let line: number | undefined = table.cases && 'count' in table.cases ? 1 : 0;
   const out: string[] = [];
   table.rows.forEach((row, i) => {
+    if (row.block) {
+      // A block's lines repeat, so its rows are told by the block, not by line numbers.
+      const first = !sameBlock(row, table.rows[i - 1]);
+      if (first && line !== undefined) line++;
+      if (!first) out.push(out[i - 1] ?? '');
+      else out.push(line === undefined ? '블록 (그다음 줄부터)' : `블록 (${line}번째 줄부터)`);
+      if (!sameBlock(row, table.rows[i + 1])) line = undefined;
+      return;
+    }
     if (row.mode === 'same' && i > 0) {
       out.push(out[i - 1] ?? '');
       return;

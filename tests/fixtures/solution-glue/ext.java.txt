@@ -1,0 +1,253 @@
+import java.util.*; import java.io.*;
+// 자동 포함: java.util.*, java.io.*
+
+class Solution {
+    public long solution(int n, int[] arr, int[] k, String[] name, int[][] items, long[] m, double[][] vals, String[] words, int[] p) {
+        long answer = 0;
+        return answer;
+    }
+}
+
+
+// ---- 입출력 코드 ----
+public class Main {
+    static byte[] __cib_d;
+    static int __cib_p, __cib_n;
+    static RuntimeException __cib_fail() { return new RuntimeException("__cib_input"); }
+    static boolean __cib_ws(byte c) { return c == ' ' || c == '\n' || c == '\r' || c == '\t'; }
+    static boolean __cib_more() {
+        while (__cib_p < __cib_n && __cib_ws(__cib_d[__cib_p])) __cib_p++;
+        return __cib_p < __cib_n;
+    }
+    static String __cib_tok() {
+        if (!__cib_more()) throw __cib_fail();
+        int s = __cib_p;
+        while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) __cib_p++;
+        return new String(__cib_d, s, __cib_p - s, java.nio.charset.StandardCharsets.UTF_8);
+    }
+    static long __cib_ll() {
+        if (!__cib_more()) throw __cib_fail();
+        boolean neg = false;
+        if (__cib_d[__cib_p] == '-' || __cib_d[__cib_p] == '+') neg = __cib_d[__cib_p++] == '-';
+        if (__cib_p >= __cib_n || __cib_ws(__cib_d[__cib_p])) throw __cib_fail();
+        long v = 0;
+        while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) {
+            int c = __cib_d[__cib_p++] - '0';
+            if (c < 0 || c > 9) throw __cib_fail();
+            v = v * 10 - c;
+        }
+        return neg ? v : -v;
+    }
+    static int __cib_int() { return (int) __cib_ll(); }
+    static double __cib_dbl() { return Double.parseDouble(__cib_tok()); }
+    static void __cib_nl() {
+        if (__cib_p > 0 && __cib_d[__cib_p - 1] != '\n') {
+            while (__cib_p < __cib_n && __cib_d[__cib_p] != '\n') __cib_p++;
+            if (__cib_p < __cib_n) __cib_p++;
+        }
+        for (;;) {
+            int q = __cib_p;
+            while (q < __cib_n && __cib_d[q] != '\n' && __cib_ws(__cib_d[q])) q++;
+            if (q < __cib_n && __cib_d[q] == '\n') __cib_p = q + 1;
+            else break;
+        }
+    }
+    static String __cib_line() {
+        if (__cib_p >= __cib_n) throw __cib_fail();
+        int e = __cib_p;
+        while (e < __cib_n && __cib_d[e] != '\n') e++;
+        String s = new String(__cib_d, __cib_p, e - __cib_p, java.nio.charset.StandardCharsets.UTF_8);
+        __cib_p = e;
+        return s.trim();
+    }
+    static String[] __cib_rest() {
+        String s = __cib_line();
+        return s.isEmpty() ? new String[0] : s.split("\\s+");
+    }
+    static boolean __cib_has() {
+        int q = __cib_p;
+        while (q < __cib_n && __cib_ws(__cib_d[q])) q++;
+        return q < __cib_n;
+    }
+    static boolean __cib_at(String[] w) {
+        int s = __cib_p;
+        boolean ok = true;
+        for (String x : w) if (!__cib_more() || !__cib_tok().equals(x)) { ok = false; break; }
+        __cib_p = s;
+        return ok;
+    }
+    static int __cib_rowsTok(String[] w, long k) {
+        int s = __cib_p, r = 0;
+        for (;;) {
+            if (w.length == 0 ? !__cib_has() : __cib_at(w)) break;
+            if (k < 1 || !__cib_has()) throw __cib_fail();
+            for (long i = 0; i < k; i++) __cib_tok();
+            r++;
+        }
+        __cib_p = s;
+        return r;
+    }
+    static String __cib_raw() {
+        int e = __cib_p;
+        while (e < __cib_n && __cib_d[e] != '\n') e++;
+        int s = __cib_p;
+        __cib_p = e;
+        while (e > s && __cib_ws(__cib_d[e - 1])) e--;
+        return new String(__cib_d, s, e - s, java.nio.charset.StandardCharsets.UTF_8);
+    }
+    static boolean __cib_isNum(String f) {
+        int i = 0, n = f.length(), k = 0;
+        if (i < n && (f.charAt(i) == '+' || f.charAt(i) == '-')) i++;
+        while (i < n && f.charAt(i) >= '0' && f.charAt(i) <= '9') { i++; k++; }
+        if (i < n && f.charAt(i) == '.') for (i++; i < n && f.charAt(i) >= '0' && f.charAt(i) <= '9'; i++) k++;
+        if (k == 0) return false;
+        if (i < n && (f.charAt(i) == 'e' || f.charAt(i) == 'E')) {
+            int x = 0;
+            if (++i < n && (f.charAt(i) == '+' || f.charAt(i) == '-')) i++;
+            for (; i < n && f.charAt(i) >= '0' && f.charAt(i) <= '9'; i++) x++;
+            if (x == 0) return false;
+        }
+        return i == n;
+    }
+    static boolean __cib_isEnd(String t, int m, String e) {
+        if (m == 1) return t.equals(e);
+        if (m == 4) return t.startsWith(e);
+        if (m != 2 && m != 3) return false;
+        String s = t.trim();
+        int k = 0;
+        while (k < s.length() && !Character.isWhitespace(s.charAt(k))) k++;
+        String f = s.substring(0, k);
+        if (!__cib_isNum(f)) return false;
+        double x = Double.parseDouble(f);
+        return m == 2 ? x < 0 : x <= 0;
+    }
+    static int __cib_rowsLine(int m, String e, boolean text) {
+        int s = __cib_p, r = 0;
+        for (;;) {
+            __cib_nl();
+            if (!__cib_has()) { if (m != 0) throw __cib_fail(); break; }
+            String t = text ? __cib_raw() : __cib_line();
+            if (m != 0 && __cib_isEnd(t, m, e)) break;
+            r++;
+        }
+        __cib_p = s;
+        return r;
+    }
+    static boolean __cib_endl(int m, String e) {
+        int s = __cib_p;
+        __cib_nl();
+        if (__cib_has() && __cib_isEnd(__cib_line(), m, e)) return true;
+        __cib_p = s;
+        return false;
+    }
+    static void __cib_bol() {
+        if (__cib_p > 0 && __cib_d[__cib_p - 1] != '\n') {
+            while (__cib_p < __cib_n && __cib_d[__cib_p] != '\n') __cib_p++;
+            if (__cib_p < __cib_n) __cib_p++;
+        }
+    }
+    static String __cib_rawl() {
+        __cib_bol();
+        if (__cib_p >= __cib_n) throw __cib_fail();
+        int e = __cib_p;
+        while (e < __cib_n && __cib_d[e] != '\n') e++;
+        int end = e > __cib_p && __cib_d[e - 1] == '\r' ? e - 1 : e;
+        String s = new String(__cib_d, __cib_p, end - __cib_p, java.nio.charset.StandardCharsets.UTF_8);
+        __cib_p = e < __cib_n ? e + 1 : __cib_n;
+        return s;
+    }
+    static int __cib_rowsPhys(int m, String e) {
+        int s = __cib_p, r = 0;
+        __cib_bol();
+        for (;;) {
+            if (__cib_p >= __cib_n) { if (m != 0) throw __cib_fail(); break; }
+            String t = __cib_rawl();
+            int k = t.length();
+            while (k > 0 && Character.isWhitespace(t.charAt(k - 1))) k--;
+            if (m != 0 && __cib_isEnd(t.substring(0, k), m, e)) break;
+            r++;
+        }
+        __cib_p = s;
+        return r;
+    }
+
+    public static void main(String[] __cib_a) throws Exception {
+        java.io.InputStream __cib_in = System.in;
+        java.io.ByteArrayOutputStream __cib_b = new java.io.ByteArrayOutputStream();
+        byte[] __cib_buf = new byte[1 << 16];
+        int __cib_k0;
+        while ((__cib_k0 = __cib_in.read(__cib_buf)) > 0) __cib_b.write(__cib_buf, 0, __cib_k0);
+        __cib_d = __cib_b.toByteArray();
+        __cib_n = __cib_d.length;
+        StringBuilder __cib_o = new StringBuilder();
+        int __cib_cases = 0;
+        while (__cib_has() && !__cib_endl(2, "")) {
+            int __cib_v0 = 0;
+            int[] __cib_v1 = null;
+            int[] __cib_v2 = null;
+            String[] __cib_v3 = null;
+            int[][] __cib_v4 = null;
+            long[] __cib_v5 = null;
+            double[][] __cib_v6 = null;
+            String[] __cib_v7 = null;
+            int[] __cib_v8 = null;
+            try {
+                __cib_v0 = __cib_int();
+                __cib_v1 = new int[(int) (2 * __cib_v0 - 1)]; for (int __cib_i = 0; __cib_i < __cib_v1.length; __cib_i++) __cib_v1[__cib_i] = __cib_int();
+                {
+                    java.util.ArrayList<Integer> __cib_l2 = new java.util.ArrayList<>();
+                    java.util.ArrayList<String> __cib_l3 = new java.util.ArrayList<>();
+                    java.util.ArrayList<int[]> __cib_l4 = new java.util.ArrayList<>();
+                    int __cib_bn = (int) (__cib_v0 - 1); if (__cib_bn < 0) throw __cib_fail(); for (int __cib_bi = 0; __cib_bi < __cib_bn; __cib_bi++) {
+                        int __cib_v9 = 0;
+                        String __cib_v10 = null;
+                        int[] __cib_v11 = null;
+                        __cib_v9 = __cib_int();
+                        __cib_v10 = __cib_tok();
+                        __cib_v11 = new int[(int) (__cib_v9)]; for (int __cib_i = 0; __cib_i < __cib_v11.length; __cib_i++) __cib_v11[__cib_i] = __cib_int();
+                        __cib_l2.add(__cib_v9);
+                        __cib_l3.add(__cib_v10);
+                        __cib_l4.add(__cib_v11);
+                    }
+                    __cib_v2 = new int[__cib_l2.size()]; for (int __cib_i = 0; __cib_i < __cib_v2.length; __cib_i++) __cib_v2[__cib_i] = __cib_l2.get(__cib_i);
+                    __cib_v3 = __cib_l3.toArray(new String[0]);
+                    __cib_v4 = __cib_l4.toArray(new int[0][]);
+                }
+                {
+                    java.util.ArrayList<Long> __cib_l5 = new java.util.ArrayList<>();
+                    java.util.ArrayList<double[]> __cib_l6 = new java.util.ArrayList<>();
+                    while (!__cib_at(new String[] {"0"})) {
+                        long __cib_v12 = 0;
+                        double[] __cib_v13 = null;
+                        __cib_v12 = __cib_ll();
+                        __cib_v13 = new double[(int) (__cib_v12)]; for (int __cib_i = 0; __cib_i < __cib_v13.length; __cib_i++) __cib_v13[__cib_i] = __cib_dbl();
+                        __cib_l5.add(__cib_v12);
+                        __cib_l6.add(__cib_v13);
+                    }
+                    __cib_v5 = new long[__cib_l5.size()]; for (int __cib_i = 0; __cib_i < __cib_v5.length; __cib_i++) __cib_v5[__cib_i] = __cib_l5.get(__cib_i);
+                    __cib_v6 = __cib_l6.toArray(new double[0][]);
+                }
+                __cib_tok();
+                __cib_v7 = new String[__cib_rowsLine(4, "#", true)]; for (int __cib_i = 0; __cib_i < __cib_v7.length; __cib_i++) { __cib_nl(); __cib_v7[__cib_i] = __cib_line(); }
+                __cib_nl(); __cib_line();
+                {
+                    java.util.ArrayList<Integer> __cib_l8 = new java.util.ArrayList<>();
+                    while (!__cib_endl(3, "")) {
+                        int __cib_v14 = 0;
+                        __cib_v14 = __cib_int();
+                        __cib_l8.add(__cib_v14);
+                    }
+                    __cib_v8 = new int[__cib_l8.size()]; for (int __cib_i = 0; __cib_i < __cib_v8.length; __cib_i++) __cib_v8[__cib_i] = __cib_l8.get(__cib_i);
+                }
+            } catch (RuntimeException __cib_e) {
+                throw __cib_fail();
+            }
+            long __cib_r = new Solution().solution(__cib_v0, __cib_v1, __cib_v2, __cib_v3, __cib_v4, __cib_v5, __cib_v6, __cib_v7, __cib_v8);
+            if (__cib_cases++ > 0) __cib_o.append('\n');
+            __cib_o.append(__cib_r);
+        }
+        if (__cib_cases > 0) __cib_o.append('\n');
+        System.out.print(__cib_o);
+        System.out.flush();
+    }
+}

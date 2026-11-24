@@ -2,7 +2,7 @@
  * Small helpers for the format editor (#114): the format '형식 만들기' starts from and the
  * one-line signature. The table model is in table.ts.
  */
-import type { Format } from './dsl';
+import { solutionParams, type Format } from './dsl';
 
 /** What '형식 만들기' starts from: one int in, one int out. */
 export const TEMPLATE: Format = {
@@ -15,6 +15,8 @@ export const TEMPLATE: Format = {
 
 /** "solution(n: int, arr: int[]) → int[]". */
 export function signature(format: Format): string {
-  const params = format.params.map((p) => `${p.name}: ${p.type}`).join(', ');
+  const params = solutionParams(format)
+    .map((p) => `${p.name}: ${p.type}`)
+    .join(', ');
   return `solution(${params}) → ${format.ret.type}`;
 }

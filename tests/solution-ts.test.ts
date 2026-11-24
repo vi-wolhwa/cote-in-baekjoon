@@ -10,6 +10,7 @@ import { stripTypes } from '@/runner/js/typescript';
 import { checkFormat, type Format } from '@/solution/dsl';
 import { buildProgram } from '@/solution/program';
 import { starterCode } from '@/solution/starter';
+import { EXT_CASES } from './native/ext-cases';
 
 const f = (x: unknown): Format => {
   const r = checkFormat(x);
@@ -106,12 +107,17 @@ const SETUPS: Record<string, ts.CompilerOptions> = {
 describe('TypeScript glue compiles with tsc', { timeout: 120_000 }, () => {
   for (const [name, options] of Object.entries(SETUPS)) {
     it(name, () => {
-      for (const [format, code] of [
+      const programs: [Format, string][] = [
         [SORT, SORT_CODE],
         [BLOCKS, BLOCKS_CODE],
         [CASES, CASES_CODE],
         [LABELED, CASES_CODE],
-      ] as const) {
+        // DSL extensions (blocks, raw lines, end conditions) from their typed starting code.
+        ...Object.values(EXT_CASES).map(
+          (c) => [c.format, starterCode('ts', c.format)] as [Format, string],
+        ),
+      ];
+      for (const [format, code] of programs) {
         expect(typeErrors(buildProgram('ts', format, code).source, options)).toEqual([]);
       }
     });

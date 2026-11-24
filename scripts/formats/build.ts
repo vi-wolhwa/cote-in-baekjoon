@@ -17,7 +17,14 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { shardOf } from '@/solution/bundled';
-import { checkFormat, formatToJson, sameFormat, type Format } from '@/solution/dsl';
+import {
+  checkFormat,
+  formatToJson,
+  isBlock,
+  mapLine,
+  sameFormat,
+  type Format,
+} from '@/solution/dsl';
 import { inferCandidates, MIN_SCORE } from '@/solution/infer';
 import { isExcluded } from '@/solution/source';
 import { validateFormat } from '@/solution/validate';
@@ -198,11 +205,17 @@ function shapeKey(format: Format): string {
   const ref = (c: string | number | undefined) =>
     typeof c === 'string' ? c.replace(/^[a-z_]\w*/i, (m) => names.get(m) ?? m) : c;
   return JSON.stringify({
-    params: format.params.map((p) => [p.type, ref(p.len), ref(p.cols)]),
+    params: format.params.map((p) => [p.type, ref(p.len), ref(p.cols), p.flow, p.raw]),
     lines: format.lines.map((l) =>
       Array.isArray(l)
         ? l.map((n) => names.get(n))
-        : ['repeat' in l ? ref(l.repeat) : { until: l.until }, names.get(l.of)],
+        : isBlock(l)
+          ? mapLine(
+              l,
+              (n) => names.get(n) ?? n,
+              (c) => ref(c) ?? c,
+            )
+          : ['repeat' in l ? ref(l.repeat) : { until: l.until }, names.get(l.of as string)],
     ),
     cases: format.cases,
     ret: format.ret,

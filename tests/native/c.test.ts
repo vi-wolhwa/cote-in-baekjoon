@@ -2,9 +2,10 @@
  * C glue on gcc, as Baekjoon compiles C11 (`gcc -O2 -std=gnu11 -lm`). The browser runs the
  * same glue as C99 with clang (tests/solution-run.test.ts).
  */
+import { C_EXT } from './c-ext';
 import { nativeSuite, type CaseName } from './harness';
 
-export const C_CODE: Record<CaseName, string> = {
+export const C_CODE: Record<Exclude<CaseName, keyof typeof C_EXT>, string> = {
   ab: `int solution(int a, int b) {
     return a + b;
 }`,
@@ -112,5 +113,5 @@ nativeSuite(
     build: [['gcc', '-O2', '-std=gnu11', '-o', 'main', 'solution.c', '-lm']],
     run: ['./main'],
   },
-  C_CODE,
+  { ...C_CODE, ...C_EXT },
 );

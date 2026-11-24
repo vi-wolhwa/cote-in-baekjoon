@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { checkFormat, type Format } from '@/solution/dsl';
 import type { GlueId } from '@/solution/glue';
 import { buildProgram } from '@/solution/program';
+import { EXT_CASES } from './ext-cases';
 
 export const NATIVE = process.env.NATIVE_GLUE === '1';
 
@@ -40,7 +41,7 @@ interface Case {
 }
 
 /** The cases every language implements. Keep the outputs exact (one trailing newline). */
-export const CASES = {
+const BASE = {
   ab: {
     task: 'return a + b',
     format: f({
@@ -258,6 +259,9 @@ export const CASES = {
     output: 'Scenario #1:\n5\n1\n\nScenario #2:\n9\n\n',
   },
 } satisfies Record<string, Case>;
+
+/** The base cases and those of the DSL extensions (ext-cases.ts). */
+export const CASES = { ...BASE, ...EXT_CASES } satisfies Record<string, Case>;
 
 export type CaseName = keyof typeof CASES;
 

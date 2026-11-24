@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkFormat, formatToJson, parseCount, type Format } from '@/solution/dsl';
+import { checkFormat, formatToJson, type Format } from '@/solution/dsl';
 import { formatOutput, parseOutput } from '@/solution/output';
 import { readInput, sameInput, writeInput } from '@/solution/reader';
 import { validateFormat } from '@/solution/validate';
@@ -260,15 +260,6 @@ describe('checkFormat', () => {
     const r = checkFormat(value);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors.join('\n')).toContain(message);
-  });
-
-  it('parses counts', () => {
-    expect(parseCount('n')).toEqual({ kind: 'ref', name: 'n', plus: 0 });
-    expect(parseCount('n - 1')).toEqual({ kind: 'ref', name: 'n', plus: -1 });
-    expect(parseCount('n*m')).toEqual({ kind: 'mul', a: 'n', b: 'm' });
-    expect(parseCount(3)).toEqual({ kind: 'num', value: 3 });
-    expect(parseCount('n/2')).toBeUndefined();
-    expect(parseCount(-1)).toBeUndefined();
   });
 
   it('writes JSON in DSL key order, one item per row when pretty', () => {

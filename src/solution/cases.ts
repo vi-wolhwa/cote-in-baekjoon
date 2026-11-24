@@ -4,7 +4,7 @@
  * format and stored as standard input/output, so running them is unchanged.
  */
 import type { Sample } from '@/boj/problem';
-import type { Format } from './dsl';
+import { solutionParams, type Format } from './dsl';
 import { formatOutput, parseOutput } from './output';
 import { readInput, writeInput } from './reader';
 import { coerce, formatLiteral, parseLiteral, type Value } from './values';
@@ -37,7 +37,7 @@ export function isEmptyRow(row: CaseRow): boolean {
 export function rowToSample(format: Format, row: CaseRow): RowResult {
   const cells: Record<string, string> = {};
   const values = new Map<string, Value>();
-  for (const p of format.params) {
+  for (const p of solutionParams(format)) {
     const text = row.params[p.name] ?? '';
     if (text.trim() === '') {
       cells[p.name] = '값을 적어 주세요';
