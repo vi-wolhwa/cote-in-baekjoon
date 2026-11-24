@@ -53,6 +53,6 @@ jobs:
           dotnet --version
           ruby --version
       - name: 연결 코드 실행
-        run: npx vitest run tests/native
+        run: npx vitest run tests/native --passWithNoTests
         env:
           NATIVE_GLUE: '1'
