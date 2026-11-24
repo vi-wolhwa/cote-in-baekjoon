@@ -42,3 +42,6 @@ test-results/
 
 # Claude Code agent worktrees
 .claude/worktrees/
+
+# Problem text collected for format data (ADR-0006): never committed
+/data/boj-cache/
