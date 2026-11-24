@@ -5,6 +5,7 @@
  */
 import { BOJ_LANGUAGES, type SubmitLanguage } from '@/boj/languages';
 import type { BuildOptions } from '@/runner/engine';
+import type { GlueId } from '@/solution/glue/types';
 import { LANGUAGE_STARTERS } from './starters';
 
 export type LanguageId = SubmitLanguage;
@@ -39,7 +40,7 @@ export interface LanguageInfo {
   build?: BuildOptions;
   syntax: SyntaxId;
   /** Glue family for the solution-function mode; none where its glue does not apply. */
-  glue?: EngineId;
+  glue?: GlueId;
   /** Languages with the same group share saved code (Python 3 and PyPy3, C++14/17/20). */
   codeGroup: string;
   bojId: number;
@@ -76,6 +77,7 @@ const ENTRIES: readonly Entry[] = [
     label: 'TypeScript',
     fileName: 'solution.ts',
     engine: 'js',
+    glue: 'ts',
     build: { kind: 'typescript' },
   },
   { id: 'kotlin', label: 'Kotlin (JVM)', fileName: 'solution.kt' },

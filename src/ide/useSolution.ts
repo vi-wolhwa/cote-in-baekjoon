@@ -121,13 +121,14 @@ export function useSolution(deps: SolutionDeps) {
   /** What runs: the code itself, or the code with glue and messages mapped back to it. */
   const runPlan = (code: string, lang: LanguageId): RunPlan => {
     const format = formatRef.current;
-    const engine = glueFor(lang, fnRef.current);
-    if (!engine || !format) return { code };
-    const program = buildProgram(engine, format, code);
+    const glue = glueFor(lang, fnRef.current);
+    const engine = languageInfo(lang).engine;
+    if (!glue || !format) return { code };
+    const program = buildProgram(glue, format, code);
     return {
       code: program.source,
       transform: (r) => {
-        if (!r.result) return r;
+        if (!r.result || !engine) return r;
         const mapped = mapRunMessages(engine, program, r.result);
         const result = { ...r.result, stderr: mapped.stderr };
         if (mapped.error !== undefined) result.error = mapped.error;
