@@ -77,3 +77,21 @@ export function sampleToRow(format: Format, sample: Sample): CaseRow | undefined
     expected: formatLiteral(out.values[0] as Value),
   };
 }
+
+/**
+ * A sample as '입출력 예' rows: one row per case, each parameter and the return value as a
+ * literal. Undefined when the sample does not read with the format or its output cannot be
+ * split per case (several multi-line results).
+ */
+export function sampleRows(format: Format, sample: Sample): CaseRow[] | undefined {
+  const read = readInput(format, sample.input);
+  if (!read.ok || read.cases.length === 0) return undefined;
+  const out = parseOutput(format.ret, sample.output, read.cases.length);
+  if (!out.ok || out.values.length !== read.cases.length) return undefined;
+  return read.cases.map((values, k) => ({
+    params: Object.fromEntries(
+      format.params.map((p) => [p.name, formatLiteral(values.get(p.name) as Value)]),
+    ),
+    expected: formatLiteral(out.values[k] as Value),
+  }));
+}

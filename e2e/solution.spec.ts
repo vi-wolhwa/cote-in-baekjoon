@@ -52,6 +52,18 @@ test('opens in solution mode with a format inferred from the samples', async ({
   await expect(page.locator('.file-tab')).toHaveText('solution.js');
   await expect(page.locator('.cm-content')).toContainText('function solution(a, b) {');
 
+  // The samples read as '입출력 예': a column per parameter and result, a row per case.
+  const io = page.getByTestId('io-table');
+  await expect(io.locator('th')).toHaveText(['a', 'b', 'result']);
+  await expect(io.locator('tbody tr').first().locator('td')).toHaveText(['1', '2', '3']);
+  await expect(page.getByText('예제 입력 1')).toHaveCount(0);
+  // Standard input/output shows the samples as they are.
+  await toggle(page).click();
+  await expect(io).toHaveCount(0);
+  await expect(page.getByText('예제 입력 1')).toBeVisible();
+  await toggle(page).click();
+  await expect(io).toBeVisible();
+
   await writeCode(page, page, JS_SOLUTION);
   await page.getByRole('button', { name: '코드 실행' }).click();
   await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공');

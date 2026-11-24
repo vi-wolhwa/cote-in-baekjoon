@@ -449,6 +449,34 @@ textarea {
   white-space: pre-wrap;
   overflow-x: auto;
 }
+/* '입출력 예' in solution-function mode: a column per parameter and result. */
+.problem-io-scroll {
+  overflow-x: auto;
+}
+.problem-io table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+.problem-io th,
+.problem-io td {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+.problem-io th {
+  color: var(--text-strong);
+  background: var(--cell-bg);
+  font-weight: 700;
+}
+.problem-io td {
+  color: var(--pre-text);
+  background: var(--pre-bg);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 .problem-samples {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

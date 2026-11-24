@@ -276,7 +276,7 @@ export function ProblemWorkspace(props: Props) {
           onResizeEnd={props.onSplitEnd}
           first={
             body ? (
-              <ProblemPane problem={body} />
+              <ProblemPane problem={body} format={sol.fn ? sol.format : undefined} />
             ) : (
               <div class="problem" aria-busy={!loadError}>
                 <div class="problem-label">문제 설명</div>

@@ -1,6 +1,8 @@
 import DOMPurify from 'dompurify';
 import { useEffect, useMemo, useRef } from 'preact/hooks';
-import type { Problem } from '@/boj/problem';
+import type { Problem, Sample } from '@/boj/problem';
+import { sampleRows, type CaseRow } from '@/solution/cases';
+import type { Format } from '@/solution/dsl';
 
 const MATH_PATTERN = /\$|\\\(|\\\[/;
 
@@ -11,10 +13,25 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   }
 });
 
-/** Left pane: the Baekjoon statement in the coding-test layout (design spec §7). */
-export function ProblemPane({ problem }: { problem: Problem }) {
+/**
+ * Left pane: the Baekjoon statement in the coding-test layout (design spec §7). With a
+ * solution-mode `format`, the samples show as an '입출력 예' table: a column per parameter
+ * and `result`, a row per case. Samples the format cannot split stay as input/output blocks.
+ */
+export function ProblemPane({
+  problem,
+  format,
+}: {
+  problem: Problem;
+  format?: Format | undefined;
+}) {
   const root = useRef<HTMLDivElement>(null);
   const { sections } = problem;
+  const io = useMemo(
+    () => (format ? problem.samples.map((s) => sampleRows(format, s)) : undefined),
+    [problem, format],
+  );
+  const rows = io?.flatMap((r) => r ?? []) ?? [];
 
   useEffect(() => {
     const el = root.current;
@@ -40,20 +57,58 @@ export function ProblemPane({ problem }: { problem: Problem }) {
       <Section title="입력" html={sections.input} />
       <Section title="출력" html={sections.output} />
       {sections.limit && <Section title="제한" html={sections.limit} />}
-      {problem.samples.map((s, i) => (
-        <section key={i} class="problem-section problem-samples">
-          <div>
-            <h4>예제 입력 {i + 1}</h4>
-            <pre class="no-mathjax">{s.input}</pre>
-          </div>
-          <div>
-            <h4>예제 출력 {i + 1}</h4>
-            <pre class="no-mathjax">{s.output}</pre>
-          </div>
-        </section>
-      ))}
+      {format && rows.length > 0 && <IoTable format={format} rows={rows} />}
+      {problem.samples.map((s, i) => (io?.[i] ? null : <RawSample key={i} sample={s} n={i + 1} />))}
       {sections.hint && <Section title="힌트" html={sections.hint} />}
     </div>
+  );
+}
+
+function RawSample({ sample, n }: { sample: Sample; n: number }) {
+  return (
+    <section class="problem-section problem-samples">
+      <div>
+        <h4>예제 입력 {n}</h4>
+        <pre class="no-mathjax">{sample.input}</pre>
+      </div>
+      <div>
+        <h4>예제 출력 {n}</h4>
+        <pre class="no-mathjax">{sample.output}</pre>
+      </div>
+    </section>
+  );
+}
+
+/** '입출력 예': a column per parameter and `result`, values written as literals. */
+function IoTable({ format, rows }: { format: Format; rows: CaseRow[] }) {
+  return (
+    <section class="problem-section problem-io" data-testid="io-table">
+      <h4>입출력 예</h4>
+      <div class="problem-io-scroll">
+        <table class="no-mathjax">
+          <thead>
+            <tr>
+              {format.params.map((p) => (
+                <th key={p.name} scope="col">
+                  {p.name}
+                </th>
+              ))}
+              <th scope="col">result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                {format.params.map((p) => (
+                  <td key={p.name}>{r.params[p.name]}</td>
+                ))}
+                <td>{r.expected}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
