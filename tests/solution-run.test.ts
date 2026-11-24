@@ -21,11 +21,12 @@ import type { WorkerMessage } from '@/runner/python/engine';
 import { checkFormat, type Format } from '@/solution/dsl';
 import {
   buildProgram,
+  GLUE_COMPILE_NOTE,
   GLUE_INPUT_MESSAGE,
   mapRunMessages,
   NO_SOLUTION_MESSAGE,
 } from '@/solution/program';
-import type { EngineId } from '@/shared/languages';
+import type { GlueId } from '@/solution/glue';
 
 const f = (x: unknown): Format => {
   const r = checkFormat(x);
@@ -171,7 +172,7 @@ interface Case {
   format: Format;
   input: string;
   output: string;
-  code: Partial<Record<EngineId, string>>;
+  code: Partial<Record<GlueId, string>>;
 }
 
 const CASES: Record<string, Case> = {
@@ -183,6 +184,7 @@ const CASES: Record<string, Case> = {
       js: 'function solution(a, b) {\n  return a + b;\n}',
       python: 'def solution(a, b):\n    return a + b',
       cpp: 'int solution(int a, int b) {\n    return a + b;\n}',
+      c: 'int solution(int a, int b) {\n    return a + b;\n}',
       java: 'class Solution {\n    public int solution(int a, int b) {\n        return a + b;\n    }\n}',
     },
   },
@@ -194,6 +196,7 @@ const CASES: Record<string, Case> = {
       js: 'function solution(n, arr) {\n  return arr.slice().sort((x, y) => x - y);\n}',
       python: 'def solution(n, arr):\n    return sorted(arr)',
       cpp: 'vector<int> solution(int n, vector<int> arr) {\n    sort(arr.begin(), arr.end());\n    return arr;\n}',
+      c: 'int cmp(const void* x, const void* y) {\n    int a = *(const int*)x, b = *(const int*)y;\n    return (a > b) - (a < b);\n}\n\nint* solution(int n, int arr[], size_t arr_len, size_t* ret_len) {\n    qsort(arr, arr_len, sizeof(int), cmp);\n    *ret_len = arr_len;\n    return arr;\n}',
       java: 'public class Solution {\n    public int[] solution(int n, int[] arr) {\n        Arrays.sort(arr);\n        return arr;\n    }\n}',
     },
   },
@@ -205,6 +208,7 @@ const CASES: Record<string, Case> = {
       js: "function solution(n, m, board) {\n  return board.some((r) => r.includes('#'));\n}",
       python: "def solution(n, m, board):\n    return any('#' in r for r in board)",
       cpp: "bool solution(int n, int m, vector<string> board) {\n    for (auto& r : board) if (r.find('#') != string::npos) return true;\n    return false;\n}",
+      c: "bool solution(int n, int m, const char* board[], size_t board_rows) {\n    for (size_t i = 0; i < board_rows; i++) if (strchr(board[i], '#')) return true;\n    return false;\n}",
       java: "class Solution {\n    public boolean solution(int n, int m, char[][] board) {\n        for (char[] r : board) for (char c : r) if (c == '#') return true;\n        return false;\n    }\n}",
     },
   },
@@ -217,6 +221,7 @@ const CASES: Record<string, Case> = {
       python:
         'def solution(title, nums, k, rows):\n    return (sum(nums) + sum(map(sum, rows))) / len(title)',
       cpp: 'double solution(string title, vector<long long> nums, int k, vector<vector<int>> rows) {\n    long long s = 0;\n    for (auto x : nums) s += x;\n    for (auto& r : rows) for (int x : r) s += x;\n    return (double)s / title.size();\n}',
+      c: 'double solution(const char* title, long long nums[], size_t nums_len, int k, int** rows, size_t rows_rows, size_t rows_cols[]) {\n    long long s = 0;\n    for (size_t i = 0; i < nums_len; i++) s += nums[i];\n    for (size_t i = 0; i < rows_rows; i++) for (size_t j = 0; j < rows_cols[i]; j++) s += rows[i][j];\n    return (double)s / strlen(title);\n}',
       java: 'class Solution {\n    public double solution(String title, long[] nums, int k, int[][] rows) {\n        long s = 0;\n        for (long x : nums) s += x;\n        for (int[] r : rows) for (int x : r) s += x;\n        return (double) s / title.length();\n    }\n}',
     },
   },
@@ -228,6 +233,7 @@ const CASES: Record<string, Case> = {
       js: "function solution(name, a, b) {\n  return name + ':' + (BigInt(a) + BigInt(b));\n}",
       python: "def solution(name, a, b):\n    return f'{name}:{a + b}'",
       cpp: 'string solution(string name, long long a, long long b) {\n    return name + ":" + to_string(a + b);\n}',
+      c: 'char* solution(const char* name, long long a, long long b) {\n    char* r = (char*)malloc(strlen(name) + 32);\n    sprintf(r, "%s:%lld", name, a + b);\n    return r;\n}',
       java: 'class Solution {\n    public String solution(String name, long a, long b) {\n        return name + ":" + (a + b);\n    }\n}',
     },
   },
@@ -239,6 +245,7 @@ const CASES: Record<string, Case> = {
       js: 'function solution(n, m, g) {\n  return Array.from({ length: m }, (_, j) => g.map((r) => r[j]));\n}',
       python: 'def solution(n, m, g):\n    return [list(c) for c in zip(*g)]',
       cpp: 'vector<vector<int>> solution(int n, int m, vector<vector<int>> g) {\n    vector<vector<int>> t(m, vector<int>(n));\n    for (int i = 0; i < n; i++) for (int j = 0; j < m; j++) t[j][i] = g[i][j];\n    return t;\n}',
+      c: 'int** solution(int n, int m, int** g, size_t g_rows, size_t g_cols, size_t* ret_rows, size_t** ret_cols) {\n    int** t = (int**)malloc(sizeof(int*) * m);\n    *ret_cols = (size_t*)malloc(sizeof(size_t) * m);\n    for (int j = 0; j < m; j++) {\n        t[j] = (int*)malloc(sizeof(int) * n);\n        (*ret_cols)[j] = n;\n        for (int i = 0; i < n; i++) t[j][i] = g[i][j];\n    }\n    *ret_rows = m;\n    return t;\n}',
       java: 'class Solution {\n    public int[][] solution(int n, int m, int[][] g) {\n        int[][] t = new int[m][n];\n        for (int i = 0; i < n; i++) for (int j = 0; j < m; j++) t[j][i] = g[i][j];\n        return t;\n    }\n}',
     },
   },
@@ -251,6 +258,7 @@ const CASES: Record<string, Case> = {
       python:
         'def solution(a, b, names, rows):\n    return names[::-1] + [str(sum(r)) for r in rows]',
       cpp: 'vector<string> solution(int a, int b, vector<string> names, vector<vector<long long>> rows) {\n    reverse(names.begin(), names.end());\n    for (auto& r : rows) names.push_back(to_string(r[0] + r[1]));\n    return names;\n}',
+      c: 'char** solution(int a, int b, const char* names[], size_t names_len, long long** rows, size_t rows_rows, size_t rows_cols[], size_t* ret_len) {\n    char** out = (char**)malloc(sizeof(char*) * (a + b));\n    for (int i = 0; i < a; i++) out[i] = (char*)names[a - 1 - i];\n    for (int i = 0; i < b; i++) {\n        out[a + i] = (char*)malloc(32);\n        sprintf(out[a + i], "%lld", rows[i][0] + rows[i][1]);\n    }\n    *ret_len = a + b;\n    return out;\n}',
       java: 'class Solution {\n    public String[] solution(int a, int b, String[] names, long[][] rows) {\n        List<String> out = new ArrayList<>();\n        for (int i = names.length - 1; i >= 0; i--) out.add(names[i]);\n        for (long[] r : rows) out.add(String.valueOf(r[0] + r[1]));\n        return out.toArray(new String[0]);\n    }\n}',
     },
   },
@@ -263,6 +271,7 @@ const CASES: Record<string, Case> = {
       python:
         "def solution(n, m, cmds, w):\n    return sum(c[0] == 'push' for c in cmds) * 10 + int(sum(w))",
       cpp: 'int solution(int n, int m, vector<vector<string>> cmds, vector<double> w) {\n    int p = 0;\n    for (auto& c : cmds) if (c[0] == "push") p++;\n    return p * 10 + (int)(w[0] + w[1]);\n}',
+      c: 'int solution(int n, int m, const char*** cmds, size_t cmds_rows, size_t cmds_cols[], double w[], size_t w_len) {\n    int p = 0;\n    for (size_t i = 0; i < cmds_rows; i++) if (strcmp(cmds[i][0], "push") == 0) p++;\n    return p * 10 + (int)(w[0] + w[1]);\n}',
       java: 'class Solution {\n    public int solution(int n, int m, String[][] cmds, double[] w) {\n        int p = 0;\n        for (String[] c : cmds) if (c[0].equals("push")) p++;\n        return p * 10 + (int) (w[0] + w[1]);\n    }\n}',
     },
   },
@@ -274,6 +283,7 @@ const CASES: Record<string, Case> = {
       js: "function solution() {\n  return [' *', '***'];\n}",
       python: "def solution():\n    return [' *', '***']",
       cpp: 'vector<string> solution() {\n    return {" *", "***"};\n}',
+      c: 'char** solution(size_t* ret_len) {\n    char** out = (char**)malloc(sizeof(char*) * 2);\n    out[0] = " *";\n    out[1] = "***";\n    *ret_len = 2;\n    return out;\n}',
       java: 'class Solution {\n    public String[] solution() {\n        return new String[] {" *", "***"};\n    }\n}',
     },
   },
@@ -285,6 +295,7 @@ const CASES: Record<string, Case> = {
       js: 'function solution(n, pairs, names) {\n  return [...pairs.map((p) => String(p[0] + p[1])), ...names];\n}',
       python: 'def solution(n, pairs, names):\n    return [str(a + b) for a, b in pairs] + names',
       cpp: 'vector<string> solution(int n, vector<vector<int>> pairs, vector<string> names) {\n    vector<string> out;\n    for (auto& p : pairs) out.push_back(to_string(p[0] + p[1]));\n    for (auto& s : names) out.push_back(s);\n    return out;\n}',
+      c: 'char** solution(int n, int** pairs, size_t pairs_rows, size_t pairs_cols, const char* names[], size_t names_len, size_t* ret_len) {\n    char** out = (char**)malloc(sizeof(char*) * (pairs_rows + names_len));\n    size_t k = 0;\n    for (size_t i = 0; i < pairs_rows; i++) {\n        out[k] = (char*)malloc(16);\n        sprintf(out[k++], "%d", pairs[i][0] + pairs[i][1]);\n    }\n    for (size_t i = 0; i < names_len; i++) out[k++] = (char*)names[i];\n    *ret_len = k;\n    return out;\n}',
       java: 'class Solution {\n    public String[] solution(int n, int[][] pairs, String[] names) {\n        List<String> out = new ArrayList<>();\n        for (int[] p : pairs) out.add(String.valueOf(p[0] + p[1]));\n        out.addAll(Arrays.asList(names));\n        return out.toArray(new String[0]);\n    }\n}',
     },
   },
@@ -296,6 +307,7 @@ const CASES: Record<string, Case> = {
       js: 'function solution(nums, texts) {\n  return (nums[0] + nums[1]) * 10 + texts.length;\n}',
       python: 'def solution(nums, texts):\n    return sum(nums) * 10 + len(texts)',
       cpp: 'int solution(vector<int> nums, vector<string> texts) {\n    return (nums[0] + nums[1]) * 10 + (int)texts.size();\n}',
+      c: 'int solution(int nums[], size_t nums_len, const char* texts[], size_t texts_len) {\n    return (nums[0] + nums[1]) * 10 + (int)texts_len;\n}',
       java: 'class Solution {\n    public int solution(int[] nums, String[] texts) {\n        return (nums[0] + nums[1]) * 10 + texts.length;\n    }\n}',
     },
   },
@@ -307,6 +319,7 @@ const CASES: Record<string, Case> = {
       js: 'function solution(n, arr, rest) {\n  return rest.reduce((a, b) => BigInt(a) + BigInt(b), 0n).toString();\n}',
       python: 'def solution(n, arr, rest):\n    return sum(rest)',
       cpp: 'long long solution(int n, vector<int> arr, vector<long long> rest) {\n    long long s = 0;\n    for (auto x : rest) s += x;\n    return s;\n}',
+      c: 'long long solution(int n, int arr[], size_t arr_len, long long rest[], size_t rest_len) {\n    long long s = 0;\n    for (size_t i = 0; i < rest_len; i++) s += rest[i];\n    return s;\n}',
       java: 'class Solution {\n    public long solution(int n, int[] arr, long[] rest) {\n        long s = 0;\n        for (long x : rest) s += x;\n        return s;\n    }\n}',
     },
   },
@@ -345,8 +358,8 @@ let pyId = 1;
 let javaRuntime: TeaVMRuntime;
 let java: JavaToolchain;
 
-async function run(engine: EngineId, source: string, stdin: string): Promise<EngineResult> {
-  switch (engine) {
+async function run(glue: GlueId, source: string, stdin: string): Promise<EngineResult> {
+  switch (glue) {
     case 'js':
       return runJs(source, stdin);
     case 'python': {
@@ -356,8 +369,11 @@ async function run(engine: EngineId, source: string, stdin: string): Promise<Eng
       if (msg.type !== 'result') throw new Error(JSON.stringify(msg));
       return msg.result;
     }
+    case 'c':
     case 'cpp': {
-      const compiled = await compileCpp(runClang, source);
+      // C runs as C99 here, the older of the two C standards (the native tests use C11).
+      const options = glue === 'c' ? ({ lang: 'c', std: 'gnu99' } as const) : undefined;
+      const compiled = await compileCpp(runClang, source, options);
       if ('compileError' in compiled)
         return {
           stdout: '',
@@ -380,6 +396,8 @@ async function run(engine: EngineId, source: string, stdin: string): Promise<Eng
         };
       return runJava(javaRuntime.load, compiled.wasm, stdin);
     }
+    default:
+      throw new Error(`no engine for ${glue}`);
   }
 }
 
@@ -410,10 +428,10 @@ beforeAll(async () => {
 
 describe('solution programs run on every engine', { timeout: 120_000 }, () => {
   for (const [name, c] of Object.entries(CASES)) {
-    for (const [engine, code] of Object.entries(c.code) as [EngineId, string][]) {
-      it(`${name}: ${engine}`, async () => {
-        const program = buildProgram(engine, c.format, code);
-        const r = await run(engine, program.source, c.input);
+    for (const [glue, code] of Object.entries(c.code) as [GlueId, string][]) {
+      it(`${name}: ${glue}`, async () => {
+        const program = buildProgram(glue, c.format, code);
+        const r = await run(glue, program.source, c.input);
         expect(r.compileError).toBeUndefined();
         expect(r.error).toBeUndefined();
         expect(r.stdout).toBe(c.output);
@@ -452,6 +470,32 @@ describe('errors point at the user code', { timeout: 120_000 }, () => {
     expect(mapped.compileError).toMatch(
       /^solution\.cpp:2:\d+: error: use of undeclared identifier 'c'/,
     );
+  });
+
+  it('C: compile errors point at solution.c, and input mismatches are explained', async () => {
+    const broken = buildProgram(
+      'c',
+      AB,
+      '// 주석\nint solution(int a, int b) {\n    return a + c;\n}',
+    );
+    const r1 = await run('c', broken.source, '1 2\n');
+    const m1 = mapRunMessages('cpp', broken, { compileError: r1.compileError, stderr: '' });
+    expect(m1.compileError).toMatch(/^solution\.c:3:\d+: error: use of undeclared identifier 'c'/);
+
+    const ok = buildProgram('c', AB, CASES['A+B']?.code.c ?? '');
+    const r2 = await run('c', ok.source, '1 x\n');
+    expect(r2.exitCode).toBe(1);
+    expect(mapRunMessages('cpp', ok, { error: r2.error, stderr: r2.stderr }).error).toBe(
+      GLUE_INPUT_MESSAGE,
+    );
+  });
+
+  it('C: a signature that does not match the format is reported in the glue', async () => {
+    const program = buildProgram('c', SORT, 'int solution(int n, int arr[]) {\n    return n;\n}');
+    const r = await run('c', program.source, '1\n5\n');
+    const mapped = mapRunMessages('cpp', program, { compileError: r.compileError, stderr: '' });
+    expect(mapped.compileError).toContain('solution.c(입출력 코드)');
+    expect(mapped.compileError).toContain(GLUE_COMPILE_NOTE);
   });
 
   it('Java: a wrong return type is reported in the glue with a Korean note', async () => {

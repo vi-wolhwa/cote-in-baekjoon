@@ -50,7 +50,13 @@ export interface LanguageInfo {
 type Entry = Omit<LanguageInfo, 'bojId' | 'starter' | 'syntax'> & { syntax?: SyntaxId };
 
 const clang = (lang: 'c' | 'c++', std: string): BuildOptions => ({ kind: 'clang', lang, std });
-const C = { fileName: 'solution.c', engine: 'cpp', syntax: 'c', codeGroup: 'c' } as const;
+const C = {
+  fileName: 'solution.c',
+  engine: 'cpp',
+  syntax: 'c',
+  glue: 'c',
+  codeGroup: 'c',
+} as const;
 const CPP = { fileName: 'solution.cpp', engine: 'cpp', glue: 'cpp', codeGroup: 'cpp' } as const;
 const PYTHON = {
   fileName: 'solution.py',
