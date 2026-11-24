@@ -27,5 +27,15 @@ nativeSuite(
       'func solution(_ n: Int, _ arr: [Int], _ rest: [Int]) -> Int {\n    return rest.reduce(0, +)\n}',
     caseLabel: 'func solution(_ a: Int, _ b: Int) -> Int {\n    return a + b\n}',
     scenario: 'func solution(_ n: Int, _ arr: [Int]) -> [Int] {\n    return arr\n}',
+    exprFlow:
+      'func solution(_ n: Int, _ arr: [Int], _ g: [[Int]]) -> Int {\n    return arr.reduce(0, +) * 100 + g.count * 10 + g[0].count\n}',
+    blockCount:
+      'func solution(_ n: Int, _ k: [Int], _ name: [String], _ items: [[Int]]) -> [String] {\n    return name.indices.map { name[$0] + ":" + String(items[$0].reduce(0, +)) }\n}',
+    blockUntil:
+      'func solution(_ m: [Int], _ vals: [[Int]], _ x: [Int], _ y: [Int]) -> [Int] {\n    return vals.map { $0.max()! } + x.indices.map { x[$0] * y[$0] }\n}',
+    endConds:
+      'func solution(_ n: Int, _ words: [String], _ p: [Int]) -> Int {\n    return n + words.count * 10 + p.reduce(0, +) * 100\n}',
+    rawLines:
+      'func solution(_ t: String, _ n: Int, _ ls: [String], _ mid: [String], _ rest: [String]) -> [String] {\n    return ([t] + ls + mid + rest).map { "[" + $0 + "]" }\n}',
   },
 );

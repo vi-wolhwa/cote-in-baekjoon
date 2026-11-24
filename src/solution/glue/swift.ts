@@ -14,15 +14,18 @@ import {
   type RetType,
 } from '../dsl';
 import {
+  planVar,
   renderCount,
   renderRows,
   usesRows,
   type CountRef,
+  type LineEnd,
   type Plan,
   type Rows,
   type Scalar,
   type Step,
 } from './plan';
+import { SWIFT_ROWS, SWIFT_RUNTIME } from './swift-runtime';
 import type { GlueLanguage } from './types';
 
 export const SWIFT_PREFIX = 'import Foundation\n';
@@ -61,150 +64,6 @@ export function swiftQuote(s: string): string {
   return `"${body}"`;
 }
 
-const RUNTIME = `final class __cib_Reader {
-    var d: [UInt8] = []
-    var p = 0
-    var n = 0
-    init() {
-        var buf = [UInt8](repeating: 0, count: 1 << 16)
-        while true {
-            let k = fread(&buf, 1, buf.count, stdin)
-            if k <= 0 { break }
-            d.append(contentsOf: buf[0..<k])
-        }
-        n = d.count
-    }
-    func fail() -> Never {
-        fputs("__cib_input\\n", stderr)
-        exit(1)
-    }
-    @inline(__always) func ws(_ c: UInt8) -> Bool { return c == 32 || c == 10 || c == 13 || c == 9 }
-    func cnt(_ x: Int) -> Int {
-        if x < 0 { fail() }
-        return x
-    }
-    func more() -> Bool {
-        while p < n && ws(d[p]) { p += 1 }
-        return p < n
-    }
-    func has() -> Bool {
-        var q = p
-        while q < n && ws(d[q]) { q += 1 }
-        return q < n
-    }
-    func str(_ s: Int, _ e: Int) -> String { return String(decoding: d[s..<e], as: UTF8.self) }
-    func tok() -> String {
-        if !more() { fail() }
-        let s = p
-        while p < n && !ws(d[p]) { p += 1 }
-        return str(s, p)
-    }
-    func ll() -> Int {
-        if !more() { fail() }
-        var neg = false
-        if d[p] == 45 || d[p] == 43 { neg = d[p] == 45; p += 1 }
-        if p >= n || ws(d[p]) { fail() }
-        var v = 0
-        while p < n && !ws(d[p]) {
-            let c = Int(d[p]) - 48
-            if c < 0 || c > 9 { fail() }
-            v = v &* 10 &- c
-            p += 1
-        }
-        return neg ? v : 0 &- v
-    }
-    func pl(_ s: String) -> Int {
-        guard let v = Int(s) else { fail() }
-        return v
-    }
-    func pd(_ s: String) -> Double {
-        guard let v = Double(s) else { fail() }
-        return v
-    }
-    func dbl() -> Double { return pd(tok()) }
-    func nl() {
-        if p > 0 && d[p - 1] != 10 {
-            while p < n && d[p] != 10 { p += 1 }
-            if p < n { p += 1 }
-        }
-        while true {
-            var q = p
-            while q < n && d[q] != 10 && ws(d[q]) { q += 1 }
-            if q < n && d[q] == 10 { p = q + 1 } else { break }
-        }
-    }
-    func line() -> String {
-        if p >= n { fail() }
-        var e = p
-        while e < n && d[e] != 10 { e += 1 }
-        var s = p
-        p = e
-        while s < e && ws(d[s]) { s += 1 }
-        while e > s && ws(d[e - 1]) { e -= 1 }
-        return str(s, e)
-    }
-    func rest() -> [String] {
-        if p >= n { fail() }
-        var r: [String] = []
-        while p < n && d[p] != 10 {
-            while p < n && d[p] != 10 && ws(d[p]) { p += 1 }
-            let s = p
-            while p < n && !ws(d[p]) { p += 1 }
-            if p > s { r.append(str(s, p)) }
-        }
-        return r
-    }`;
-
-/** Counting rows ahead for end-line and end-of-input repeats (only when used). */
-const ROWS = `    func at(_ w: [String]) -> Bool {
-        let s = p
-        var ok = true
-        for x in w {
-            if !more() || tok() != x {
-                ok = false
-                break
-            }
-        }
-        p = s
-        return ok
-    }
-    func rowsTok(_ w: [String], _ k: Int) -> Int {
-        let s = p
-        var r = 0
-        while true {
-            if (w.isEmpty ? !has() : at(w)) { break }
-            if k < 1 || !has() { fail() }
-            for _ in 0..<k { _ = tok() }
-            r += 1
-        }
-        p = s
-        return r
-    }
-    func raw() -> String {
-        var e = p
-        while e < n && d[e] != 10 { e += 1 }
-        let s = p
-        p = e
-        while e > s && ws(d[e - 1]) { e -= 1 }
-        return str(s, e)
-    }
-    func rowsLine(_ e: String?, _ whole: Bool) -> Int {
-        let s = p
-        var r = 0
-        while true {
-            nl()
-            if !has() {
-                if e != nil { fail() }
-                break
-            }
-            let t = whole ? raw() : line()
-            if let e = e, t == e { break }
-            r += 1
-        }
-        p = s
-        return r
-    }`;
-
 const R = '__cib_in';
 const READ: Record<Scalar, string> = {
   int: `${R}.ll()`,
@@ -224,16 +83,55 @@ const count = (c: CountRef) => `${R}.cnt(${renderCount(c, variable)})`;
 const rows = (n: Rows) =>
   renderRows(n, count, {
     tok: (end, k) => `${R}.rowsTok([${end.map(swiftQuote).join(', ')}], ${k})`,
-    line: (end, raw) => `${R}.rowsLine(${end === null ? 'nil' : swiftQuote(end)}, ${raw})`,
+    line: (end, text) => `${R}.rowsLine(${end.mode}, ${swiftQuote(end.text)}, ${text})`,
+    phys: (end) => `${R}.rowsPhys(${end.mode}, ${swiftQuote(end.text)})`,
   });
+const endl = (end: LineEnd) => `${R}.endl(${end.mode}, ${swiftQuote(end.text)})`;
 
 /** Repeats `item` (an expression) `n` times into the array `v`. */
 const fill = (v: string, n: string, item: string) =>
   `${v} = []; for _ in 0..<${n} { ${v}.append(${item}) }`;
 
-function step(s: Step): string {
+const DEFAULTS: Record<string, string> = { Int: '0', Double: '0', String: '""' };
+
+/** A block: its lists start empty; each pass reads the block's variables and appends them. */
+function block(plan: Plan, s: Extract<Step, { op: 'block' }>): string {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return `for _ in 0..<${count(s.loop.n)}`;
+      case 'eof':
+        return `while ${R}.has()`;
+      case 'tok':
+        return `while !${R}.at([${s.loop.end.map(swiftQuote).join(', ')}])`;
+      case 'line':
+        return `while !${endl(s.loop.end)}`;
+    }
+  })();
+  const type = (v: number) => SWIFT_TYPES[planVar(plan, v).type];
+  return [
+    ...s.items.map((x) => `${variable(x.list)} = []`),
+    `${head} {`,
+    ...s.items.map(
+      (x) => `    var ${variable(x.item)}: ${type(x.item)} = ${DEFAULTS[type(x.item)] ?? '[]'}`,
+    ),
+    ...s.steps.flatMap((x) => step(plan, x).split('\n')).map((l) => `    ${l}`),
+    ...s.items.map((x) => `    ${variable(x.list)}.append(${variable(x.item)})`),
+    '}',
+  ].join('\n');
+}
+
+function step(plan: Plan, s: Step): string {
   const v = variable('v' in s ? s.v : 0);
   switch (s.op) {
+    case 'block':
+      return block(plan, s);
+    case 'raw':
+      return `${v} = ${R}.rawl()`;
+    case 'rawLines':
+      return fill(v, rows(s.n), `${R}.rawl()`);
+    case 'endRaw':
+      return `_ = ${R}.rawl()`;
     case 'nl':
       return `${R}.nl()`;
     case 'scalar':
@@ -283,8 +181,6 @@ function formatter(ret: RetSpec): string {
   }
 }
 
-const DEFAULTS: Record<string, string> = { Int: '0', Double: '0', String: '""' };
-
 export function swiftGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
   const label = labelParts(ret);
@@ -295,7 +191,7 @@ export function swiftGlue(plan: Plan, ret: RetSpec): string {
   const body = (n: number) =>
     [
       ...decls,
-      ...plan.steps.map(step),
+      ...plan.steps.flatMap((s) => step(plan, s).split('\n')),
       `let __cib_res = solution(${vars.join(', ')})`,
       'if __cib_cases > 0 { __cib_o.append(10) }',
       '__cib_cases += 1',
@@ -317,6 +213,8 @@ export function swiftGlue(plan: Plan, ret: RetSpec): string {
         return `    let __cib_t = ${R}.ll()\n    var __cib_k = 0\n    while __cib_k < __cib_t {\n        __cib_k += 1\n${body(8)}\n    }`;
       case 'eof':
         return `    while ${R}.has() {\n${body(8)}\n    }`;
+      case 'line':
+        return `    while ${R}.has() && !${endl(plan.loop.end)} {\n${body(8)}\n    }`;
       case 'until': {
         const words = plan.loop.tokens.map(swiftQuote).join(', ');
         return [
@@ -340,8 +238,8 @@ export function swiftGlue(plan: Plan, ret: RetSpec): string {
   })();
   return [
     '// ---- 입출력 코드 ----',
-    RUNTIME,
-    ...(usesRows(plan) ? [ROWS] : []),
+    SWIFT_RUNTIME,
+    ...(usesRows(plan) ? [SWIFT_ROWS] : []),
     '}',
     '',
     'func __cib_main() {',
