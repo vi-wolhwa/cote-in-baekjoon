@@ -6,6 +6,8 @@ import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
 import { parseProblem, parseProblemId } from '@/boj/problem';
 import { PRACTICE_HASH } from '@/exam/routes';
 import { rememberHandle } from '@/shared/handle';
+import { createHistoryGate, fetchBojHistory } from '@/boj/status-history';
+import { isBojHistoryRequest, type BojHistoryAnswer } from '@/shared/boj-history';
 import {
   isCloseMessage,
   isOpenIdeMessage,
@@ -15,6 +17,8 @@ import {
 } from '@/shared/messages';
 
 const OVERLAY_ID = 'cib-ide-overlay';
+/** '백준 기록 불러오기' (ADR-0012): one request at a time, a few seconds apart. */
+const historyGate = createHistoryGate();
 
 export default defineContentScript({
   matches: ['https://acmicpc.net/problem/*', 'https://www.acmicpc.net/problem/*'],
@@ -60,8 +64,9 @@ function openIde() {
   frame.id = OVERLAY_ID;
   frame.src = browser.runtime.getURL('/ide.html');
   frame.title = '코딩테스트 풀이 화면';
-  // The built-in translator (ADR-0010) works in a cross-origin frame only when allowed.
-  frame.allow = 'translator';
+  // The built-in translator (ADR-0010) and '코드 복사' (ADR-0012) work in a cross-origin
+  // frame only when allowed.
+  frame.allow = 'translator; clipboard-write';
   Object.assign(frame.style, {
     position: 'fixed',
     inset: '0',
@@ -83,6 +88,13 @@ function openIde() {
     if (event.source !== frame.contentWindow) return;
     if (isReadyMessage(event.data)) {
       sendProblem();
+    } else if (isBojHistoryRequest(event.data)) {
+      // Only when the user pressed '백준 기록 불러오기' in the IDE: one status page.
+      const { nonce } = event.data;
+      void historyGate(() => fetchBojHistory(document, problem.id)).then((result) => {
+        const answer: BojHistoryAnswer = { type: 'cib:boj-history-result', nonce, result };
+        frame.contentWindow?.postMessage(answer, ideOrigin);
+      });
     } else if (isCloseMessage(event.data)) {
       window.removeEventListener('message', onMessage);
       frame.remove();

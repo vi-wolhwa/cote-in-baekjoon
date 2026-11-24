@@ -37,7 +37,17 @@ export interface SubmitInfo {
   view: SubmitView;
 }
 
-export function useSubmit(problemId: number, getCode: () => string, language: SubmitLanguage) {
+/** The program to submit, and the solution function as written in solution mode. */
+export interface SubmitSource {
+  code: string;
+  fnCode?: string;
+}
+
+export function useSubmit(
+  problemId: number,
+  getSource: () => SubmitSource,
+  language: SubmitLanguage,
+) {
   const [since, setSince] = useState<number>();
   const [opening, setOpening] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -63,12 +73,12 @@ export function useSubmit(problemId: number, getCode: () => string, language: Su
 
   /** Always auto-submits: Baekjoon's submit button is pressed for the user (#76). */
   const start = async () => {
-    const code = getCode();
-    setWarnings(findBlockedPatterns(code));
+    const source = getSource();
+    setWarnings(findBlockedPatterns(source.code));
     setError(undefined);
     setSince(Date.now());
     setOpening(true);
-    const res = await requestSubmit({ problemId, language, code, autoSubmit: true });
+    const res = await requestSubmit({ problemId, language, ...source, autoSubmit: true });
     setOpening(false);
     if (!res.ok) setError(res.reason);
     return res.ok;

@@ -1,7 +1,8 @@
 /**
  * Backup and restore of the data in `storage.local` (#42): code (both solution modes), test
  * cases, solution-function formats (`format:{id}`, ADR-0006), judge results,
- * problem meta (#79), mock exams (ADR-0005) and settings. Uninstalling the extension deletes that data, so users can keep a JSON file.
+ * submission history (`history:{id}`, ADR-0012), problem meta (#79), mock exams (ADR-0005)
+ * and settings. Uninstalling the extension deletes that data, so users can keep a JSON file.
  *
  * Kept free of extension APIs so the parsing and the restore plan can be unit tested. The
  * backup file is untrusted input: every key and value is checked before it is stored.
@@ -11,6 +12,7 @@ import { DRAFT_KEY, EXAM_KEY, isDraft, isExam } from '@/exam/model';
 import { isProblemMeta } from '@/shared/problem-meta';
 import { checkFormat } from '@/solution/dsl';
 import { isJudgeResult } from '@/shared/submission';
+import { isHistoryList, mergeHistory, readHistory } from '@/shared/submission-history';
 import { isTheme, THEME_KEY } from '@/shared/theme';
 
 export const BACKUP_FORMAT = 'cote-in-baekjoon-backup';
@@ -33,6 +35,8 @@ export interface BackupSummary {
   settings: number;
   /** Mock exams (`exam:{id}`, ADR-0005). */
   exams: number;
+  /** Submissions in the submission history (`history:{id}`, ADR-0012). */
+  submissions: number;
 }
 
 /** 'replace': the backup becomes the whole data. 'merge': keep what exists, add the rest. */
@@ -55,6 +59,7 @@ const FORMAT_KEY = new RegExp(`^format:${PROBLEM_ID}$`);
 const CASES_KEY = new RegExp(`^cases:${PROBLEM_ID}$`);
 const JUDGE_KEY = new RegExp(`^judge:(${PROBLEM_ID})$`);
 const META_KEY = new RegExp(`^meta:${PROBLEM_ID}$`);
+const HISTORY_KEY = new RegExp(`^history:(${PROBLEM_ID})$`);
 const MAX_CASES = 1000;
 const MAX_CASE_LENGTH = 4 * 1024 * 1024;
 
@@ -84,6 +89,7 @@ export function isBackupKey(key: string): boolean {
     FORMAT_KEY.test(key) ||
     JUDGE_KEY.test(key) ||
     META_KEY.test(key) ||
+    HISTORY_KEY.test(key) ||
     EXAM_KEY.test(key) ||
     key in SETTINGS
   );
@@ -97,6 +103,8 @@ export function isValidEntry(key: string, value: unknown): boolean {
   const judge = JUDGE_KEY.exec(key);
   if (judge) return isJudgeResult(value) && value.problemId === Number(judge[1]);
   if (META_KEY.test(key)) return isProblemMeta(value);
+  const history = HISTORY_KEY.exec(key);
+  if (history) return isHistoryList(value, Number(history[1]));
   const exam = EXAM_KEY.exec(key);
   if (exam) return isExam(value) && value.id === exam[1];
   const setting = SETTINGS[key];
@@ -146,10 +154,14 @@ export function parseBackup(text: string): ParseResult {
   return { ok: true, items, skipped, exportedAt };
 }
 
-/** "문제 2개 (코드 3개, 테스트 케이스 1개, 채점 결과 1개), 설정 3개", then ", 모의 시험 1개" if any. */
+/**
+ * "문제 2개 (코드 3개, 테스트 케이스 1개, 채점 결과 1개), 설정 3개", with "제출 기록 4개" inside
+ * the brackets and ", 모의 시험 1개" after when there are any.
+ */
 export function describeSummary(s: BackupSummary): string {
+  const submissions = s.submissions > 0 ? `, 제출 기록 ${s.submissions}개` : '';
   const exams = s.exams > 0 ? `, 모의 시험 ${s.exams}개` : '';
-  return `문제 ${s.problems}개 (코드 ${s.codes}개, 테스트 케이스 ${s.cases}개, 채점 결과 ${s.results}개), 설정 ${s.settings}개${exams}`;
+  return `문제 ${s.problems}개 (코드 ${s.codes}개, 테스트 케이스 ${s.cases}개, 채점 결과 ${s.results}개${submissions}), 설정 ${s.settings}개${exams}`;
 }
 
 export function summarizeBackup(items: Record<string, unknown>): BackupSummary {
@@ -161,14 +173,16 @@ export function summarizeBackup(items: Record<string, unknown>): BackupSummary {
     results: 0,
     settings: 0,
     exams: 0,
+    submissions: 0,
   };
-  for (const key of Object.keys(items)) {
+  for (const [key, value] of Object.entries(items)) {
     const [kind, problem] = key.split(':');
     if (kind === 'code') summary.codes++;
     else if (kind === 'cases') summary.cases++;
     else if (kind === 'judge') summary.results++;
     else if (kind === 'ui') summary.settings++;
     else if (kind === 'exam') summary.exams++;
+    else if (kind === 'history' && Array.isArray(value)) summary.submissions += value.length;
     if (kind !== 'ui' && kind !== 'exam' && problem) problems.add(problem);
   }
   summary.problems = problems.size;
@@ -178,7 +192,8 @@ export function summarizeBackup(items: Record<string, unknown>): BackupSummary {
 /**
  * What to write for a restore. `current` is everything in `storage.local`.
  * - replace: removes every backup-type key that is not in the backup, then writes the backup.
- * - merge: writes only keys that do not exist yet; existing code and settings are kept.
+ * - merge: writes only keys that do not exist yet; existing code and settings are kept. A
+ *   submission history that exists on both sides becomes one list (newest kept, ADR-0012).
  */
 export function planRestore(
   current: Record<string, unknown>,
@@ -194,6 +209,11 @@ export function planRestore(
   const set: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(items)) {
     if (!(key in current)) set[key] = value;
+    const history = HISTORY_KEY.exec(key);
+    if (history && key in current) {
+      const id = Number(history[1]);
+      set[key] = mergeHistory(readHistory(current[key], id), readHistory(value, id));
+    }
   }
   return { set, remove: [] };
 }

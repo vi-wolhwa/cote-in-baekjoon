@@ -22,9 +22,12 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 export function ProblemPane({
   problem,
   format,
+  label = true,
 }: {
   problem: Problem;
   format?: Format | undefined;
+  /** The '문제 설명' label; the practice IDE shows tabs instead (LeftPane). */
+  label?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const translation = useTranslation(problem.id, problem.sections);
@@ -49,7 +52,7 @@ export function ProblemPane({
 
   return (
     <div class="problem" ref={root}>
-      <div class="problem-label">문제 설명</div>
+      {label && <div class="problem-label">문제 설명</div>}
       <TranslationBar
         status={translation.status}
         showOriginal={translation.showOriginal}

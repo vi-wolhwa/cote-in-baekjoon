@@ -60,6 +60,7 @@ describe('createBackup', () => {
       results: 1,
       settings: 3,
       exams: 0,
+      submissions: 0,
     });
   });
 });
@@ -100,6 +101,7 @@ describe('mock exam backup (ADR-0005)', () => {
       results: 0,
       settings: 1,
       exams: 1,
+      submissions: 0,
     });
     expect(describeSummary(summarizeBackup(backup.items))).toBe(
       '문제 0개 (코드 0개, 테스트 케이스 0개, 채점 결과 0개), 설정 1개, 모의 시험 1개',

@@ -61,6 +61,7 @@ describe('backup of problem meta', () => {
       results: 0,
       settings: 0,
       exams: 0,
+      submissions: 0,
     });
     expect(isBackupKey('meta:1000')).toBe(true);
     expect(isBackupKey('meta:abc')).toBe(false);
