@@ -14,6 +14,7 @@ import {
   fromTable,
   modeOptions,
   moveRow,
+  nameError,
   removeRow,
   renameRow,
   rowPositions,
@@ -324,5 +325,22 @@ describe('reading up to an end line or the end of input', () => {
     expect(tableErrors(setRow(t, 1, { count: ' ' }))).toEqual([
       "'pairs'을(를) 끝내는 줄을 적어 주세요 (예: 0).",
     ]);
+  });
+});
+
+describe('parameter name problems', () => {
+  it('reports a name used twice once, on both rows', () => {
+    const t = renameRow(toTable(ARRAY), 1, 'n');
+    const message = "'n' 이름을 다른 매개변수도 써요. 이름을 다르게 해 주세요.";
+    expect(nameError(t, 0)).toBe(message);
+    expect(nameError(t, 1)).toBe(message);
+    expect(tableErrors(t)).toEqual([message]);
+  });
+
+  it('reports names that cannot be used', () => {
+    const t = renameRow(toTable(ARRAY), 1, 'end');
+    expect(nameError(t, 1)).toContain("'end'은(는) 쓸 수 없는 이름이에요");
+    expect(nameError(t, 0)).toBeUndefined();
+    expect(nameError(renameRow(t, 1, 'Arr'), 1)).toContain('영어 소문자로 시작');
   });
 });

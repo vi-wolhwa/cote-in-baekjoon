@@ -22,6 +22,7 @@ import {
   setCases,
   modeOptions,
   moveRow,
+  nameError,
   removeRow,
   renameRow,
   rowPositions,
@@ -93,6 +94,7 @@ export function FormatForm({ table, onChange }: Props) {
                 <NameInput
                   value={row.name}
                   label={`${i + 1}번째 매개변수 이름`}
+                  error={nameError(table, i)}
                   onCommit={(name) => onChange(renameRow(table, i, name))}
                 />
               </td>
@@ -354,10 +356,13 @@ function CasesOptions({ table, onChange }: Props) {
 function NameInput({
   value,
   label,
+  error,
   onCommit,
 }: {
   value: string;
   label: string;
+  /** Shown as a red border and the tooltip. */
+  error?: string | undefined;
   onCommit: (v: string) => void;
 }) {
   const [text, setText] = useState(value);
@@ -370,7 +375,10 @@ function NameInput({
   return (
     <input
       type="text"
+      class={error ? 'is-invalid' : undefined}
       aria-label={label}
+      aria-invalid={error ? 'true' : undefined}
+      title={error}
       value={text}
       spellcheck={false}
       onInput={(e) => setText(e.currentTarget.value)}
