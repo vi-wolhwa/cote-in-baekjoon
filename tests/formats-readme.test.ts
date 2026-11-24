@@ -157,4 +157,10 @@ describe('normalizeSample', () => {
   it('drops CR, trailing spaces and outer blank lines but keeps inner spacing', () => {
     expect(normalizeSample('\n 1  2 \r\n3\n\n')).toBe(' 1  2\n3');
   });
+
+  it('drops zero-width spaces and an indent shared by every line of a copied block', () => {
+    expect(normalizeSample('    3​\n    1 2\n\n    4')).toBe('3\n1 2\n\n4');
+    expect(normalizeSample('  *\n ***', false)).toBe('  *\n ***');
+    expect(normalizeSample('7​', false)).toBe('7​');
+  });
 });

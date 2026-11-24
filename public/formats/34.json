@@ -1,6 +1,22 @@
 {"v":1,"formats":{
+"34032":{"v":1,"params":[{"name":"n","type":"int"},{"name":"s","type":"string"}],"lines":[["n"],["s"]],"cases":null,"ret":{"type":"bool","yes":"Yes","no":"No"}},
+"34183":{"v":1,"params":[{"name":"n","type":"int"},{"name":"m","type":"int"},{"name":"a","type":"int"},{"name":"b","type":"int"}],"lines":[["n","m","a","b"]],"cases":null,"ret":{"type":"long"}},
 "34217":{"v":1,"params":[{"name":"a","type":"int"},{"name":"b","type":"int"},{"name":"c","type":"int"},{"name":"d","type":"int"}],"lines":[["a","b"],["c","d"]],"cases":null,"ret":{"type":"string"}},
+"34281":{"v":1,"params":[{"name":"w","type":"int"},{"name":"l","type":"int"}],"lines":[["w"],["l"]],"cases":null,"ret":{"type":"int"}},
+"34297":{"v":1,"params":[{"name":"m","type":"int"},{"name":"k","type":"int"},{"name":"c","type":"int"}],"lines":[["m"],["k"],["c"]],"cases":null,"ret":{"type":"int"}},
+"34411":{"v":1,"params":[{"name":"m","type":"int"},{"name":"n","type":"int"},{"name":"y","type":"int"}],"lines":[["m"],["n"],["y"]],"cases":null,"ret":{"type":"int"}},
+"34412":{"v":1,"params":[{"name":"x","type":"int"}],"lines":[["x"]],"cases":null,"ret":{"type":"int"}},
+"34424":{"v":1,"params":[{"name":"n","type":"int"},{"name":"x","type":"int"}],"lines":[["n"],["x"]],"cases":null,"ret":{"type":"int"}},
+"34446":{"v":1,"params":[{"name":"m","type":"int"},{"name":"n","type":"int"},{"name":"t","type":"int"}],"lines":[["m"],["n"],["t"]],"cases":null,"ret":{"type":"int"}},
+"34563":{"v":1,"params":[{"name":"n","type":"int"},{"name":"m","type":"int"}],"lines":[["n","m"]],"cases":{"count":"T"},"ret":{"type":"long"}},
 "34665":{"v":1,"params":[{"name":"a","type":"string"},{"name":"b","type":"string"}],"lines":[["a"],["b"]],"cases":null,"ret":{"type":"string"}},
+"34750":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":null,"ret":{"type":"int[]","sep":" "}},
+"34813":{"v":1,"params":[{"name":"code","type":"string"}],"lines":[["code"]],"cases":null,"ret":{"type":"string"}},
+"34823":{"v":1,"params":[{"name":"y","type":"int"},{"name":"c","type":"int"},{"name":"p","type":"int"}],"lines":[["y","c","p"]],"cases":null,"ret":{"type":"int"}},
+"34824":{"v":1,"params":[{"name":"n","type":"int"},{"name":"names","type":"string[]"}],"lines":[["n"],{"repeat":"n","of":"names"}],"cases":null,"ret":{"type":"bool","yes":"Yonsei Won!","no":"Yonsei Lost..."}},
+"34891":{"v":1,"params":[{"name":"n","type":"int"},{"name":"m","type":"int"}],"lines":[["n","m"]],"cases":null,"ret":{"type":"int"}},
 "34921":{"v":1,"params":[{"name":"a","type":"int"},{"name":"t","type":"int"}],"lines":[["a","t"]],"cases":null,"ret":{"type":"int"}},
+"34934":{"v":1,"params":[{"name":"n","type":"int"},{"name":"depts","type":"string[][]","cols":2}],"lines":[["n"],{"repeat":"n","of":"depts"}],"cases":null,"ret":{"type":"string"}},
+"34935":{"v":1,"params":[{"name":"n","type":"int"},{"name":"a","type":"long[]","len":"n"}],"lines":[["n"],["a"]],"cases":null,"ret":{"type":"int"}},
 "34945":{"v":1,"params":[{"name":"x","type":"int"}],"lines":[["x"]],"cases":null,"ret":{"type":"bool","yes":"Success!","no":"Oh My God!"}}
 }}

@@ -115,7 +115,12 @@ const RESERVED = new Set(
     ' select range fallthrough guard repeat inout init deinit extension protocol subscript' +
     ' operator internal fileprivate out params base checked decimal delegate event explicit' +
     ' fixed implicit lock readonly sbyte stackalloc uint ulong unchecked ushort virtual def end' +
-    ' elsif unless until begin rescue ensure nil then redo retry undef alias defined module'
+    ' elsif unless until begin rescue ensure nil then redo retry undef alias defined module next' +
+    // Keywords of the languages above that were missing (C++, Rust, C#, Swift, Java).
+    ' asm constexpr consteval constinit decltype friend mutable noexcept nullptr typeid typename' +
+    ' alignas alignof concept requires xor bitand bitor compl explicit_cast become box macro' +
+    ' override priv unsafe unsized foreach associatedtype rethrows precedencegroup strictfp' +
+    ' arguments eval'
   ).split(' '),
 );
 
