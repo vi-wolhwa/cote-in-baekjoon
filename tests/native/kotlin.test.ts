@@ -68,5 +68,24 @@ class Solution {
     scenario: `class Solution {
     fun solution(n: Int, arr: IntArray): IntArray = arr
 }`,
+    exprFlow: `class Solution {
+    fun solution(n: Int, arr: IntArray, g: Array<IntArray>): Long =
+        arr.sum().toLong() * 100 + g.size * 10 + g[0].size
+}`,
+    blockCount: `class Solution {
+    fun solution(n: Int, k: IntArray, name: Array<String>, items: Array<IntArray>): Array<String> =
+        Array(name.size) { name[it] + ":" + items[it].sum() }
+}`,
+    blockUntil: `class Solution {
+    fun solution(m: IntArray, vals: Array<IntArray>, x: IntArray, y: IntArray): IntArray =
+        (vals.map { it.max() } + x.indices.map { x[it] * y[it] }).toIntArray()
+}`,
+    endConds: `class Solution {
+    fun solution(n: Int, words: Array<String>, p: IntArray): Long = n + words.size * 10L + p.sum() * 100L
+}`,
+    rawLines: `class Solution {
+    fun solution(t: String, n: Int, ls: Array<String>, mid: Array<String>, rest: Array<String>): Array<String> =
+        (arrayOf(t) + ls + mid + rest).map { "[" + it + "]" }.toTypedArray()
+}`,
   },
 );

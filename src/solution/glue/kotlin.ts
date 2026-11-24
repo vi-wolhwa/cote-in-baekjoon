@@ -11,11 +11,14 @@ import {
   type RetSpec,
   type RetType,
 } from '../dsl';
+import { KOTLIN_ROWS, KOTLIN_RUNTIME } from './kotlin-runtime';
 import {
+  planVar,
   renderCount,
   renderRows,
   usesRows,
   type CountRef,
+  type LineEnd,
   type Plan,
   type Rows,
   type Scalar,
@@ -58,142 +61,6 @@ export function kotlinQuote(s: string): string {
   return `${out}"`;
 }
 
-const RUNTIME = `private var __cib_d = ByteArray(0)
-private var __cib_p = 0
-private var __cib_n = 0
-private fun __cib_fail(): RuntimeException = RuntimeException("__cib_input")
-private fun __cib_ws(c: Byte): Boolean {
-    val x = c.toInt()
-    return x == 32 || x == 10 || x == 13 || x == 9
-}
-private fun __cib_more(): Boolean {
-    while (__cib_p < __cib_n && __cib_ws(__cib_d[__cib_p])) __cib_p++
-    return __cib_p < __cib_n
-}
-private fun __cib_str(s: Int, e: Int): String = String(__cib_d, s, e - s, Charsets.UTF_8)
-private fun __cib_tok(): String {
-    if (!__cib_more()) throw __cib_fail()
-    val s = __cib_p
-    while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) __cib_p++
-    return __cib_str(s, __cib_p)
-}
-private fun __cib_ll(): Long {
-    if (!__cib_more()) throw __cib_fail()
-    var neg = false
-    val c0 = __cib_d[__cib_p].toInt()
-    if (c0 == 45 || c0 == 43) {
-        neg = c0 == 45
-        __cib_p++
-    }
-    if (__cib_p >= __cib_n || __cib_ws(__cib_d[__cib_p])) throw __cib_fail()
-    var v = 0L
-    while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) {
-        val c = __cib_d[__cib_p++].toInt() - 48
-        if (c < 0 || c > 9) throw __cib_fail()
-        v = v * 10 - c
-    }
-    return if (neg) v else -v
-}
-private fun __cib_int(): Int = __cib_ll().toInt()
-private fun __cib_dbl(): Double = __cib_tok().toDouble()
-private fun __cib_nl() {
-    if (__cib_p > 0 && __cib_d[__cib_p - 1].toInt() != 10) {
-        while (__cib_p < __cib_n && __cib_d[__cib_p].toInt() != 10) __cib_p++
-        if (__cib_p < __cib_n) __cib_p++
-    }
-    while (true) {
-        var q = __cib_p
-        while (q < __cib_n && __cib_d[q].toInt() != 10 && __cib_ws(__cib_d[q])) q++
-        if (q < __cib_n && __cib_d[q].toInt() == 10) {
-            __cib_p = q + 1
-        } else {
-            break
-        }
-    }
-}
-private fun __cib_end(): Int {
-    if (__cib_p >= __cib_n) throw __cib_fail()
-    var e = __cib_p
-    while (e < __cib_n && __cib_d[e].toInt() != 10) e++
-    return e
-}
-private fun __cib_line(): String {
-    var e = __cib_end()
-    var s = __cib_p
-    __cib_p = e
-    while (s < e && __cib_ws(__cib_d[s])) s++
-    while (e > s && __cib_ws(__cib_d[e - 1])) e--
-    return __cib_str(s, e)
-}
-private fun __cib_rest(): Array<String> {
-    val e = __cib_end()
-    val r = ArrayList<String>()
-    var i = __cib_p
-    __cib_p = e
-    while (i < e) {
-        while (i < e && __cib_ws(__cib_d[i])) i++
-        val s = i
-        while (i < e && !__cib_ws(__cib_d[i])) i++
-        if (i > s) r.add(__cib_str(s, i))
-    }
-    return r.toTypedArray()
-}
-private fun __cib_has(): Boolean {
-    var q = __cib_p
-    while (q < __cib_n && __cib_ws(__cib_d[q])) q++
-    return q < __cib_n
-}`;
-
-/** Counting rows ahead for end-line and end-of-input repeats (only when used). */
-const ROWS = `private fun __cib_at(w: Array<String>): Boolean {
-    val s = __cib_p
-    var ok = true
-    for (x in w) {
-        if (!__cib_more() || __cib_tok() != x) {
-            ok = false
-            break
-        }
-    }
-    __cib_p = s
-    return ok
-}
-private fun __cib_rowsTok(w: Array<String>, k: Int): Int {
-    val s = __cib_p
-    var r = 0
-    while (true) {
-        if (if (w.isEmpty()) !__cib_has() else __cib_at(w)) break
-        if (k < 1 || !__cib_has()) throw __cib_fail()
-        for (i in 0 until k) __cib_tok()
-        r++
-    }
-    __cib_p = s
-    return r
-}
-private fun __cib_raw(): String {
-    var e = __cib_p
-    while (e < __cib_n && __cib_d[e].toInt() != 10) e++
-    val s = __cib_p
-    __cib_p = e
-    while (e > s && __cib_ws(__cib_d[e - 1])) e--
-    return __cib_str(s, e)
-}
-private fun __cib_rowsLine(e: String?, raw: Boolean): Int {
-    val s = __cib_p
-    var r = 0
-    while (true) {
-        __cib_nl()
-        if (!__cib_has()) {
-            if (e != null) throw __cib_fail()
-            break
-        }
-        val t = if (raw) __cib_raw() else __cib_line()
-        if (e != null && t == e) break
-        r++
-    }
-    __cib_p = s
-    return r
-}`;
-
 const READ: Record<Scalar, string> = {
   int: '__cib_int()',
   long: '__cib_ll()',
@@ -219,12 +86,58 @@ const count = (c: CountRef) => `(${renderCount(c, variable)}).toInt()`;
 const rows = (n: Rows) =>
   renderRows(n, count, {
     tok: (end, k) => `__cib_rowsTok(arrayOf<String>(${end.map(kotlinQuote).join(', ')}), ${k})`,
-    line: (end, raw) => `__cib_rowsLine(${end === null ? 'null' : kotlinQuote(end)}, ${raw})`,
+    line: (end, text) => `__cib_rowsLine(${end.mode}, ${kotlinQuote(end.text)}, ${text})`,
+    phys: (end) => `__cib_rowsPhys(${end.mode}, ${kotlinQuote(end.text)})`,
   });
+const endl = (end: LineEnd) => `__cib_endl(${end.mode}, ${kotlinQuote(end.text)})`;
 
-function step(s: Step): string {
+/** Converts a block's list buffer (an ArrayList) to the parameter's array type. */
+const fromBuffer = (type: string) =>
+  ({ IntArray: 'toIntArray()', LongArray: 'toLongArray()', DoubleArray: 'toDoubleArray()' })[
+    type
+  ] ?? 'toTypedArray()';
+
+/**
+ * A block: each pass declares the block's variables, reads them and adds them to a buffer
+ * per list; after the loop the buffers become the parameter arrays.
+ */
+function block(plan: Plan, s: Extract<Step, { op: 'block' }>): string {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return `for (__cib_b in 0 until ${count(s.loop.n)}.also { if (it < 0) throw __cib_fail() })`;
+      case 'eof':
+        return 'while (__cib_has())';
+      case 'tok':
+        return `while (!__cib_at(arrayOf<String>(${s.loop.end.map(kotlinQuote).join(', ')})))`;
+      case 'line':
+        return `while (!${endl(s.loop.end)})`;
+    }
+  })();
+  const type = (v: number) => KOTLIN_TYPES[planVar(plan, v).type];
+  const buffer = (list: number) => `__cib_l${list}`;
+  return [
+    ...s.items.map((x) => `val ${buffer(x.list)} = ArrayList<${type(x.item)}>()`),
+    `${head} {`,
+    ...s.items.map((x) => `    var ${variable(x.item)}: ${type(x.item)} = ${empty(type(x.item))}`),
+    ...s.steps.flatMap((x) => step(plan, x).split('\n')).map((l) => `    ${l}`),
+    ...s.items.map((x) => `    ${buffer(x.list)}.add(${variable(x.item)})`),
+    '}',
+    ...s.items.map((x) => `${variable(x.list)} = ${buffer(x.list)}.${fromBuffer(type(x.list))}`),
+  ].join('\n');
+}
+
+function step(plan: Plan, s: Step): string {
   const v = variable('v' in s ? s.v : 0);
   switch (s.op) {
+    case 'block':
+      return block(plan, s);
+    case 'raw':
+      return `${v} = __cib_rawl()`;
+    case 'rawLines':
+      return `${v} = Array(${rows(s.n)}) { __cib_rawl() }`;
+    case 'endRaw':
+      return '__cib_rawl()';
     case 'nl':
       return '__cib_nl()';
     case 'scalar':
@@ -304,7 +217,7 @@ export function kotlinGlue(plan: Plan, ret: RetSpec): string {
     [
       ...decls,
       'try {',
-      ...plan.steps.map((s) => `    ${step(s)}`),
+      ...plan.steps.flatMap((s) => step(plan, s).split('\n')).map((l) => `    ${l}`),
       '} catch (__cib_e: RuntimeException) {',
       '    throw __cib_fail()',
       '}',
@@ -328,6 +241,8 @@ export function kotlinGlue(plan: Plan, ret: RetSpec): string {
         return `    val __cib_t = __cib_int()\n    for (__cib_k in 0 until __cib_t) {\n${body(8)}\n    }`;
       case 'eof':
         return `    while (__cib_has()) {\n${body(8)}\n    }`;
+      case 'line':
+        return `    while (__cib_has() && !${endl(plan.loop.end)}) {\n${body(8)}\n    }`;
       case 'until': {
         const words = plan.loop.tokens.map(kotlinQuote).join(', ');
         return [
@@ -351,8 +266,8 @@ export function kotlinGlue(plan: Plan, ret: RetSpec): string {
   })();
   return [
     '// ---- 입출력 코드 ----',
-    RUNTIME,
-    ...(usesRows(plan) ? [ROWS] : []),
+    KOTLIN_RUNTIME,
+    ...(usesRows(plan) ? [KOTLIN_ROWS] : []),
     '',
     'fun main() {',
     '    __cib_d = System.`in`.readBytes()',
