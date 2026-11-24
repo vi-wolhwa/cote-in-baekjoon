@@ -178,8 +178,8 @@ test('falls back to the status request when live updates never arrive', async ({
   );
   const submitPage = await opened;
   await submitPage.goto('https://acmicpc.net/status?from_mine=1&problem_id=1000&user_id=tester');
-  // Inside the submit popup the page asks the user to keep it open while judging (#47).
-  await expect(submitPage.getByText('창을 닫지 말고 기다려 주세요')).toBeVisible();
+  // In the background submission tab the page asks to keep it open while judging (#47).
+  await expect(submitPage.getByText('탭을 닫지 말아 주세요')).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => chrome.storage.local.get('judge:1000')), { timeout: 15_000 })
     .toMatchObject({ 'judge:1000': { solutionId: 5004, status: 'done', resultCode: 'ac' } });

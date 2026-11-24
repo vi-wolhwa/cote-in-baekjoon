@@ -67,7 +67,7 @@ const STAGE_TEXT: Partial<Record<RowStage, string>> = {
   saved: '제출 대기',
   pending: '제출 대기',
   submitting: '제출 중',
-  manual: '직접 제출이 필요해요',
+  manual: '직접 확인이 필요해요',
   failed: '제출 실패',
 };
 

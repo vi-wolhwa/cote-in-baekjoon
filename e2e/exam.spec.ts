@@ -212,7 +212,9 @@ test('results: late and stale judge results', async ({ page, extensionId }) => {
   await expect(rows.nth(0)).toContainText('틀렸습니다');
   await expect(rows.nth(0)).toContainText('Python 3');
   await expect(rows.nth(0)).toContainText('시작 후 0:12:00');
-  await expect(rows.nth(1)).toContainText('채점 중 (40%)');
+  // Judging was reported long ago and no tab follows it any more: offer to read it again.
+  await expect(rows.nth(1).getByTestId('result-text')).toHaveText('결과를 아직 못 받았어요');
+  await expect(rows.nth(1).getByRole('button', { name: '결과 다시 확인' })).toBeVisible();
   await expect(rows.nth(2)).toContainText('제출 안 함');
   await expect(page.getByTestId('result-score')).toContainText('0 / 3');
   await expect(page.getByTestId('result-time')).toContainText('49분');
@@ -230,4 +232,44 @@ test('results: late and stale judge results', async ({ page, extensionId }) => {
     'href',
     'https://www.acmicpc.net/problem/1001#cib-ide',
   );
+});
+
+test('switching problems never changes the pane widths', async ({ page, extensionId }) => {
+  // Sizes the user dragged: the old code drew the defaults for a frame on every switch.
+  const id = await seedExam(page, extensionId, {
+    startedAt: Date.now() - MIN,
+    read: [1000, 1001, 1002],
+    extra: { 'ui:split': { horizontal: 30, vertical: 55 } },
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`chrome-extension://${extensionId}/exam.html#${id}`);
+  await expect(page.locator('.problem')).toContainText('합을 출력한다.');
+  const widths = await page.evaluate(async () => {
+    const seen: number[] = [];
+    const sample = () => {
+      const pane = document.querySelector('.workspace .split-pane');
+      seen.push(pane ? Math.round(pane.getBoundingClientRect().width * 100) / 100 : -1);
+    };
+    const frames = (n: number) =>
+      new Promise<void>((resolve) => {
+        let left = n;
+        const tick = () => {
+          sample();
+          left -= 1;
+          if (left <= 0) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    const items = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="rail-item"]')];
+    for (const i of [1, 2, 0]) {
+      items[i]?.click();
+      sample();
+      await frames(10);
+    }
+    return seen;
+  });
+  expect(widths.length).toBeGreaterThan(30);
+  expect(new Set(widths).size).toBe(1);
+  expect(widths[0]).toBeGreaterThan(0);
 });

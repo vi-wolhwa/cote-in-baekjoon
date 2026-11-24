@@ -35,6 +35,7 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [language, setLanguage] = useState<LanguageId>(DEFAULT_LANGUAGE);
   const [keymap, setKeymap] = useState<store.Keymap>();
+  const [split, setSplit] = useState<store.SplitSizes>();
   const runner = useMemo(
     () => new SandboxRunner(browser.runtime.getURL('/sandbox.html'), runtimeUrl()),
     [],
@@ -47,10 +48,13 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
   const reading = useCaptureQueue(exam, opened, over);
 
   useEffect(() => {
-    void Promise.all([store.loadLanguage(), store.loadKeymap()]).then(([lang, km]) => {
-      setLanguage(lang);
-      setKeymap(km);
-    });
+    void Promise.all([store.loadLanguage(), store.loadKeymap(), store.loadSplit()]).then(
+      ([lang, km, sp]) => {
+        setLanguage(lang);
+        setKeymap(km);
+        setSplit(sp);
+      },
+    );
   }, []);
 
   // Time is up, or the exam was ended in another tab: record the end and show the results.
@@ -63,7 +67,7 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
       .then(onFinished);
   }, [exam, over]);
 
-  if (state.status === 'loading' || !keymap) {
+  if (state.status === 'loading' || !keymap || !split) {
     return <div class="ide-loading">시험을 불러오는 중입니다…</div>;
   }
   if (state.status === 'missing' || !exam) return <MissingExam />;
@@ -113,6 +117,9 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
           language={language}
           keymap={keymap}
           theme={theme}
+          split={split}
+          onSplit={(change) => setSplit((s) => (s ? change(s) : s))}
+          onSplitEnd={() => setSplit((s) => (s && void store.saveSplit(s), s))}
           runner={runner}
           warmEngines={warmEngines.current}
           onLanguage={(next) => {

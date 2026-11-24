@@ -333,7 +333,11 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
                             <RunOutput {...output} />
                           </>
                         ) : (
-                          <SubmitPanel state={submit.state} />
+                          <SubmitPanel
+                            info={submit.info}
+                            onFocus={() => void submit.focus()}
+                            onRecheck={() => void submit.recheck()}
+                          />
                         )}
                       </div>
                     </section>

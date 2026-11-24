@@ -420,8 +420,7 @@
 .result-progress.is-running {
   border-color: var(--exam-accent);
 }
-.result-text.is-failed,
-.result-text.is-manual {
+.result-text.is-attention {
   color: var(--warn);
 }
 .result-reason {

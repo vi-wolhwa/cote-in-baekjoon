@@ -236,12 +236,13 @@ export function showAutoSubmitCountdown(doc: Document, delayMs: number): Promise
 export const JUDGING_NOTICE_ID = 'cib-judging-notice';
 
 export const JUDGING_MESSAGE =
-  '채점 중입니다. 결과가 나오면 이 창은 자동으로 닫힙니다. 창을 닫지 말고 기다려 주세요.';
-export const JUDGED_MESSAGE = '채점이 끝났습니다. 잠시 뒤 창이 닫히고 풀이 화면으로 돌아갑니다.';
+  '채점 중입니다. 결과가 나오면 이 탭은 저절로 닫히고 결과는 풀이 화면에 나옵니다. 탭을 닫지 말아 주세요.';
+export const JUDGED_MESSAGE = '채점이 끝났습니다. 잠시 뒤 이 탭이 닫힙니다.';
 
 /**
- * Notice on the status page inside the submit popup (#47): closing the window while judging
- * would lose the result in the IDE. `finish()` switches it to the "closing soon" message.
+ * Notice on the status page in a submission's background tab (#47, ADR-0002): the user
+ * sees it only after '직접 확인'; closing the tab while judging would lose the result.
+ * `finish()` switches it to the "closing soon" message.
  */
 export function showJudgingNotice(doc: Document): { finish(): void } {
   doc.getElementById(JUDGING_NOTICE_ID)?.remove();
