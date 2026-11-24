@@ -1,13 +1,16 @@
 /**
  * Builds `src/data/formats.json` (ADR-0006 source 2) from the local problem cache (#116).
  *
- * For each cached problem with samples: a reviewed format from `formats-reviewed.json` wins, else
- * the extension's own inference. Either is shipped only when it passes the extension's sample
- * validation. Problem text is read from the local cache and never written out; the output holds
- * problem ids and formats only.
+ * Only formats reviewed in `formats-reviewed.json` are shipped, and only when they pass the
+ * extension's sample validation: unreviewed inference agreed with review on only about a third of
+ * the pilot problems (names included), so it stays a suggestion in the extension (source 3).
+ * The inference still runs for every problem, to measure it and to prefill review sheets.
+ * Problem text is read from the local cache and never written out; the output holds problem ids
+ * and formats only.
  *
- *   npm run formats:build                    # writes src/data/formats.json + cache/build-report.json
- *   npm run formats:build -- --review out/   # also writes review sheets (local, gitignored cache)
+ *   npm run formats:build                          # src/data/formats.json + cache/build-report.json
+ *   npm run formats:build -- --review out/         # review sheets for unreviewed problems (local)
+ *   npm run formats:build -- --review out/ --all   # review sheets for every problem
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -16,6 +19,7 @@ import { checkFormat, formatToJson, sameFormat, type Format } from '@/solution/d
 import { inferCandidates, MIN_SCORE } from '@/solution/infer';
 import { isExcluded } from '@/solution/source';
 import { validateFormat } from '@/solution/validate';
+import { formatsFile } from './lib/json-lines.ts';
 import { escapeText, loadReviewed, type Reviewed } from './lib/reviewed.ts';
 import type { ProblemRecord } from './lib/record.ts';
 
@@ -25,6 +29,7 @@ const { values: args } = parseArgs({
     out: { type: 'string', default: 'src/data/formats.json' },
     reviewed: { type: 'string', default: 'scripts/formats/formats-reviewed.json' },
     review: { type: 'string' },
+    all: { type: 'boolean', default: false },
   },
 });
 
@@ -37,7 +42,7 @@ type Outcome =
   | 'reviewed'
   | 'reviewed-none'
   | 'reviewed-invalid'
-  | 'inferred'
+  | 'unreviewed'
   | 'unsure'
   | 'no-candidate'
   | 'no-samples'
@@ -47,7 +52,7 @@ const counts: Record<Outcome, number> = {
   reviewed: 0,
   'reviewed-none': 0,
   'reviewed-invalid': 0,
-  inferred: 0,
+  unreviewed: 0,
   unsure: 0,
   'no-candidate': 0,
   'no-samples': 0,
@@ -56,6 +61,8 @@ const counts: Record<Outcome, number> = {
 /** Reviewed problems whose inference agreed with the review (inference accuracy). */
 let agreed = 0;
 let compared = 0;
+/** Same layout and types, names aside. */
+let shapeAgreed = 0;
 const formats: Record<string, Format> = {};
 const details: { id: number; outcome: Outcome; reasons?: string[] }[] = [];
 const sheets: unknown[] = [];
@@ -98,18 +105,18 @@ for (const id of ids) {
         note('reviewed');
         compared++;
         if (inferred && sameFormat(inferred, v.format)) agreed++;
+        if (inferred && shapeKey(inferred) === shapeKey(v.format)) shapeAgreed++;
       } else {
         note('reviewed-invalid', v.reasons);
       }
     }
   } else if (inferred) {
-    formats[id] = inferred;
-    note('inferred');
+    note('unreviewed');
   } else {
     note(best ? 'unsure' : 'no-candidate');
   }
 
-  if (args.review) {
+  if (args.review && (args.all || review === undefined)) {
     sheets.push({
       id,
       title: rec.title,
@@ -131,14 +138,22 @@ const sorted = Object.fromEntries(
 for (const [k, f] of Object.entries(sorted)) {
   if (!checkFormat(f).ok) throw new Error(`형식 검사 실패: ${k}`);
 }
-writeFileSync(args.out, JSON.stringify({ v: 1, formats: sorted }) + '\n');
+writeFileSync(args.out, formatsFile(sorted));
 
 const report = {
   generatedAt: new Date().toISOString(),
   total: ids.length,
   shipped: Object.keys(sorted).length,
   counts,
-  inferenceAgreement: compared ? { agreed, compared, rate: +(agreed / compared).toFixed(3) } : null,
+  inferenceAgreement: compared
+    ? {
+        compared,
+        exact: agreed,
+        exactRate: +(agreed / compared).toFixed(3),
+        shape: shapeAgreed,
+        shapeRate: +(shapeAgreed / compared).toFixed(3),
+      }
+    : null,
 };
 writeFileSync(join(cacheDir, 'build-report.json'), JSON.stringify({ ...report, details }, null, 1));
 console.log(JSON.stringify(report, null, 2));
@@ -151,4 +166,19 @@ if (args.review) {
     writeFileSync(join(args.review, name), JSON.stringify(sheets.slice(i, i + size), null, 1));
   }
   console.log(`검토용 시트 ${Math.ceil(sheets.length / size)}개: ${args.review}`);
+}
+
+/** A format with its parameters renamed by position, to compare layouts and types only. */
+function shapeKey(format: Format): string {
+  const names = new Map(format.params.map((p, i) => [p.name, `p${i}`]));
+  const ref = (c: string | number | undefined) =>
+    typeof c === 'string' ? c.replace(/^[a-z_]\w*/i, (m) => names.get(m) ?? m) : c;
+  return JSON.stringify({
+    params: format.params.map((p) => [p.type, ref(p.len), ref(p.cols)]),
+    lines: format.lines.map((l) =>
+      Array.isArray(l) ? l.map((n) => names.get(n)) : [ref(l.repeat), names.get(l.of)],
+    ),
+    cases: format.cases,
+    ret: format.ret,
+  });
 }
