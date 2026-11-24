@@ -9,6 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import { Cache, counters, createPacer, sleep } from './lib/cache.ts';
 import { blobUrl, indexTree, rawUrl, type TreeEntry } from './lib/paths.ts';
+import { eachConcurrently } from './lib/pool.ts';
 import { parseReadme, readmeMatchesId } from './lib/readme.ts';
 import {
   emptyRecord,
@@ -37,14 +38,14 @@ export const CODE_QUERIES = [
   '"예제 입력 1" "제출 정보" "acmicpc.net/problem"',
 ];
 
-function token(): string {
+export function token(): string {
   if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
   return execFileSync('gh', ['auth', 'token'], { encoding: 'utf8' }).trim();
 }
 
 let cachedToken: string | null = null;
 
-async function api<T>(pathAndQuery: string, search = false): Promise<T> {
+export async function api<T>(pathAndQuery: string, search = false): Promise<T> {
   cachedToken ??= token();
   for (let attempt = 0; ; attempt++) {
     await (search ? searchPacer : apiPacer).wait();
@@ -125,6 +126,46 @@ export async function discover(cache: Cache): Promise<Candidate[]> {
   return list;
 }
 
+/** BaekjoonHub repositories by size (larger ones hold more problems), each query up to 1,000. */
+const MORE_REPO_QUERIES = [
+  '"Baekjoon Online Judge created with" size:>300000',
+  '"Baekjoon Online Judge created with" size:150000..300000',
+  '"Baekjoon Online Judge created with" size:100000..150000',
+  '"Baekjoon Online Judge created with" size:70000..100000',
+  '"Baekjoon Online Judge created with" size:50000..70000',
+  '"Baekjoon Online Judge created with" size:35000..50000',
+  '"BaekjoonHub" in:readme size:>50000',
+];
+
+/**
+ * Adds more BaekjoonHub repositories to the candidates (`--more-repos`): every page of the
+ * size-bucketed searches above, so less-solved problems are found in more solvers' repositories.
+ */
+export async function discoverMore(cache: Cache): Promise<Candidate[]> {
+  const known = cache.readJson<Candidate[]>(['github', 'candidates.json'], []);
+  const found = new Map(known.map((c) => [c.repo, c.via]));
+  for (const q of MORE_REPO_QUERIES) {
+    for (let page = 1; page <= 10; page++) {
+      const query = new URLSearchParams({
+        q,
+        sort: 'updated',
+        per_page: '100',
+        page: String(page),
+      });
+      const res = await api<{ items: { full_name: string }[] }>(
+        `/search/repositories?${query}`,
+        true,
+      );
+      for (const item of res.items) if (!found.has(item.full_name)) found.set(item.full_name, q);
+      if (res.items.length < 100) break;
+    }
+    console.log(`후보 저장소 ${found.size}개 (${q})`);
+  }
+  const list = [...found].map(([repo, via]) => ({ repo, via }));
+  cache.writeJson(['github', 'candidates.json'], list);
+  return list;
+}
+
 export interface RepoIndex {
   repo: string;
   sha: string;
@@ -133,7 +174,7 @@ export interface RepoIndex {
   paths: Record<string, string[]>;
 }
 
-const treeFile = (repo: string) => ['github', 'trees', `${repo.replace('/', '__')}.json`];
+export const treeFile = (repo: string) => ['github', 'trees', `${repo.replace('/', '__')}.json`];
 
 /** README index of one repository at its default branch head (cached). */
 async function indexRepo(cache: Cache, repo: string): Promise<RepoIndex> {
@@ -179,18 +220,28 @@ export function refFromContentsUrl(url: string): string | null {
 }
 
 /**
- * One code search per problem still missing samples, for Markdown files that link
- * to the problem and contain a sample heading. Hits are cached per problem and
- * returned as extra indexes (grouped by repository commit).
+ * One code search per problem still missing something, for Markdown files that link to the
+ * problem: with a sample heading when samples are missing, or any such file (BaekjoonHub
+ * READMEs carry the input/output description but no samples) when the description is missing
+ * (`need: 'description'`, searched first). Hits are cached per problem and kind, and returned as
+ * extra indexes (grouped by repository commit).
  */
-export async function searchMissing(cache: Cache, ids: number[]): Promise<RepoIndex[]> {
+export async function searchMissing(
+  cache: Cache,
+  ids: number[],
+  need: 'samples' | 'description' = 'samples',
+): Promise<RepoIndex[]> {
+  const file = ['github', need === 'samples' ? 'hits.json' : 'hits-description.json'];
   const hits = cache.readJson<Record<string, { repo: string; sha: string; path: string }[]>>(
-    ['github', 'hits.json'],
+    file,
     {},
   );
   for (const [n, id] of ids.entries()) {
     if (hits[id]) continue;
-    const q = `"acmicpc.net/problem/${id}" "예제 입력 1" extension:md`;
+    const q =
+      need === 'samples'
+        ? `"acmicpc.net/problem/${id}" "예제 입력 1" extension:md`
+        : `"acmicpc.net/problem/${id}" "출력" extension:md`;
     const query = new URLSearchParams({ q, per_page: '30' });
     const res = await api<{
       items: { path: string; url: string; repository: { full_name: string } }[];
@@ -199,7 +250,7 @@ export async function searchMissing(cache: Cache, ids: number[]): Promise<RepoIn
       const sha = refFromContentsUrl(item.url);
       return sha ? [{ repo: item.repository.full_name, sha, path: item.path }] : [];
     });
-    cache.writeJson(['github', 'hits.json'], hits);
+    cache.writeJson(file, hits);
     if ((n + 1) % 20 === 0) console.log(`코드 검색 ${n + 1}/${ids.length}`);
   }
   const byCommit = new Map<string, RepoIndex>();
@@ -240,6 +291,10 @@ function score(stat: RepoStat | undefined, need: 'io' | 'samples'): number {
 export interface FetchOptions {
   /** README files read per problem at most. */
   maxTries: number;
+  /** Problems handled at once; raw reads stay paced as a whole. */
+  concurrency?: number;
+  /** Stop at the input/output description (no samples needed; BaekjoonHub READMEs have none). */
+  descriptionOnly?: boolean;
 }
 
 /**
@@ -253,18 +308,30 @@ export async function fetchFromGithub(
   options: FetchOptions,
 ): Promise<void> {
   const state = cache.readJson<GithubState>(['github', 'state.json'], { tried: {}, repos: {} });
-  for (const [n, problem] of top.entries()) {
+  // Which README files hold each problem, built once (thousands of repositories).
+  const byId = new Map<number, { index: RepoIndex; path: string }[]>();
+  for (const index of indexes) {
+    for (const [id, paths] of Object.entries(index.paths)) {
+      const list = byId.get(Number(id)) ?? [];
+      for (const path of paths) list.push({ index, path });
+      byId.set(Number(id), list);
+    }
+  }
+  const enough = (r: ProblemRecord) => (options.descriptionOnly ? hasIo(r) : isComplete(r));
+  let done = 0;
+  await eachConcurrently(top, options.concurrency ?? 1, async (problem) => {
     const file = ['problems', `${problem.id}.json`];
     const now = new Date().toISOString();
     const record = cache.readJson<ProblemRecord>(file, emptyRecord(problem.id, problem.title, now));
-    if (isComplete(record)) continue;
+    if (enough(record)) {
+      done++;
+      return;
+    }
 
     const tried = new Set(state.tried[problem.id] ?? []);
-    const options_ = indexes.flatMap((index) =>
-      (index.paths[problem.id] ?? []).map((p) => ({ index, path: p })),
-    );
+    const options_ = byId.get(problem.id) ?? [];
     let attempts = 0;
-    while (!isComplete(record) && attempts < options.maxTries) {
+    while (!enough(record) && attempts < options.maxTries) {
       const need = hasIo(record) ? 'samples' : 'io';
       const next = options_
         .filter((o) => !tried.has(rawUrl(o.index.repo, o.index.sha, o.path)))
@@ -313,10 +380,10 @@ export async function fetchFromGithub(
     }
     state.tried[problem.id] = [...tried];
     if (record.source || hasSamples(record)) cache.writeJson(file, record);
-    if ((n + 1) % 25 === 0) {
+    if (++done % 25 === 0) {
       cache.writeJson(['github', 'state.json'], state);
-      console.log(`GitHub ${n + 1}/${top.length}`);
+      console.log(`GitHub ${done}/${top.length}`);
     }
-  }
+  });
   cache.writeJson(['github', 'state.json'], state);
 }
