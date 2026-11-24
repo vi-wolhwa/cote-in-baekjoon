@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.19.2...v0.20.0) (2026-11-24)
+
+
+### 기능
+
+* **history:** 제출 기록 리디자인 — 내 제출·채점 현황·숏코딩 탭, 언어 필터, 다른 사람 코드 보기 ([#183](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/183)) ([47b34d1](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/47b34d1a6fa35c0d897fa37eae7b592d6bdc9778))
+
 ## [0.19.2](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.19.1...v0.19.2) (2026-11-24)
 
 
