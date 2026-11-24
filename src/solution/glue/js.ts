@@ -71,8 +71,10 @@ function step(s: Step): string {
       return `${variable(s.v)} = __cib_rest().map(${CONVERT[s.t]});`;
     case 'grid':
       return s.cols
-        ? `${variable(s.v)} = __cib_rep(${count(s.n)}, () => __cib_rep(${count(s.cols)}, () => __cib_int(__cib_tok())));`
-        : `${variable(s.v)} = __cib_rep(${count(s.n)}, () => { __cib_nl(); return __cib_rest().map(__cib_int); });`;
+        ? `${variable(s.v)} = __cib_rep(${count(s.n)}, () => __cib_rep(${count(s.cols)}, () => ${CONVERT[s.t]}(__cib_tok())));`
+        : `${variable(s.v)} = __cib_rep(${count(s.n)}, () => { __cib_nl(); return __cib_rest().map(${CONVERT[s.t]}); });`;
+    case 'lines':
+      return `${variable(s.v)} = __cib_rep(${count(s.n)}, () => { __cib_nl(); return __cib_line(); });`;
     case 'chars':
       return `${variable(s.v)} = __cib_rep(${count(s.n)}, __cib_tok);`;
   }
@@ -88,6 +90,7 @@ function formatter(ret: RetSpec): string {
     case 'int[]':
     case 'long[]':
     case 'string[]':
+    case 'line[]':
       return `(r) => Array.from(r, String).join(${sep})`;
     case 'int[][]':
     case 'char[][]':
@@ -101,7 +104,7 @@ export function jsGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
   const read = plan.steps.map((s) => `      ${step(s)}`).join('\n');
   const body = [
-    `    let ${vars.join(', ')};`,
+    ...(vars.length ? [`    let ${vars.join(', ')};`] : []),
     '    try {',
     read,
     '    } catch (e) {',

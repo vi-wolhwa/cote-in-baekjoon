@@ -51,7 +51,7 @@ export function parseToken(type: 'int' | 'long' | 'double' | 'string', token: st
 export function elementType(type: ParamType | RetType): 'int' | 'long' | 'double' | 'string' {
   if (type.startsWith('int')) return 'int';
   if (type.startsWith('long')) return 'long';
-  if (type === 'double') return 'double';
+  if (type.startsWith('double')) return 'double';
   return 'string';
 }
 
@@ -167,6 +167,11 @@ export function coerce(
     if (!r.ok) throw new Error(r.error);
     return r.value;
   };
+  const oneLine = (x: Lit): string => {
+    if (typeof x !== 'string') throw new Error('문자열이 필요해요 (예: "hello world")');
+    if (/[\r\n]/.test(x)) throw new Error('한 줄 문자열에는 줄바꿈을 넣을 수 없어요');
+    return x;
+  };
   const list = (x: Lit): Lit[] => {
     if (!Array.isArray(x)) throw new Error('배열이 필요해요 (예: [1, 2, 3])');
     return x;
@@ -178,20 +183,25 @@ export function coerce(
       case 'double':
       case 'string':
         return { ok: true, value: scalar(type, lit) };
-      case 'line': {
-        if (typeof lit !== 'string') throw new Error('문자열이 필요해요 (예: "hello world")');
-        if (/[\r\n]/.test(lit)) throw new Error('한 줄 문자열에는 줄바꿈을 넣을 수 없어요');
-        return { ok: true, value: lit };
-      }
+      case 'line':
+        return { ok: true, value: oneLine(lit) };
+      case 'line[]':
+        return { ok: true, value: list(lit).map(oneLine) };
       case 'bool':
         if (typeof lit !== 'boolean') throw new Error('true나 false가 필요해요');
         return { ok: true, value: lit };
       case 'int[]':
       case 'long[]':
+      case 'double[]':
       case 'string[]':
         return { ok: true, value: list(lit).map((x) => scalar(elementType(type), x)) };
       case 'int[][]':
-        return { ok: true, value: list(lit).map((row) => list(row).map((x) => scalar('int', x))) };
+      case 'long[][]':
+      case 'double[][]':
+      case 'string[][]': {
+        const t = elementType(type);
+        return { ok: true, value: list(lit).map((row) => list(row).map((x) => scalar(t, x))) };
+      }
       case 'char[][]':
         return {
           ok: true,

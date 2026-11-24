@@ -35,25 +35,12 @@ interface Props {
   onChange: (table: FormatTable) => void;
 }
 
-const TYPE_LABELS: Record<ParamType, string> = {
-  int: 'int 정수',
-  long: 'long 큰 정수',
-  double: 'double 실수',
-  string: 'string 단어',
-  line: 'line 한 줄 전체',
-  'int[]': 'int[] 정수 배열',
-  'long[]': 'long[] 큰 정수 배열',
-  'string[]': 'string[] 단어 배열',
-  'int[][]': 'int[][] 정수 2차원 배열',
-  'char[][]': 'char[][] 문자 격자',
-};
-
-const retLabel = (t: RetType) => (t === 'bool' ? 'bool 참거짓' : TYPE_LABELS[t]);
-
 function modeLabel(mode: RowMode, type: ParamType): string {
   if (mode === 'new') return '새 줄에서';
   if (mode === 'same') return '앞과 같은 줄에서';
-  return isGridType(type) ? '여러 줄에서 (한 줄에 한 행)' : '여러 줄에서 (한 줄에 하나씩)';
+  if (isGridType(type)) return '여러 줄에서 (한 줄에 한 행)';
+  if (type === 'line[]') return '여러 줄에서 (한 줄씩 통째로)';
+  return '여러 줄에서 (한 줄에 하나씩)';
 }
 
 export function FormatForm({ table, onChange }: Props) {
@@ -92,7 +79,7 @@ export function FormatForm({ table, onChange }: Props) {
                 >
                   {PARAM_TYPES.map((t) => (
                     <option key={t} value={t}>
-                      {TYPE_LABELS[t]}
+                      {t}
                     </option>
                   ))}
                 </select>
@@ -134,7 +121,6 @@ export function FormatForm({ table, onChange }: Props) {
 
                   aria-label={`${i + 1}번째 매개변수 삭제`}
                   title="삭제"
-                  disabled={table.rows.length <= 1}
                   onClick={() => onChange(removeRow(table, i))}
                 >
                   ×
@@ -142,15 +128,24 @@ export function FormatForm({ table, onChange }: Props) {
               </td>
             </tr>
           ))}
-          <tr>
+          {table.rows.length === 0 && (
+            <tr>
+              <td colSpan={4} class="format-where">
+                입력이 없는 문제예요. solution()을 매개변수 없이 불러요.
+              </td>
+            </tr>
+          )}
+          <tr class="format-add-row">
             <td colSpan={4}>
               <button
                 type="button"
-                class="out-button format-add"
+                class="format-add"
+                aria-label="매개변수 추가"
+                title="매개변수 추가"
                 disabled={table.rows.length >= MAX_PARAMS}
                 onClick={() => onChange(addRow(table))}
               >
-                + 매개변수 추가
+                +
               </button>
             </td>
           </tr>
@@ -175,7 +170,7 @@ export function FormatForm({ table, onChange }: Props) {
               >
                 {RET_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {retLabel(t)}
+                    {t}
                   </option>
                 ))}
               </select>
@@ -349,6 +344,7 @@ function NameInput({
 function defaultRet(type: RetType, old: RetSpec): RetSpec {
   if (type === 'bool') return { type, yes: old.yes ?? 'YES', no: old.no ?? 'NO' };
   if (type === 'double') return { type, digits: old.digits ?? 6 };
+  if (type === 'line[]') return { type };
   if (type.endsWith('[][]')) return { type, ...(type === 'char[][]' ? {} : { sep: ' ' }) };
   if (type.endsWith('[]')) return { type, sep: old.sep === '\n' ? '\n' : ' ' };
   return { type };
@@ -391,6 +387,7 @@ function RetOptions({ ret, onChange }: { ret: RetSpec; onChange: (r: RetSpec) =>
       </span>
     );
   }
+  if (ret.type === 'line[]') return <span class="format-where">원소마다 한 줄씩 그대로 출력</span>;
   if (!ret.type.endsWith('[]')) return <span class="format-where">한 줄에 출력</span>;
   const grid = ret.type.endsWith('[][]');
   const sep = ret.sep ?? (ret.type === 'char[][]' ? '' : ' ');

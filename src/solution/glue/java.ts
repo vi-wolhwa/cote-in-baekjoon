@@ -17,8 +17,13 @@ export const JAVA_TYPES: Record<ParamType | RetType, string> = {
   bool: 'boolean',
   'int[]': 'int[]',
   'long[]': 'long[]',
+  'double[]': 'double[]',
   'string[]': 'String[]',
+  'line[]': 'String[]',
   'int[][]': 'int[][]',
+  'long[][]': 'long[][]',
+  'double[][]': 'double[][]',
+  'string[][]': 'String[][]',
   'char[][]': 'char[][]',
 };
 
@@ -120,10 +125,15 @@ function step(s: Step): string {
     }
     case 'grid': {
       const v = variable(s.v);
+      const e = ELEMENT[s.t];
       if (s.cols) {
-        return `${v} = new int[${count(s.n)}][${count(s.cols)}]; for (int[] __cib_r : ${v}) for (int __cib_j = 0; __cib_j < __cib_r.length; __cib_j++) __cib_r[__cib_j] = __cib_int();`;
+        return `${v} = new ${e}[${count(s.n)}][${count(s.cols)}]; for (${e}[] __cib_r : ${v}) for (int __cib_j = 0; __cib_j < __cib_r.length; __cib_j++) __cib_r[__cib_j] = ${READ[s.t]};`;
       }
-      return `${v} = new int[${count(s.n)}][]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) { __cib_nl(); String[] __cib_w = __cib_rest(); ${v}[__cib_i] = new int[__cib_w.length]; for (int __cib_j = 0; __cib_j < __cib_w.length; __cib_j++) ${v}[__cib_i][__cib_j] = Integer.parseInt(__cib_w[__cib_j]); }`;
+      return `${v} = new ${e}[${count(s.n)}][]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) { __cib_nl(); String[] __cib_w = __cib_rest(); ${v}[__cib_i] = new ${e}[__cib_w.length]; for (int __cib_j = 0; __cib_j < __cib_w.length; __cib_j++) ${v}[__cib_i][__cib_j] = ${PARSE[s.t]('__cib_w[__cib_j]')}; }`;
+    }
+    case 'lines': {
+      const v = variable(s.v);
+      return `${v} = new String[${count(s.n)}]; for (int __cib_i = 0; __cib_i < ${v}.length; __cib_i++) { __cib_nl(); ${v}[__cib_i] = __cib_line(); }`;
     }
   }
 }
@@ -148,6 +158,7 @@ function printer(ret: RetSpec): string[] {
     case 'int[]':
     case 'long[]':
     case 'string[]':
+    case 'line[]':
       return join('__cib_r', '__cib_r[__cib_j]');
     case 'int[][]':
     case 'char[][]':

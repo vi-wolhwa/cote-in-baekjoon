@@ -110,8 +110,10 @@ function step(s: Step): string {
       return `${variable(s.v)} = list(map(${CONVERT[s.t]}, __cib_line().split()))`;
     case 'grid':
       return s.cols
-        ? `${variable(s.v)} = [__cib_many(${count(s.cols)}, int) for _ in range(${count(s.n)})]`
-        : `${variable(s.v)} = [(__cib_nl(), list(map(int, __cib_line().split())))[1] for _ in range(${count(s.n)})]`;
+        ? `${variable(s.v)} = [__cib_many(${count(s.cols)}, ${CONVERT[s.t]}) for _ in range(${count(s.n)})]`
+        : `${variable(s.v)} = [(__cib_nl(), list(map(${CONVERT[s.t]}, __cib_line().split())))[1] for _ in range(${count(s.n)})]`;
+    case 'lines':
+      return `${variable(s.v)} = [(__cib_nl(), __cib_line())[1] for _ in range(${count(s.n)})]`;
     case 'chars':
       return `${variable(s.v)} = __cib_many(${count(s.n)}, __cib_s)`;
   }
@@ -127,6 +129,7 @@ function formatter(ret: RetSpec): string {
     case 'int[]':
     case 'long[]':
     case 'string[]':
+    case 'line[]':
       return `${sep}.join(map(str, r))`;
     case 'int[][]':
     case 'char[][]':
@@ -142,7 +145,7 @@ export function pythonGlue(plan: Plan, ret: RetSpec): string {
   const body = (n: number) =>
     indent(n, [
       'try:',
-      ...plan.steps.map((s) => `    ${step(s)}`),
+      ...(plan.steps.length ? plan.steps.map((s) => `    ${step(s)}`) : ['    pass']),
       'except Exception:',
       "    raise RuntimeError('__cib_input') from None",
       `__cib_o.append(__cib_f(solution(${vars.join(', ')})))`,

@@ -23,6 +23,7 @@ export function formatReturn(ret: RetSpec, v: Value): string {
     case 'int[]':
     case 'long[]':
     case 'string[]':
+    case 'line[]':
       return (v as Value[]).map(String).join(sep);
     default:
       return String(v);
@@ -95,6 +96,8 @@ function readOneLine(ret: RetSpec, line: string): Value {
 }
 
 function readBlock(ret: RetSpec, lines: string[]): Value {
+  // line[]: each output line as it is (leading spaces kept, trailing ones dropped).
+  if (ret.type === 'line[]') return lines;
   if (ret.type === 'char[][]') {
     const sep = retSep(ret);
     return lines.map((l) => (sep === '' ? l.trim() : tokens(l).join('')));

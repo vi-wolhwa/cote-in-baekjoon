@@ -99,6 +99,35 @@ const TRANSPOSE = f({
   ret: { type: 'int[][]' },
 });
 
+// First line "a b"; then a lines read whole (spaces kept), then b rows of numbers.
+const BLOCKS = f({
+  v: 1,
+  params: [
+    { name: 'a', type: 'int' },
+    { name: 'b', type: 'int' },
+    { name: 'names', type: 'line[]' },
+    { name: 'rows', type: 'long[][]' },
+  ],
+  lines: [['a', 'b'], { repeat: 'a', of: 'names' }, { repeat: 'b', of: 'rows' }],
+  cases: null,
+  ret: { type: 'line[]' },
+});
+// n + m command lines of different lengths, then a line of doubles.
+const COMMANDS = f({
+  v: 1,
+  params: [
+    { name: 'n', type: 'int' },
+    { name: 'm', type: 'int' },
+    { name: 'cmds', type: 'string[][]' },
+    { name: 'w', type: 'double[]' },
+  ],
+  lines: [['n', 'm'], { repeat: 'n+m', of: 'cmds' }, ['w']],
+  cases: null,
+  ret: { type: 'int' },
+});
+// No input; the output keeps leading spaces.
+const NO_INPUT = f({ v: 1, params: [], lines: [], cases: null, ret: { type: 'line[]' } });
+
 interface Case {
   format: Format;
   input: string;
@@ -172,6 +201,41 @@ const CASES: Record<string, Case> = {
       python: 'def solution(n, m, g):\n    return [list(c) for c in zip(*g)]',
       cpp: 'vector<vector<int>> solution(int n, int m, vector<vector<int>> g) {\n    vector<vector<int>> t(m, vector<int>(n));\n    for (int i = 0; i < n; i++) for (int j = 0; j < m; j++) t[j][i] = g[i][j];\n    return t;\n}',
       java: 'class Solution {\n    public int[][] solution(int n, int m, int[][] g) {\n        int[][] t = new int[m][n];\n        for (int i = 0; i < n; i++) for (int j = 0; j < m; j++) t[j][i] = g[i][j];\n        return t;\n    }\n}',
+    },
+  },
+  'two blocks repeated by counts from the first line, read as whole lines and rows': {
+    format: BLOCKS,
+    input: '2 2\nAlice Kim\n  Bob\n1 2\n3 4000000000\n',
+    output: 'Bob\nAlice Kim\n3\n4000000003\n',
+    code: {
+      js: 'function solution(a, b, names, rows) {\n  return [...names.reverse(), ...rows.map((r) => String(BigInt(r[0]) + BigInt(r[1])))];\n}',
+      python:
+        'def solution(a, b, names, rows):\n    return names[::-1] + [str(sum(r)) for r in rows]',
+      cpp: 'vector<string> solution(int a, int b, vector<string> names, vector<vector<long long>> rows) {\n    reverse(names.begin(), names.end());\n    for (auto& r : rows) names.push_back(to_string(r[0] + r[1]));\n    return names;\n}',
+      java: 'class Solution {\n    public String[] solution(int a, int b, String[] names, long[][] rows) {\n        List<String> out = new ArrayList<>();\n        for (int i = names.length - 1; i >= 0; i--) out.add(names[i]);\n        for (long[] r : rows) out.add(String.valueOf(r[0] + r[1]));\n        return out.toArray(new String[0]);\n    }\n}',
+    },
+  },
+  'a sum count, ragged string rows and doubles': {
+    format: COMMANDS,
+    input: '1 2\npush 3\npop\npush 5\n0.5 1.75\n',
+    output: '22\n',
+    code: {
+      js: "function solution(n, m, cmds, w) {\n  return cmds.filter((c) => c[0] === 'push').length * 10 + Math.trunc(w[0] + w[1]);\n}",
+      python:
+        "def solution(n, m, cmds, w):\n    return sum(c[0] == 'push' for c in cmds) * 10 + int(sum(w))",
+      cpp: 'int solution(int n, int m, vector<vector<string>> cmds, vector<double> w) {\n    int p = 0;\n    for (auto& c : cmds) if (c[0] == "push") p++;\n    return p * 10 + (int)(w[0] + w[1]);\n}',
+      java: 'class Solution {\n    public int solution(int n, int m, String[][] cmds, double[] w) {\n        int p = 0;\n        for (String[] c : cmds) if (c[0].equals("push")) p++;\n        return p * 10 + (int) (w[0] + w[1]);\n    }\n}',
+    },
+  },
+  'no input, lines with leading spaces out': {
+    format: NO_INPUT,
+    input: '',
+    output: ' *\n***\n',
+    code: {
+      js: "function solution() {\n  return [' *', '***'];\n}",
+      python: "def solution():\n    return [' *', '***']",
+      cpp: 'vector<string> solution() {\n    return {" *", "***"};\n}',
+      java: 'class Solution {\n    public String[] solution() {\n        return new String[] {" *", "***"};\n    }\n}',
     },
   },
 };
