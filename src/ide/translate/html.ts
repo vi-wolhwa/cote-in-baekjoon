@@ -2,12 +2,15 @@
  * Translates a problem statement's HTML sentence by sentence while keeping its structure
  * (ADR-0010). Each block with text (a paragraph, a list item, a table cell) is translated as
  * one string, with math (`$…$`, `\(…\)`, `\[…\]`), code, sub/superscripts, images and nested
- * blocks replaced by numbered markers that are put back afterwards. When the translator
- * loses or repeats a marker, that block falls back to translating its text pieces one by one,
- * so the markup always survives.
+ * blocks replaced by name-like markers (`ZQX3`) that translators keep in place in the
+ * sentence, and put back afterwards. When the translator loses or repeats a marker, that block
+ * falls back to translating its text pieces one by one, so the markup always survives.
  */
 
-export type Translate = (text: string) => Promise<string>;
+import { fitParticle } from './josa';
+
+/** Translates several texts at once (one request where the engine allows it), in order. */
+export type TranslateMany = (texts: string[]) => Promise<string[]>;
 
 /** Elements kept as they are (not translated) inside a block. */
 const KEEP = new Set([
@@ -54,8 +57,9 @@ const BLOCK = new Set([
 /** TeX math in text. */
 const MATH = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\])/g;
 
-const marker = (k: number) => `[${k}]`;
-const MARKER = /\[(\d+)\]/g;
+const marker = (k: number) => `ZQX${k}`;
+const MARKER = /ZQX(\d+)/g;
+const hasLetters = (text: string) => /\p{L}/u.test(text.replace(MARKER, ''));
 
 type Part =
   { kind: 'text'; text: string } | { kind: 'keep'; node: Node } | { kind: 'math'; text: string };
@@ -100,64 +104,50 @@ function partsOf(el: Element): Part[] {
   return parts;
 }
 
+const nodeOf = (doc: Document, part: Part): Node =>
+  part.kind === 'keep' ? part.node : doc.createTextNode(part.text);
+
+/** Puts the markers' nodes back into the translated sentence; false when a marker is off. */
 function rebuild(el: Element, parts: Part[], translated: string): boolean {
-  const pieces = translated.split(MARKER);
-  // split with a capture group: text, index, text, index, …
+  const pieces = translated.split(MARKER); // text, index, text, index, …
   const used = new Set<number>();
   const nodes: Node[] = [];
   const doc = el.ownerDocument;
+  let kept: string | undefined; // the text of the piece just put back, for the particle after it
   for (let i = 0; i < pieces.length; i++) {
     const piece = pieces[i] as string;
     if (i % 2 === 0) {
-      if (piece) nodes.push(doc.createTextNode(piece));
+      const text = kept === undefined ? piece : fitParticle(kept, piece);
+      if (text) nodes.push(doc.createTextNode(text));
+      kept = undefined;
       continue;
     }
     const k = Number(piece);
     const part = parts[k];
     if (!part || part.kind === 'text' || used.has(k)) return false;
     used.add(k);
-    nodes.push(part.kind === 'math' ? doc.createTextNode(part.text) : part.node);
+    nodes.push(nodeOf(doc, part));
+    kept = part.kind === 'math' ? part.text : (part.node.textContent ?? '');
   }
-  const expected = parts.filter((p) => p.kind !== 'text').length;
-  if (used.size !== expected) return false;
+  if (used.size !== parts.filter((p) => p.kind !== 'text').length) return false;
   el.replaceChildren(...nodes);
   return true;
 }
 
-async function translateBlock(el: Element, translate: Translate): Promise<void> {
-  const parts = partsOf(el);
-  const source = parts
-    .map((p, k) => (p.kind === 'text' ? p.text : marker(k)))
-    .join('')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!/\p{L}/u.test(source.replace(MARKER, ''))) return;
-  const translated = await translate(source);
-  if (rebuild(el, parts, translated)) return;
-  // Markers did not survive: translate the text pieces one by one, keeping every node.
-  const doc = el.ownerDocument;
-  const nodes: Node[] = [];
-  for (const p of parts) {
-    if (p.kind === 'keep') nodes.push(p.node);
-    else if (p.kind === 'math' || !/\p{L}/u.test(p.text)) nodes.push(doc.createTextNode(p.text));
-    else {
-      const lead = /^\s*/.exec(p.text)?.[0] ?? '';
-      const trail = /\s*$/.exec(p.text)?.[0] ?? '';
-      nodes.push(doc.createTextNode(`${lead}${await translate(p.text.trim())}${trail}`));
-    }
-  }
-  el.replaceChildren(...nodes);
+interface Job {
+  el: Element;
+  parts: Part[];
+  source: string;
 }
 
 /** The statement HTML in the target language; structure, math and code unchanged. */
-export async function translateHtml(html: string, translate: Translate): Promise<string> {
+export async function translateHtml(html: string, translateMany: TranslateMany): Promise<string> {
   if (!html.trim()) return html;
   const template = document.createElement('template');
   template.innerHTML = html;
-  const root = template.content;
   // A section body without block elements is one block itself.
   const wrapper = document.createElement('div');
-  wrapper.append(...Array.from(root.childNodes));
+  wrapper.append(...Array.from(template.content.childNodes));
   const blocks: Element[] = [];
   const visit = (el: Element) => {
     if (KEEP.has(el.tagName)) return;
@@ -167,7 +157,39 @@ export async function translateHtml(html: string, translate: Translate): Promise
     }
   };
   visit(wrapper);
-  for (const block of blocks) await translateBlock(block, translate);
+  const jobs: Job[] = blocks
+    .map((el) => {
+      const parts = partsOf(el);
+      const source = parts
+        .map((p, k) => (p.kind === 'text' ? p.text : marker(k)))
+        .join('')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return { el, parts, source };
+    })
+    .filter((j) => hasLetters(j.source));
+  if (jobs.length === 0) return html;
+  const translated = await translateMany(jobs.map((j) => j.source));
+  const failed = jobs.filter((j, i) => !rebuild(j.el, j.parts, translated[i] ?? ''));
+  if (failed.length > 0) {
+    // Markers did not survive: translate those blocks' text pieces one by one, in order.
+    const pieces = failed.flatMap((j) =>
+      j.parts.flatMap((p) => (p.kind === 'text' && hasLetters(p.text) ? [p.text.trim()] : [])),
+    );
+    const done = await translateMany(pieces);
+    let k = 0;
+    for (const j of failed) {
+      const doc = j.el.ownerDocument;
+      j.el.replaceChildren(
+        ...j.parts.map((p) => {
+          if (p.kind !== 'text' || !hasLetters(p.text)) return nodeOf(doc, p);
+          const lead = /^\s*/.exec(p.text)?.[0] ?? '';
+          const trail = /\s*$/.exec(p.text)?.[0] ?? '';
+          return doc.createTextNode(`${lead}${done[k++] ?? p.text.trim()}${trail}`);
+        }),
+      );
+    }
+  }
   return wrapper.innerHTML;
 }
 

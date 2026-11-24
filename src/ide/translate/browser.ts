@@ -1,7 +1,7 @@
 /**
- * The browser's built-in, on-device Translator and LanguageDetector APIs (ADR-0010). Nothing is
- * sent to a server and there is no cost; browsers without them (or without the language pair)
- * keep the original text.
+ * The browser's built-in, on-device Translator API (ADR-0010): the fallback when web translation
+ * fails. Nothing is sent to a server; browsers without it (or without the language pair) cannot
+ * use this fallback.
  */
 
 export type Availability =
@@ -21,16 +21,8 @@ interface TranslatorStatic {
     monitor?: (m: DownloadMonitor) => void;
   }): Promise<TranslatorInstance>;
 }
-interface DetectorInstance {
-  detect(text: string): Promise<{ detectedLanguage: string; confidence: number }[]>;
-}
-interface DetectorStatic {
-  availability(): Promise<string>;
-  create(): Promise<DetectorInstance>;
-}
 
-const api = () =>
-  globalThis as unknown as { Translator?: TranslatorStatic; LanguageDetector?: DetectorStatic };
+const api = () => globalThis as unknown as { Translator?: TranslatorStatic };
 
 export const TARGET = 'ko';
 
@@ -61,18 +53,4 @@ export async function createTranslator(
     monitor: (m) => m.addEventListener('downloadprogress', (e) => onProgress?.(e.loaded)),
   });
   return (text) => t.translate(text);
-}
-
-/** The language of a text by the browser's detector, when it is ready without a download. */
-export async function detectLanguage(text: string): Promise<string | undefined> {
-  const D = api().LanguageDetector;
-  if (!D) return undefined;
-  try {
-    if ((await D.availability()) !== 'available') return undefined;
-    const detector = await D.create();
-    const [best] = await detector.detect(text);
-    return best && best.confidence >= 0.6 ? best.detectedLanguage : undefined;
-  } catch {
-    return undefined;
-  }
 }
