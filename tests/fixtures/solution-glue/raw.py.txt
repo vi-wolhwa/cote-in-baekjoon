@@ -1,0 +1,179 @@
+def solution(t, n, ls, mid, rest):
+    answer = []
+    return answer
+
+
+# ---- 입출력 코드 ----
+import sys as __cib_sys
+
+
+def __cib_main():
+    if 'solution' not in globals():
+        raise NameError('__cib_nosolution')
+    import re as __cib_re
+    __cib_d = __cib_sys.stdin.read()
+    __cib_n = len(__cib_d)
+    __cib_P = [0]
+    __cib_T = __cib_re.compile(r'\S+')
+
+    def __cib_tok():
+        m = __cib_T.search(__cib_d, __cib_P[0])
+        if m is None:
+            raise EOFError
+        __cib_P[0] = m.end()
+        return m.group()
+
+    def __cib_many(n, f):
+        if n < 0:
+            raise EOFError
+        return [f(__cib_tok()) for _ in range(n)]
+
+    def __cib_more():
+        return __cib_T.search(__cib_d, __cib_P[0]) is not None
+
+    def __cib_nl():
+        p = __cib_P[0]
+        if p > 0 and __cib_d[p - 1] != '\n':
+            e = __cib_d.find('\n', p)
+            p = __cib_n if e < 0 else e + 1
+        while True:
+            e = __cib_d.find('\n', p)
+            if e >= 0 and __cib_d[p:e].strip() == '':
+                p = e + 1
+            else:
+                break
+        __cib_P[0] = p
+
+    def __cib_line():
+        p = __cib_P[0]
+        if p >= __cib_n:
+            raise EOFError
+        e = __cib_d.find('\n', p)
+        e = __cib_n if e < 0 else e
+        __cib_P[0] = e
+        return __cib_d[p:e].strip()
+
+    def __cib_s(s):
+        return s
+
+    __cib_has = __cib_more
+
+
+    def __cib_raw():
+        p = __cib_P[0]
+        e = __cib_d.find('\n', p)
+        e = __cib_n if e < 0 else e
+        __cib_P[0] = e
+        return __cib_d[p:e].rstrip()
+
+    __cib_num = __import__('re').compile(r'[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$')
+
+    def __cib_isEnd(t, m, e):
+        if m == 1:
+            return t == e
+        if m == 4:
+            return t.startswith(e)
+        f = t.split()
+        if m not in (2, 3) or not f or __cib_num.match(f[0]) is None:
+            return False
+        return float(f[0]) < 0 if m == 2 else float(f[0]) <= 0
+
+    def __cib_rowsLine(m, e, text):
+        s = __cib_P[0]
+        r = 0
+        while True:
+            __cib_nl()
+            if not __cib_has():
+                if m:
+                    raise EOFError
+                break
+            t = __cib_raw() if text else __cib_line()
+            if m and __cib_isEnd(t, m, e):
+                break
+            r += 1
+        __cib_P[0] = s
+        return r
+
+    def __cib_endl(m, e):
+        s = __cib_P[0]
+        __cib_nl()
+        if __cib_has() and __cib_isEnd(__cib_line(), m, e):
+            return True
+        __cib_P[0] = s
+        return False
+
+    def __cib_bol():
+        p = __cib_P[0]
+        if p > 0 and __cib_d[p - 1] != '\n':
+            e = __cib_d.find('\n', p)
+            __cib_P[0] = __cib_n if e < 0 else e + 1
+
+    def __cib_rawl():
+        __cib_bol()
+        p = __cib_P[0]
+        if p >= __cib_n:
+            raise EOFError
+        e = __cib_d.find('\n', p)
+        e = __cib_n if e < 0 else e
+        __cib_P[0] = min(e + 1, __cib_n)
+        s = __cib_d[p:e]
+        return s[:-1] if s.endswith('\r') else s
+
+    def __cib_rowsPhys(m, e):
+        s = __cib_P[0]
+        r = 0
+        __cib_bol()
+        while True:
+            if __cib_P[0] >= __cib_n:
+                if m:
+                    raise EOFError
+                break
+            t = __cib_rawl().rstrip()
+            if m and __cib_isEnd(t, m, e):
+                break
+            r += 1
+        __cib_P[0] = s
+        return r
+
+    def __cib_at(w):
+        s = __cib_P[0]
+        try:
+            ok = all(__cib_s(__cib_tok()) == x for x in w)
+        except EOFError:
+            ok = False
+        __cib_P[0] = s
+        return ok
+
+    def __cib_rowsTok(w, k):
+        s = __cib_P[0]
+        r = 0
+        while True:
+            if (__cib_at(w) if w else not __cib_has()):
+                break
+            if k < 1 or not __cib_has():
+                raise EOFError
+            for _ in range(k):
+                __cib_tok()
+            r += 1
+        __cib_P[0] = s
+        return r
+
+    def __cib_f(r):
+        return "\n".join(map(str, r))
+
+    __cib_o = []
+    try:
+        __cib_v0 = __cib_rawl()
+        __cib_v1 = int(__cib_tok())
+        __cib_v2 = [__cib_rawl() for _ in range(__cib_v1)]
+        __cib_v3 = [__cib_rawl() for _ in range(__cib_rowsPhys(1, "END"))]
+        __cib_rawl()
+        __cib_v4 = [__cib_rawl() for _ in range(__cib_rowsPhys(0, ""))]
+    except Exception:
+        raise RuntimeError('__cib_input') from None
+    __cib_o.append(__cib_f(solution(__cib_v0, __cib_v1, __cib_v2, __cib_v3, __cib_v4)))
+    if __cib_o:
+        __cib_sys.stdout.write('\n'.join(__cib_o) + '\n')
+
+
+__cib_main()
