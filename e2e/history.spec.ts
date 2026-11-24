@@ -44,51 +44,51 @@ async function typeCode(page: Page, ide: FrameLocator, code: string) {
   }).toPass({ timeout: 10_000 });
 }
 
-/**
- * Serves the status pages the extension opens to read (not the submit flow's `from_mine`
- * page) and returns the distinct queries read, in order. `pages` picks the page for a query.
- * The handler never touches the request's page: a tab the extension opens may not be known
- * to the test yet when its first navigation is routed.
- */
-async function serveStatus(
-  context: BrowserContext,
-  pages: (params: URLSearchParams) => string = (p) => (p.has('top') ? secondPage : statusPage),
-) {
-  const read: string[] = [];
-  await context.route(/^https:\/\/(www\.)?acmicpc\.net\/status\?/, async (route) => {
-    const url = new URL(route.request().url());
-    if (url.searchParams.has('from_mine')) return route.fallback();
-    if (!read.includes(url.search)) read.push(url.search);
-    // The extension closes the tab as soon as it has read it.
-    await route
-      .fulfill({ contentType: 'text/html; charset=utf-8', body: pages(url.searchParams) })
-      .catch(() => undefined);
-  });
-  return read;
+type Pages = (params: URLSearchParams) => string;
+const defaultPages: Pages = (p) => (p.has('top') ? secondPage : statusPage);
+
+/** Serves only the problem page, so no context route touches the reading tabs. */
+async function serveProblem(context: BrowserContext, body = problemHtml) {
+  await context.route(/^https:\/\/(www\.)?acmicpc\.net\/problem\//, (route) =>
+    route.fulfill({ contentType: 'text/html; charset=utf-8', body }),
+  );
 }
 
 /**
- * The extension's reading tabs, in the order it opens them; returns how many opened. Where
- * a tab's first navigation is not routed, it is loaded again at its URL.
+ * Answers the tabs the extension opens to read status pages, in the order it opens them:
+ * each gets its own route (a context route would see a tab's first navigation before the
+ * test knows the tab, which breaks Playwright) and is loaded at its URL. Returns the
+ * distinct queries read and how many tabs opened.
  */
-function answerTabs(context: BrowserContext, urls: string[]) {
+function answerTabs(context: BrowserContext, urls: string[], pages: Pages = defaultPages) {
   const queue = [...urls];
-  const opened = { count: 0 };
+  const result = { read: [] as string[], opened: 0 };
   context.on('page', (tab) => {
     const url = queue.shift();
     if (!url) return;
-    opened.count += 1;
+    result.opened += 1;
     void (async () => {
-      // Where the first navigation is routed, the extension reads the tab and closes it.
-      await tab.waitForEvent('close', { timeout: 3000 }).catch(() => undefined);
+      await tab
+        .route(/^https:\/\/(www\.)?acmicpc\.net\/status\?/, async (route) => {
+          const search = new URL(route.request().url()).search;
+          if (!result.read.includes(search)) result.read.push(search);
+          // The extension closes the tab as soon as it has read it.
+          await route
+            .fulfill({
+              contentType: 'text/html; charset=utf-8',
+              body: pages(new URL(route.request().url()).searchParams),
+            })
+            .catch(() => undefined);
+        })
+        .catch(() => undefined);
       if (!tab.isClosed()) await tab.goto(url).catch(() => undefined);
     })();
   });
-  return opened;
+  return result;
 }
+
 test('records a submission with its result and loads its code back', async ({ page, context }) => {
   await serveBaekjoon(context);
-  await serveStatus(context, () => lastPage);
   const ide = await openIde(page);
   const submitted = 'console.log(3); // first';
   await typeCode(page, ide, submitted);
@@ -103,7 +103,9 @@ test('records a submission with its result and loads its code back', async ({ pa
   await tab.goto('https://acmicpc.net/status?from_mine=1&problem_id=1000&user_id=tester');
   await closed;
 
-  answerTabs(context, [MINE, ALL]);
+  // The submit flow is done: from here only the reading tabs load Baekjoon pages.
+  await context.unrouteAll({ behavior: 'ignoreErrors' });
+  answerTabs(context, [MINE, ALL], () => lastPage);
   await ide.getByRole('tab', { name: '제출 기록' }).click();
   const mine = ide.getByTestId('my-status');
   // Baekjoon's three rows and the IDE's submission, which Baekjoon's page does not list.
@@ -145,10 +147,10 @@ test('reads my and everyone’s status lists when the tab opens, and pages on', 
   page,
   context,
 }) => {
-  await serveBaekjoon(context);
-  const read = await serveStatus(context);
+  await serveProblem(context);
   const ide = await openIde(page);
-  const opened = answerTabs(context, [MINE, ALL, `${MINE}&top=6990`]);
+  const tabs = answerTabs(context, [MINE, ALL, `${MINE}&top=6990`]);
+  const { read } = tabs;
   await ide.getByRole('tab', { name: '제출 기록' }).click();
 
   const mine = ide.getByTestId('my-status');
@@ -186,7 +188,7 @@ test('reads my and everyone’s status lists when the tab opens, and pages on', 
   await ide.getByRole('tab', { name: '제출 기록' }).click();
   await expect(all.getByTestId('all-status-row')).toHaveCount(4);
   await page.waitForTimeout(500);
-  expect(opened.count).toBe(3);
+  expect(tabs.opened).toBe(3);
 });
 
 test('shows the IDE’s submissions only when the Baekjoon id is unknown', async ({
@@ -194,12 +196,9 @@ test('shows the IDE’s submissions only when the Baekjoon id is unknown', async
   context,
 }) => {
   const loggedOut = problemHtml.replace(/<ul class="loginbar">[\s\S]*?<\/ul>/, '');
-  await context.route(/^https:\/\/(www\.)?acmicpc\.net\/problem\//, (route) =>
-    route.fulfill({ contentType: 'text/html; charset=utf-8', body: loggedOut }),
-  );
-  const read = await serveStatus(context);
+  await serveProblem(context, loggedOut);
   const ide = await openIde(page);
-  answerTabs(context, [ALL]);
+  const { read } = answerTabs(context, [ALL]);
   await ide.getByRole('tab', { name: '제출 기록' }).click();
   await expect(ide.getByTestId('history')).toContainText('백준 아이디를 몰라');
   await expect(ide.getByTestId('my-status')).toBeVisible();
