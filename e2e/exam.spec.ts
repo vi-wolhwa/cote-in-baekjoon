@@ -231,3 +231,43 @@ test('results: late and stale judge results', async ({ page, extensionId }) => {
     'https://www.acmicpc.net/problem/1001#cib-ide',
   );
 });
+
+test('switching problems never changes the pane widths', async ({ page, extensionId }) => {
+  // Sizes the user dragged: the old code drew the defaults for a frame on every switch.
+  const id = await seedExam(page, extensionId, {
+    startedAt: Date.now() - MIN,
+    read: [1000, 1001, 1002],
+    extra: { 'ui:split': { horizontal: 30, vertical: 55 } },
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`chrome-extension://${extensionId}/exam.html#${id}`);
+  await expect(page.locator('.problem')).toContainText('합을 출력한다.');
+  const widths = await page.evaluate(async () => {
+    const seen: number[] = [];
+    const sample = () => {
+      const pane = document.querySelector('.workspace .split-pane');
+      seen.push(pane ? Math.round(pane.getBoundingClientRect().width * 100) / 100 : -1);
+    };
+    const frames = (n: number) =>
+      new Promise<void>((resolve) => {
+        let left = n;
+        const tick = () => {
+          sample();
+          left -= 1;
+          if (left <= 0) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    const items = [...document.querySelectorAll<HTMLButtonElement>('[data-testid="rail-item"]')];
+    for (const i of [1, 2, 0]) {
+      items[i]?.click();
+      sample();
+      await frames(10);
+    }
+    return seen;
+  });
+  expect(widths.length).toBeGreaterThan(30);
+  expect(new Set(widths).size).toBe(1);
+  expect(widths[0]).toBeGreaterThan(0);
+});

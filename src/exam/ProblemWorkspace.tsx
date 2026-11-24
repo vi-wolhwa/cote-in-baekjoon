@@ -42,6 +42,13 @@ interface Props {
   language: LanguageId;
   keymap: store.Keymap;
   theme: Theme;
+  /**
+   * Pane sizes, kept by the exam screen: each problem mounts its own workspace, and loading
+   * them here would draw the default sizes for a frame first (a layout shift on every switch).
+   */
+  split: store.SplitSizes;
+  onSplit: (change: (split: store.SplitSizes) => store.SplitSizes) => void;
+  onSplitEnd: () => void;
   runner: SandboxRunner;
   warmEngines: Set<string>;
   onLanguage: (language: LanguageId) => void;
@@ -58,7 +65,7 @@ export function ProblemWorkspace(props: Props) {
   const { problem, language, runner } = props;
   const body = problem.body;
   const { loadError } = props;
-  const [split, setSplit] = useState(store.DEFAULT_SPLIT);
+  const { split, onSplit: setSplit } = props;
   const [cases, setCases] = useState<Sample[]>([]);
   const [output, setOutput] = useState<RunOutputProps>({ state: 'empty' });
   const [running, setRunning] = useState(false);
@@ -81,12 +88,10 @@ export function ProblemWorkspace(props: Props) {
   useEffect(() => {
     let disposed = false;
     void Promise.all([
-      store.loadSplit(),
       store.loadCases(problem.id),
       store.loadCode(problem.id, info.codeGroup),
-    ]).then(([sp, cs, code]) => {
+    ]).then(([cs, code]) => {
       if (disposed || !editorHost.current) return;
-      setSplit(sp);
       setCases(cs);
       editor.current = createEditor(editorHost.current, {
         doc: code ?? info.starter,
@@ -232,7 +237,7 @@ export function ProblemWorkspace(props: Props) {
           direction="horizontal"
           size={split.horizontal}
           onResize={(h) => setSplit((s) => ({ ...s, horizontal: h }))}
-          onResizeEnd={() => setSplit((s) => (void store.saveSplit(s), s))}
+          onResizeEnd={props.onSplitEnd}
           first={
             body ? (
               <ProblemPane problem={body} />
@@ -258,7 +263,7 @@ export function ProblemWorkspace(props: Props) {
               size={split.vertical}
               minPx={60}
               onResize={(v) => setSplit((s) => ({ ...s, vertical: v }))}
-              onResizeEnd={() => setSplit((s) => (void store.saveSplit(s), s))}
+              onResizeEnd={props.onSplitEnd}
               first={
                 <section class="code-section" aria-label="코드 편집">
                   <div class="code-header">
