@@ -1,23 +1,17 @@
 /**
  * The format editor (#114): one row per parameter in input order, with its name, type, how
  * it is read and its counts; rows can be added, removed and moved. Below them, how many
- * cases the input has and how the return value is printed. Covers all of DSL v1.
+ * cases the input has and how the return value is printed. Covers all of DSL v1; a block of
+ * lines shows as a header row above its parameters (ReadOptions.tsx).
  */
+import { Fragment } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import {
-  isArrayType,
-  isGridType,
-  MAX_PARAMS,
-  PARAM_TYPES,
-  RET_TYPES,
-  type ParamType,
-  type RetType,
-} from '@/solution/dsl';
+import { MAX_PARAMS, PARAM_TYPES, RET_TYPES, type ParamType, type RetType } from '@/solution/dsl';
 import {
   addRow,
   casesChoice,
   casesFor,
-  isMultiMode,
+  setBlockCount,
   setCases,
   modeOptions,
   moveRow,
@@ -28,37 +22,13 @@ import {
   setRow,
   type CasesChoice,
   type FormatTable,
-  type ParamRow,
-  type RowMode,
 } from '@/solution/table';
+import { BlockHeader, END_HINT, ReadOptions } from './ReadOptions';
 import { CaseOutputOptions, defaultRet, RetOptions } from './RetOptions';
 
 interface Props {
   table: FormatTable;
   onChange: (table: FormatTable) => void;
-}
-
-const MODE_LABELS: Record<RowMode, string> = {
-  new: '새 줄에서',
-  same: '같은 줄에서',
-  repeat: '여러 줄에서',
-  until: '끝내는 줄까지',
-  eof: '입력 끝까지',
-};
-
-/** What a mode means for a type, shown as the select's tooltip. */
-function modeHint(mode: RowMode, type: ParamType): string {
-  if (mode === 'new') return '새 줄을 시작해 읽어요';
-  if (mode === 'same') return '앞 매개변수와 같은 줄에서 이어 읽어요';
-  const each = isGridType(type)
-    ? '한 줄에 한 행씩'
-    : type === 'line[]'
-      ? '한 줄씩 통째로 (공백 포함)'
-      : '한 줄에 하나씩';
-  if (mode === 'until')
-    return `끝내는 줄이 나올 때까지 ${each} 읽어요. 끝내는 줄은 값에 넣지 않아요`;
-  if (mode === 'eof') return `입력이 끝날 때까지 ${each} 읽어요`;
-  return `정한 줄 수만큼 ${each} 읽어요`;
 }
 
 export function FormatForm({ table, onChange }: Props) {
@@ -88,75 +58,91 @@ export function FormatForm({ table, onChange }: Props) {
           </tr>
         </thead>
         <tbody>
-          {table.rows.map((row, i) => (
-            <tr key={i}>
-              <td>
-                <NameInput
-                  value={row.name}
-                  label={`${i + 1}번째 매개변수 이름`}
-                  error={nameError(table, i)}
-                  onCommit={(name) => onChange(renameRow(table, i, name))}
-                />
-              </td>
-              <td>
-                <select
-                  aria-label={`${i + 1}번째 매개변수 타입`}
-                  value={row.type}
-                  onChange={(e) =>
-                    onChange(setRow(table, i, { type: e.currentTarget.value as ParamType }))
-                  }
-                >
-                  {PARAM_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td>
-                <ReadOptions
-                  row={row}
-                  index={i}
-                  modes={modeOptions(table, i)}
-                  onChange={(patch) => onChange(setRow(table, i, patch))}
-                />
-              </td>
-              <td class="format-line" title="입력에서 읽는 위치">
-                {where[i]}
-              </td>
-              <td class="format-row-actions">
-                <button
-                  type="button"
+          {table.rows.map((row, i) => {
+            const block = row.block?.id !== table.rows[i - 1]?.block?.id ? row.block : undefined;
+            return (
+              <Fragment key={i}>
+                {block && (
+                  <tr class="format-block">
+                    <td />
+                    <td colSpan={4}>
+                      <BlockHeader
+                        block={block}
+                        onCount={(count) => onChange(setBlockCount(table, block.id, count))}
+                      />
+                    </td>
+                  </tr>
+                )}
+                <tr>
+                  <td>
+                    <NameInput
+                      value={row.name}
+                      label={`${i + 1}번째 매개변수 이름`}
+                      error={nameError(table, i)}
+                      onCommit={(name) => onChange(renameRow(table, i, name))}
+                    />
+                  </td>
+                  <td>
+                    <select
+                      aria-label={`${i + 1}번째 매개변수 타입`}
+                      value={row.type}
+                      onChange={(e) =>
+                        onChange(setRow(table, i, { type: e.currentTarget.value as ParamType }))
+                      }
+                    >
+                      {PARAM_TYPES.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <ReadOptions
+                      row={row}
+                      index={i}
+                      modes={modeOptions(table, i)}
+                      onChange={(patch) => onChange(setRow(table, i, patch))}
+                    />
+                  </td>
+                  <td class="format-line" title="입력에서 읽는 위치">
+                    {where[i]}
+                  </td>
+                  <td class="format-row-actions">
+                    <button
+                      type="button"
 
-                  aria-label={`${i + 1}번째 매개변수를 위로`}
-                  title="위로"
-                  disabled={i === 0}
-                  onClick={() => onChange(moveRow(table, i, -1))}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
+                      aria-label={`${i + 1}번째 매개변수를 위로`}
+                      title="위로"
+                      disabled={i === 0}
+                      onClick={() => onChange(moveRow(table, i, -1))}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
 
-                  aria-label={`${i + 1}번째 매개변수를 아래로`}
-                  title="아래로"
-                  disabled={i === last}
-                  onClick={() => onChange(moveRow(table, i, 1))}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
+                      aria-label={`${i + 1}번째 매개변수를 아래로`}
+                      title="아래로"
+                      disabled={i === last}
+                      onClick={() => onChange(moveRow(table, i, 1))}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
 
-                  aria-label={`${i + 1}번째 매개변수 삭제`}
-                  title="삭제"
-                  onClick={() => onChange(removeRow(table, i))}
-                >
-                  ×
-                </button>
-              </td>
-            </tr>
-          ))}
+                      aria-label={`${i + 1}번째 매개변수 삭제`}
+                      title="삭제"
+                      onClick={() => onChange(removeRow(table, i))}
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              </Fragment>
+            );
+          })}
           {table.rows.length === 0 && (
             <tr>
               <td colSpan={5} class="format-where">
@@ -230,99 +216,6 @@ export function FormatForm({ table, onChange }: Props) {
   );
 }
 
-function ReadOptions(props: {
-  row: ParamRow;
-  index: number;
-  modes: RowMode[];
-  onChange: (patch: Partial<ParamRow>) => void;
-}) {
-  const { row, index, modes, onChange } = props;
-  const n = index + 1;
-  const grid = isGridType(row.type);
-  return (
-    <div class="format-read">
-      <select
-        class="format-mode"
-        aria-label={`${n}번째 매개변수 읽는 방법`}
-        title={modeHint(row.mode, row.type)}
-        value={row.mode}
-        disabled={modes.length < 2}
-        onChange={(e) => onChange({ mode: e.currentTarget.value as RowMode })}
-      >
-        {modes.map((m) => (
-          <option key={m} value={m}>
-            {MODE_LABELS[m]}
-          </option>
-        ))}
-      </select>
-      {isArrayType(row.type) && !isMultiMode(row.mode) && (
-        <CountInput
-          label={`${n}번째 매개변수 개수`}
-          prefix="개수"
-          placeholder="줄 끝까지"
-          value={row.count}
-          onChange={(count) => onChange({ count })}
-        />
-      )}
-      {row.mode === 'repeat' && (
-        <CountInput
-          label={`${n}번째 매개변수 줄 수`}
-          prefix={grid ? '행' : '줄 수'}
-          placeholder="예: n"
-          value={row.count}
-          onChange={(count) => onChange({ count })}
-        />
-      )}
-      {row.mode === 'until' && (
-        <CountInput
-          label={`${n}번째 매개변수를 끝내는 줄`}
-          prefix="끝"
-          placeholder="예: 0"
-          title="이 줄이 나오면 읽기를 멈춰요 (예: 0, -1 -1)"
-          value={row.count}
-          onChange={(count) => onChange({ count })}
-        />
-      )}
-      {grid && (
-        <CountInput
-          label={`${n}번째 매개변수 열 수`}
-          prefix="열"
-          placeholder="줄 전체"
-          value={row.cols}
-          onChange={(cols) => onChange({ cols })}
-        />
-      )}
-    </div>
-  );
-}
-
-function CountInput(props: {
-  label: string;
-  prefix: string;
-  placeholder: string;
-  title?: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <span class="format-field">
-      <span class="format-field-label" aria-hidden="true">
-        {props.prefix}
-      </span>
-      <input
-        type="text"
-        class="format-count"
-        aria-label={props.label}
-        placeholder={props.placeholder}
-        title={props.title ?? '숫자나 앞에서 읽은 정수 이름 (n, n-1, n*m, m+k)'}
-        spellcheck={false}
-        value={props.value}
-        onInput={(e) => props.onChange(e.currentTarget.value)}
-      />
-    </span>
-  );
-}
-
 const CASES_LABELS: Record<CasesChoice, string> = {
   once: '한 번',
   count: '첫 줄의 수만큼',
@@ -355,6 +248,7 @@ function CasesOptions({ table, onChange }: Props) {
           class="format-count"
           placeholder="예: 0 0"
           aria-label="입력을 끝내는 줄"
+          title={END_HINT}
           spellcheck={false}
           value={until}
           onInput={(e) => onChange({ ...table, cases: { until: e.currentTarget.value } })}

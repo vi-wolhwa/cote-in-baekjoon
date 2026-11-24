@@ -14,7 +14,6 @@ import {
 } from '../dsl';
 import { GO_ROWS, GO_RUNTIME } from './go-runtime';
 import {
-  allSteps,
   planVar,
   renderCount,
   renderRows,

@@ -226,6 +226,10 @@
 .format-where {
   color: var(--out-text);
 }
+.format-block .format-where {
+  font-size: 12px;
+  white-space: normal;
+}
 .format-ret-options {
   display: inline-flex;
   align-items: center;

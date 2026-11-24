@@ -28,9 +28,6 @@ export function parseEnd(until: string): End {
   return { kind: 'line', text: until };
 }
 
-/** True for end lines found by tokens alone: an exact line (the glue may use its fast path). */
-export const isExactEnd = (end: End): end is { kind: 'line'; text: string } => end.kind === 'line';
-
 /**
  * Whether a line ends the reading. `text` is the line as compared: tokens joined by one
  * space, or for line[] its text with only the end trimmed.
