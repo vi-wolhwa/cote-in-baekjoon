@@ -42,11 +42,16 @@ describe('Baekjoon language names', () => {
 });
 
 describe('result chips', () => {
-  it('use short labels of the same kind', () => {
+  it('use two-letter labels, the icon and colour telling kinds apart', () => {
     expect(describeResult('ac', '맞았습니다!!').label).toBe('정답');
-    expect(describeResult('rte', '런타임 에러 (OutOfBounds)').label).toBe('런타임 에러');
+    expect(describeResult('rte', '런타임 에러 (OutOfBounds)')).toMatchObject({
+      label: '에러',
+      tone: 'error',
+    });
+    expect(describeResult('ce', '컴파일 에러')).toMatchObject({ label: '에러', glyph: 'code' });
+    expect(describeResult('tle', '시간 초과')).toMatchObject({ label: '초과', glyph: 'clock' });
     expect(describeResult('pac', '73점').label).toBe('73점');
-    expect(describeResult('judging', '채점 중 (35%)').label).toBe('채점 35%');
+    expect(describeResult('judging', '채점 중 (35%)').label).toBe('35%');
     expect(describeResult(undefined).tone).toBe('none');
   });
 });

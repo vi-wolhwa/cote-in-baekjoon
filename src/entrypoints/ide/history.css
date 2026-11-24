@@ -13,17 +13,22 @@
   display: none;
 }
 
+/* Result colours: green 정답, red 오답·초과, yellow 에러 (bright enough on the navy panel). */
 :root {
   --seg-bg: #1b2636;
   --seg-active: #3a4d63;
-  --row-hover: #2c3f52;
+  --row-hover: #34495e;
   --chip-alpha: 16%;
+  --result-pass: #3ecf8e;
+  --result-error: #f5b83d;
 }
 :root[data-theme='light'] {
-  --seg-bg: #eef1f6;
+  --seg-bg: #e3e8ef;
   --seg-active: #ffffff;
-  --row-hover: #f2f6fb;
-  --chip-alpha: 11%;
+  --row-hover: #e8f0fa;
+  --chip-alpha: 12%;
+  --result-pass: #12875a;
+  --result-error: #a15c00;
 }
 
 .history {
@@ -79,7 +84,7 @@
 .history-view-tab[aria-selected='true'] {
   background: var(--seg-active);
   color: var(--text-strong);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 22%);
 }
 .history-tools {
   display: flex;
@@ -193,7 +198,7 @@
   color: var(--out-hint);
 }
 .status-table .col-user {
-  width: 84px;
+  width: 112px;
 }
 .status-table .col-result {
   width: 98px;
@@ -273,12 +278,15 @@
 }
 
 /* Judge result chip: short label, icon, tinted background */
+/* One width for every chip, so a column of results lines up. */
 .result-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+  width: 60px;
   max-width: 100%;
-  padding: 1px 8px 1px 6px;
+  padding: 1px 6px;
   overflow: hidden;
   border-radius: 999px;
   font: 600 12px/20px var(--font-ui);
@@ -292,13 +300,16 @@
   flex: none;
 }
 .result-chip.is-pass {
-  --tone: var(--pass);
+  --tone: var(--result-pass);
 }
 .result-chip.is-fail {
   --tone: var(--fail);
 }
+.result-chip.is-error {
+  --tone: var(--result-error);
+}
 .result-chip.is-partial {
-  --tone: var(--warn);
+  --tone: var(--link);
 }
 
 /* Pager */
@@ -461,4 +472,15 @@
   .source-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* A user's name opens their Baekjoon page; it reads as text until pointed at. */
+.user-link {
+  color: inherit;
+  text-decoration: none;
+}
+.user-link:hover,
+.user-link:focus-visible {
+  color: var(--link);
+  text-decoration: underline;
 }
