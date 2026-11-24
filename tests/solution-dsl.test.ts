@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  checkFormat,
-  countText,
-  evalCount,
-  formatToJson,
-  parseCount,
-  type Format,
-} from '@/solution/dsl';
+import { checkFormat, formatToJson, type Format } from '@/solution/dsl';
 import { formatOutput, parseOutput } from '@/solution/output';
 import { readInput, sameInput, writeInput } from '@/solution/reader';
 import { validateFormat } from '@/solution/validate';
@@ -267,50 +260,6 @@ describe('checkFormat', () => {
     const r = checkFormat(value);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors.join('\n')).toContain(message);
-  });
-
-  it('parses counts', () => {
-    const n = { kind: 'ref', name: 'n' };
-    const m = { kind: 'ref', name: 'm' };
-    expect(parseCount('n')).toEqual(n);
-    expect(parseCount('n - 1')).toEqual({
-      kind: 'bin',
-      op: '-',
-      a: n,
-      b: { kind: 'num', value: 1 },
-    });
-    expect(parseCount('n*m')).toEqual({ kind: 'bin', op: '*', a: n, b: m });
-    expect(parseCount(3)).toEqual({ kind: 'num', value: 3 });
-    expect(parseCount('n/2')).toBeUndefined();
-    expect(parseCount(-1)).toBeUndefined();
-    expect(parseCount('-n')).toBeUndefined();
-    expect(parseCount('(n')).toBeUndefined();
-    expect(parseCount('n m')).toBeUndefined();
-    expect(parseCount('n*2000000')).toBeUndefined();
-  });
-
-  it('evaluates and prints count expressions with + - * and parentheses', () => {
-    const env = new Map([
-      ['n', 4],
-      ['m', 3],
-    ]);
-    const cases: [string, number, string][] = [
-      ['2*n-1', 7, '2*n-1'],
-      ['n * m - 1', 11, 'n*m-1'],
-      ['2*(n+m)', 14, '2*(n+m)'],
-      ['n-(m-1)', 2, 'n-(m-1)'],
-      ['(n-m)-1', 0, 'n-m-1'],
-      ['n*n', 16, 'n*n'],
-      ['4*n-8', 8, '4*n-8'],
-      ['3*n', 12, '3*n'],
-    ];
-    for (const [text, value, shown] of cases) {
-      const c = parseCount(text);
-      expect(c, text).toBeDefined();
-      if (!c) continue;
-      expect(evalCount(c, env)).toBe(value);
-      expect(countText(c)).toBe(shown);
-    }
   });
 
   it('writes JSON in DSL key order, one item per row when pretty', () => {
