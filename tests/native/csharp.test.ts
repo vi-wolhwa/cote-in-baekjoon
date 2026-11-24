@@ -1,7 +1,8 @@
 /**
  * C# glue on .NET 8 (`dotnet build -c Release`); see harness.ts. The project file is what
  * `dotnet new console` makes (implicit usings and nullable on), written by the test instead
- * of running the slow template command.
+ * of running the slow template command. global.json picks the .NET 8 SDK (its compiler)
+ * even when the runner has newer SDKs.
  */
 import { nativeSuite } from './harness';
 
@@ -14,6 +15,7 @@ const CSPROJ = `<Project Sdk="Microsoft.NET.Sdk">
   </PropertyGroup>
 </Project>
 `;
+const GLOBAL_JSON = '{ "sdk": { "version": "8.0.100", "rollForward": "latestFeature" } }\n';
 
 const cls = (body: string) => `public class Solution {\n    ${body}\n}`;
 
@@ -25,8 +27,9 @@ nativeSuite(
       [
         process.execPath,
         '-e',
-        `require('fs').writeFileSync('Main.csproj', ${JSON.stringify(CSPROJ)})`,
+        `const fs = require('fs'); fs.writeFileSync('Main.csproj', ${JSON.stringify(CSPROJ)}); fs.writeFileSync('global.json', ${JSON.stringify(GLOBAL_JSON)})`,
       ],
+      ['dotnet', '--version'],
       ['dotnet', 'build', '-c', 'Release', '-o', 'out', '--nologo', '-v', 'q'],
     ],
     run: ['dotnet', 'out/Main.dll'],
