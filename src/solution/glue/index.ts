@@ -6,9 +6,12 @@ import { maskNonCode } from '@/runner/java/preprocess';
 import { cppStarter, javaStarter, jsStarter, pythonStarter } from './base-starters';
 import { cLanguage } from './c';
 import { CPP_PREFIX, cppGlue } from './cpp';
+import { csharpLanguage } from './csharp';
 import { JAVA_PREFIX, javaGlue, unpublicSolution } from './java';
 import { jsGlue } from './js';
 import { pythonGlue } from './python';
+import { rubyLanguage } from './ruby';
+import { swiftLanguage } from './swift';
 import { tsLanguage } from './ts';
 import type { GlueId, GlueLanguage } from './types';
 
@@ -27,6 +30,9 @@ export const GLUES: Partial<Record<GlueId, GlueLanguage>> = {
     starter: javaStarter,
     fileName: 'Solution.java',
   },
+  swift: swiftLanguage,
+  csharp: csharpLanguage,
+  ruby: rubyLanguage,
 };
 
 export function glueLanguage(id: GlueId): GlueLanguage {
