@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.5.0...v0.6.0) (2026-11-24)
+
+
+### 기능
+
+* **formats:** 남은 문제의 검토한 형식 (855개, [#116](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/116)) ([#126](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/126)) ([f2461a5](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/f2461a5bfee7024c10dfbb791d665a1e800d257c))
+* **formats:** 많이 푼 문제 808개의 solution 형식 데이터 ([#123](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/123)) ([6a8259f](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/6a8259fe03ff845885a4aa370e2d9b5a0109c6b0))
+* **solution:** solution 함수 모드 (형식 표기·검증·연결 코드·추론·편집기) ([#117](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/117)) ([39b8d90](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/39b8d90634fab9dabe7fbd238f513673e34d9d8e))
+* **solution:** 형식 추론 정확도 개선 ([#124](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/124)) ([#127](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/127)) ([e7ae133](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/e7ae133b4e3d3e11d62a518b7790cf2e4d4c8ac6))
+* 언어 확장 2 (M6) — C·C++14/20·Java 8·TypeScript 실행, Kotlin·Rust·Go·Swift·C#·Ruby 제출 ([#125](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/125)) ([35e0b9d](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/35e0b9d1ec77836c21aff538eb1ac037d0d62411))
+
+
+### 버그 수정
+
+* **solution:** 큰 첫 줄 값을 케이스 개수로 읽어 추론이 멈추던 문제 ([#120](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/120)) ([18229b2](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/18229b2def3125b1c8429452f4c004d148cb5cb8))
+
 ## [0.5.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.4.0...v0.5.0) (2026-11-24)
 
 
