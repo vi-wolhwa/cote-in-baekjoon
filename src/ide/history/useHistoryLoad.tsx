@@ -1,11 +1,11 @@
 /**
- * '편집기로 불러오기' (ADR-0012): puts a past submission's code back in the editor, in its
- * language and mode (a solution function goes back into solution mode when the problem has
- * a format). Asks first when that would replace code the user wrote.
+ * '편집기로 불러오기' (ADR-0012): puts a submission's code from Baekjoon into the editor, in
+ * its language. Baekjoon keeps whole programs, so the code goes in as standard I/O. Asks
+ * first when that would replace code the user wrote.
  */
 import { useState } from 'preact/hooks';
+import type { SubmitLanguage } from '@/boj/languages';
 import { languageInfo, type LanguageId } from '@/shared/languages';
-import type { HistoryEntry } from '@/shared/submission-history';
 import type { EditorHandle } from '../editor';
 import { Modal } from '../Modal';
 import * as store from '../storage';
@@ -20,8 +20,14 @@ interface Deps {
   onLoaded: () => void;
 }
 
+/** Code to put in the editor and the language it is written in. */
+export interface LoadableCode {
+  language: SubmitLanguage;
+  code: string;
+}
+
 interface Plan {
-  entry: HistoryEntry;
+  entry: LoadableCode;
   fn: boolean;
   code: string;
 }
@@ -29,13 +35,7 @@ interface Plan {
 export function useHistoryLoad(deps: Deps) {
   const [asking, setAsking] = useState<Plan>();
 
-  const planFor = (entry: HistoryEntry): Plan => {
-    const fn =
-      entry.fnCode !== undefined &&
-      deps.sol.format !== undefined &&
-      languageInfo(entry.language).glue !== undefined;
-    return { entry, fn, code: fn ? (entry.fnCode ?? entry.code) : entry.code };
-  };
+  const planFor = (entry: LoadableCode): Plan => ({ entry, fn: false, code: entry.code });
 
   /** The code loading would replace: the editor's, or what is saved for that language and mode. */
   const replaced = async ({ entry, fn }: Plan): Promise<string | undefined> => {
@@ -43,7 +43,7 @@ export function useHistoryLoad(deps: Deps) {
     if (sol.group(entry.language, fn) === sol.group(deps.language.current)) {
       return deps.editor.current?.getCode();
     }
-    return store.loadCode(deps.problemId, sol.group(entry.language, fn));
+    return store.loadCode(deps.problemId, sol.group(entry.language, fn), store.DRAFT_TTL_MS);
   };
 
   const apply = async ({ entry, fn, code }: Plan) => {
@@ -55,7 +55,7 @@ export function useHistoryLoad(deps: Deps) {
     deps.onLoaded();
   };
 
-  const load = async (entry: HistoryEntry) => {
+  const load = async (entry: LoadableCode) => {
     const plan = planFor(entry);
     const current = await replaced(plan);
     const starter = deps.sol.starter(entry.language, plan.fn);
@@ -90,5 +90,5 @@ export function useHistoryLoad(deps: Deps) {
     </Modal>
   );
 
-  return { load: (entry: HistoryEntry) => void load(entry), dialog };
+  return { load: (entry: LoadableCode) => void load(entry), dialog };
 }

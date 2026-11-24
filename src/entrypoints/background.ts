@@ -48,7 +48,14 @@ import {
   isStatusPageRequest,
 } from '@/shared/status-page';
 
+import { cleanupStorage } from '@/shared/storage-cleanup';
+
 export default defineBackground(() => {
+  // Old submission records and expired drafts (ADR-0012 개정 3): on install, update and start.
+  const cleanup = () =>
+    void cleanupStorage().catch((error: unknown) => console.error('[cib] cleanup failed', error));
+  browser.runtime.onInstalled.addListener(cleanup);
+  browser.runtime.onStartup.addListener(cleanup);
   // A background tab closed early: a submission (ADR-0002) or a mock exam problem being
   // read (ADR-0005) or a status page being read (ADR-0012) did not finish.
   browser.tabs.onRemoved.addListener((tabId) => {

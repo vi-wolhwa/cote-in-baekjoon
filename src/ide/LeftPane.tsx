@@ -4,10 +4,11 @@
  */
 import { useState } from 'preact/hooks';
 import type { Problem } from '@/boj/problem';
-import type { HistoryEntry } from '@/shared/submission-history';
+import type { LanguageId } from '@/shared/languages';
 import type { Theme } from '@/shared/theme';
 import type { Format } from '@/solution/dsl';
 import { HistoryPane } from './history/HistoryPane';
+import type { LoadableCode } from './history/useHistoryLoad';
 import { ProblemPane } from './ProblemPane';
 
 type Tab = 'problem' | 'history';
@@ -17,7 +18,9 @@ export function LeftPane(props: {
   format: Format | undefined;
   /** For the code view of 제출 기록. */
   theme: Theme;
-  onLoad: (entry: HistoryEntry) => void;
+  /** The editor's language, for the history's '현재 언어' filter. */
+  language: LanguageId;
+  onLoad: (code: LoadableCode) => void;
 }) {
   const [tab, setTab] = useState<Tab>('problem');
   // The demo problem (id 0) has nothing to submit, so no history either.
@@ -49,7 +52,12 @@ export function LeftPane(props: {
       </div>
       {history && tab === 'history' && (
         <div class="left-body" role="tabpanel">
-          <HistoryPane problemId={props.problem.id} theme={props.theme} onLoad={props.onLoad} />
+          <HistoryPane
+            problemId={props.problem.id}
+            language={props.language}
+            theme={props.theme}
+            onLoad={props.onLoad}
+          />
         </div>
       )}
     </div>

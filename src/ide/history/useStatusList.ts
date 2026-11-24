@@ -13,7 +13,7 @@ import {
   isPageResult,
   type PageQuery,
   type PageResult,
-  type ShortQuery,
+  type RankingQuery,
   type SourcePage,
   type StatusPageRequest,
   type StatusPageRow,
@@ -24,7 +24,7 @@ import {
 export const CACHE_MS = 60_000;
 
 /** A list without its paging cursor. */
-export type ListBase = Omit<StatusQuery, 'top'> | Omit<ShortQuery, 'page'>;
+export type ListBase = Omit<StatusQuery, 'top'> | Omit<RankingQuery, 'page'>;
 
 export interface StatusList {
   rows: StatusPageRow[];
@@ -70,7 +70,7 @@ export function appendRows(list: StatusPageRow[], page: StatusPageRow[]): Status
 
 function withCursor(base: ListBase, next: number | undefined): PageQuery {
   if (next === undefined) return base;
-  return base.kind === 'short' ? { ...base, page: next } : { ...base, top: next };
+  return base.kind === 'status' ? { ...base, top: next } : { ...base, page: next };
 }
 
 /** The list for `base`; undefined loads nothing. */
@@ -140,7 +140,7 @@ function withoutError({ error: _error, ...rest }: StatusList): StatusList {
   return rest;
 }
 
-/** For tests. */
+/** Forgets every loaded list (after a submission, and in tests). */
 export function clearStatusCache(): void {
   cache.clear();
 }

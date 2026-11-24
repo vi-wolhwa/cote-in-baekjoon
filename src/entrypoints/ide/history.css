@@ -198,7 +198,9 @@
 .status-table .col-result {
   width: 98px;
 }
-/* The language column takes what the others leave. */
+.status-table .col-lang {
+  width: 96px;
+}
 .status-table .col-memory {
   width: 78px;
 }
@@ -208,12 +210,13 @@
 .status-table .col-length {
   width: 76px;
 }
+/* The submission time takes what the others leave, so "3개월 전" is never cut. */
 .status-table .col-at {
-  width: 58px;
+  min-width: 72px;
   color: var(--out-hint);
 }
 .status-table .col-open {
-  width: 28px;
+  width: 34px;
   padding: 0 6px 0 0;
   text-align: right;
 }
@@ -228,17 +231,28 @@
   outline: 2px solid var(--blue);
   outline-offset: -2px;
 }
+/* Whether the code can be opened: a tinted badge stands out from the row, a lock does not. */
 .row-open,
 .row-locked {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  border-radius: 6px;
   vertical-align: middle;
 }
 .row-open {
+  background: color-mix(in srgb, var(--link) 18%, transparent);
   color: var(--link);
 }
+.status-table tbody tr.is-open:hover .row-open {
+  background: var(--link);
+  color: #ffffff;
+}
 .row-locked {
+  background: color-mix(in srgb, var(--out-hint) 12%, transparent);
   color: var(--out-hint);
-  opacity: 0.7;
 }
 /* Narrow panes keep the columns people look at first. */
 @container (max-width: 600px) {
@@ -293,7 +307,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding-top: 8px;
+  padding: 4px 0 14px;
 }
 /* Text buttons: paging is light, not one of the screen's main actions. */
 .pager-button {
@@ -358,14 +372,6 @@
 }
 .source-user::before {
   content: '· ';
-}
-.source-tag {
-  padding: 0 8px;
-  border: 1px solid var(--chip-border);
-  border-radius: 999px;
-  color: var(--out-text);
-  font-size: 11px;
-  line-height: 18px;
 }
 .source-actions {
   display: flex;

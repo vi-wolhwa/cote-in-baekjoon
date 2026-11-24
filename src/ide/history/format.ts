@@ -1,13 +1,13 @@
-/** Times in the '제출 기록' tab (ADR-0012): absolute and relative. */
+/** Times in the '제출 기록' tab (ADR-0012): relative like Baekjoon, exact in the tooltip. */
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** "2026-11-25 14:03" in local time. */
-export function absoluteTime(at: number): string {
+/** "2026년 11월 25일 14:03:05" in local time, as Baekjoon's tooltip shows it. */
+export function fullTime(at: number): string {
   const d = new Date(at);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-/** "방금", "5분 전", "3시간 전", "2일 전", then the date. */
+/** "방금", "5분 전", "3시간 전", "2일 전", "4개월 전", "3년 전", like Baekjoon. */
 export function relativeTime(at: number, now: number): string {
   const seconds = Math.max(0, Math.floor((now - at) / 1000));
   if (seconds < 60) return '방금';
@@ -17,5 +17,7 @@ export function relativeTime(at: number, now: number): string {
   if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}일 전`;
-  return absoluteTime(at).slice(0, 10);
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}개월 전`;
+  return `${Math.floor(days / 365)}년 전`;
 }

@@ -1,8 +1,8 @@
 /**
  * Backup and restore of the data in `storage.local` (#42): code (both solution modes), test
- * cases, solution-function formats (`format:{id}`, ADR-0006), judge results,
- * submission history (`history:{id}`, ADR-0012), problem meta (#79), mock exams (ADR-0005)
- * and settings. Uninstalling the extension deletes that data, so users can keep a JSON file.
+ * cases, solution-function formats (`format:{id}`, ADR-0006), judge results, problem meta (#79),
+ * mock exams (ADR-0005) and settings. Code is a short-lived draft (ADR-0012 개정 3), kept in a
+ * backup as it is. Uninstalling the extension deletes that data, so users can keep a JSON file.
  *
  * Kept free of extension APIs so the parsing and the restore plan can be unit tested. The
  * backup file is untrusted input: every key and value is checked before it is stored.
@@ -12,7 +12,6 @@ import { DRAFT_KEY, EXAM_KEY, isDraft, isExam } from '@/exam/model';
 import { isProblemMeta } from '@/shared/problem-meta';
 import { checkFormat } from '@/solution/dsl';
 import { isJudgeResult } from '@/shared/submission';
-import { isHistoryList, mergeHistory, readHistory } from '@/shared/submission-history';
 import { isTheme, THEME_KEY } from '@/shared/theme';
 
 export const BACKUP_FORMAT = 'cote-in-baekjoon-backup';
@@ -35,8 +34,6 @@ export interface BackupSummary {
   settings: number;
   /** Mock exams (`exam:{id}`, ADR-0005). */
   exams: number;
-  /** Submissions in the submission history (`history:{id}`, ADR-0012). */
-  submissions: number;
 }
 
 /** 'replace': the backup becomes the whole data. 'merge': keep what exists, add the rest. */
@@ -59,7 +56,6 @@ const FORMAT_KEY = new RegExp(`^format:${PROBLEM_ID}$`);
 const CASES_KEY = new RegExp(`^cases:${PROBLEM_ID}$`);
 const JUDGE_KEY = new RegExp(`^judge:(${PROBLEM_ID})$`);
 const META_KEY = new RegExp(`^meta:${PROBLEM_ID}$`);
-const HISTORY_KEY = new RegExp(`^history:(${PROBLEM_ID})$`);
 const MAX_CASES = 1000;
 const MAX_CASE_LENGTH = 4 * 1024 * 1024;
 
@@ -75,6 +71,8 @@ const SETTINGS: Record<string, (v: unknown) => boolean> = {
 
 /** Keys older versions wrote; a backup that has them restores without them, silently. */
 const RETIRED_KEYS = new Set(['ui:auto-submit']);
+/** The submission history (`history:{id}`) is read from Baekjoon since ADR-0012 개정 3. */
+const RETIRED_KEY = /^history:d+$/;
 
 /**
  * True for keys that belong in a backup. Session-only and internal keys are left out, and so
@@ -89,7 +87,6 @@ export function isBackupKey(key: string): boolean {
     FORMAT_KEY.test(key) ||
     JUDGE_KEY.test(key) ||
     META_KEY.test(key) ||
-    HISTORY_KEY.test(key) ||
     EXAM_KEY.test(key) ||
     key in SETTINGS
   );
@@ -97,14 +94,12 @@ export function isBackupKey(key: string): boolean {
 
 /** True when `value` is a valid value for `key`. */
 export function isValidEntry(key: string, value: unknown): boolean {
-  if (CODE_KEY.test(key)) return typeof value === 'string' && value.length <= MAX_CODE_LENGTH;
+  if (CODE_KEY.test(key)) return isDraftCode(value);
   if (CASES_KEY.test(key)) return isCases(value);
   if (FORMAT_KEY.test(key)) return checkFormat(value).ok;
   const judge = JUDGE_KEY.exec(key);
   if (judge) return isJudgeResult(value) && value.problemId === Number(judge[1]);
   if (META_KEY.test(key)) return isProblemMeta(value);
-  const history = HISTORY_KEY.exec(key);
-  if (history) return isHistoryList(value, Number(history[1]));
   const exam = EXAM_KEY.exec(key);
   if (exam) return isExam(value) && value.id === exam[1];
   const setting = SETTINGS[key];
@@ -146,7 +141,7 @@ export function parseBackup(text: string): ParseResult {
   const items: Record<string, unknown> = {};
   let skipped = 0;
   for (const [key, value] of Object.entries(data.items)) {
-    if (RETIRED_KEYS.has(key)) continue;
+    if (RETIRED_KEYS.has(key) || RETIRED_KEY.test(key)) continue;
     if (isValidEntry(key, value)) items[key] = value;
     else skipped++;
   }
@@ -159,9 +154,8 @@ export function parseBackup(text: string): ParseResult {
  * the brackets and ", 모의 시험 1개" after when there are any.
  */
 export function describeSummary(s: BackupSummary): string {
-  const submissions = s.submissions > 0 ? `, 제출 기록 ${s.submissions}개` : '';
   const exams = s.exams > 0 ? `, 모의 시험 ${s.exams}개` : '';
-  return `문제 ${s.problems}개 (코드 ${s.codes}개, 테스트 케이스 ${s.cases}개, 채점 결과 ${s.results}개${submissions}), 설정 ${s.settings}개${exams}`;
+  return `문제 ${s.problems}개 (코드 ${s.codes}개, 테스트 케이스 ${s.cases}개, 채점 결과 ${s.results}개), 설정 ${s.settings}개${exams}`;
 }
 
 export function summarizeBackup(items: Record<string, unknown>): BackupSummary {
@@ -173,16 +167,14 @@ export function summarizeBackup(items: Record<string, unknown>): BackupSummary {
     results: 0,
     settings: 0,
     exams: 0,
-    submissions: 0,
   };
-  for (const [key, value] of Object.entries(items)) {
+  for (const key of Object.keys(items)) {
     const [kind, problem] = key.split(':');
     if (kind === 'code') summary.codes++;
     else if (kind === 'cases') summary.cases++;
     else if (kind === 'judge') summary.results++;
     else if (kind === 'ui') summary.settings++;
     else if (kind === 'exam') summary.exams++;
-    else if (kind === 'history' && Array.isArray(value)) summary.submissions += value.length;
     if (kind !== 'ui' && kind !== 'exam' && problem) problems.add(problem);
   }
   summary.problems = problems.size;
@@ -192,8 +184,7 @@ export function summarizeBackup(items: Record<string, unknown>): BackupSummary {
 /**
  * What to write for a restore. `current` is everything in `storage.local`.
  * - replace: removes every backup-type key that is not in the backup, then writes the backup.
- * - merge: writes only keys that do not exist yet; existing code and settings are kept. A
- *   submission history that exists on both sides becomes one list (newest kept, ADR-0012).
+ * - merge: writes only keys that do not exist yet; existing code and settings are kept.
  */
 export function planRestore(
   current: Record<string, unknown>,
@@ -209,13 +200,20 @@ export function planRestore(
   const set: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(items)) {
     if (!(key in current)) set[key] = value;
-    const history = HISTORY_KEY.exec(key);
-    if (history && key in current) {
-      const id = Number(history[1]);
-      set[key] = mergeHistory(readHistory(current[key], id), readHistory(value, id));
-    }
   }
   return { set, remove: [] };
+}
+
+/** A saved draft: `{ code, savedAt }`, or the plain string older versions wrote. */
+function isDraftCode(v: unknown): boolean {
+  if (typeof v === 'string') return v.length <= MAX_CODE_LENGTH;
+  return (
+    isObject(v) &&
+    typeof v.code === 'string' &&
+    v.code.length <= MAX_CODE_LENGTH &&
+    typeof v.savedAt === 'number' &&
+    Number.isFinite(v.savedAt)
+  );
 }
 
 function isCases(v: unknown): boolean {

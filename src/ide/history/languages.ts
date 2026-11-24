@@ -21,7 +21,7 @@ const SYNTAX_BY_NAME: [RegExp, SyntaxId][] = [
   [/^TypeScript/, 'typescript'],
   [/^(node\.js|Rhino|JavaScript)/, 'javascript'],
   [/^Rust/, 'rust'],
-  [/^Go/, 'go'],
+  [/^Go($| )/, 'go'],
   [/^Swift/, 'swift'],
   [/^Ruby/, 'ruby'],
 ];
