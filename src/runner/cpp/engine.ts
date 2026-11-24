@@ -1,5 +1,6 @@
 /**
- * C++ engine (YoWASP clang, #51): one worker per engine compiles the solution and runs it.
+ * C/C++ engine (YoWASP clang, #51; C and other standards: ADR-0007): one worker per engine
+ * compiles the solution and runs it.
  * The worker keeps the compiler loaded between runs; `terminate()` kills it, which stops a
  * running program as well as a compile in progress (ADR-0004).
  */

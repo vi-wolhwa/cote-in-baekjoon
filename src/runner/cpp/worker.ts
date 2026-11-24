@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 /**
- * C++ worker: compiles with the bundled clang and runs the program in the same worker.
+ * C/C++ worker: compiles with the bundled clang (the language and standard come with each
+ * request, ADR-0007) and runs the program in the same worker.
  * The compiler stays loaded between runs; the engine terminates the whole worker to stop a
  * program. Runtimes are imported from the extension's `runtime/` folder (ADR-0004).
  */

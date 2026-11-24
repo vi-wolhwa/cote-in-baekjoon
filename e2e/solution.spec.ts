@@ -241,7 +241,8 @@ test('in the mock exam, the answer keeps the function and the program with glue'
   });
   await page.goto(`chrome-extension://${extensionId}/exam.html#${id}`);
   await expect(toggle(page)).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByTestId('format-source')).toHaveText('예제로 추론함');
+  // 1000 is in the bundled format data (#123).
+  await expect(page.getByTestId('format-source')).toHaveText('검증된 형식');
   await writeCode(page, page, JS_SOLUTION);
   await page.getByRole('button', { name: '코드 실행' }).click();
   await expect(page.getByText('solution(a: int, b: int) → int')).toBeVisible();
