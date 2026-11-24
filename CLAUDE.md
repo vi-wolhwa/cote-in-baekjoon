@@ -201,6 +201,11 @@ milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
   - Mock exam (ADR-0005): after the user starts an exam, its problems (≤ 8) are opened one
     at a time in a background tab to read them. When the exam ends, its saved answers are
     submitted one at a time through the official submit window
+  - Format data for solution mode (ADR-0006), a development-time job, not the extension:
+    problems found nowhere else on the public web may be opened on acmicpc.net in a
+    browser at most one page per minute with a daily cap and a log (product owner
+    decision, 2026-11-24). Collected problem text stays local and is never committed;
+    only derived input/output formats are shipped
 - Ask the product owner (the user) only for decisions they must make:
   product direction, design approval, costs, publishing, big structural changes.
   Decide technical and process choices yourself and record them as ADRs in `docs/adr/`
