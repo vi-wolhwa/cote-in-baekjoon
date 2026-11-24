@@ -13,3 +13,23 @@ export function starterCode(glue: GlueId, format: Format): string {
 export function solutionFileName(glue: GlueId): string {
   return glueLanguage(glue).fileName;
 }
+
+/**
+ * The code without its leading comment lines (`//`, or `#` not followed by a letter, so C's
+ * `#include` stays) and the blank lines among them.
+ */
+function withoutHeader(code: string): string {
+  return code
+    .replace(/\r\n?/g, '\n')
+    .replace(/^(?:[ \t]*(?:\/\/|#(?![A-Za-z]))[^\n]*\n|[ \t]*\n)*/, '')
+    .trimEnd();
+}
+
+/**
+ * Saved code that is only an earlier version of the starting code (its header comment
+ * changed, the code itself untouched) becomes the current starting code; anything else the
+ * user wrote is kept as it is.
+ */
+export function refreshStarter(saved: string, starter: string): string {
+  return saved !== starter && withoutHeader(saved) === withoutHeader(starter) ? starter : saved;
+}

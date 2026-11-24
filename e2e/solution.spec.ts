@@ -64,6 +64,16 @@ test('opens in solution mode with a format inferred from the samples', async ({
   await toggle(page).click();
   await expect(io).toBeVisible();
 
+  // A wrong result reads as values: parameters in, a return value out.
+  await writeCode(page, page, 'function solution(a, b) {\n  return a - b;\n}');
+  await page.getByRole('button', { name: '코드 실행' }).click();
+  const first = page.getByTestId('case').first();
+  await expect(first.locator('td').nth(0)).toHaveText('1, 2');
+  await expect(first.locator('td').nth(1)).toHaveText('3');
+  await expect(first.locator('td').nth(2)).toHaveText(
+    '실행한 결괏값 -1이(가) 기댓값 3와(과) 다릅니다.',
+  );
+
   await writeCode(page, page, JS_SOLUTION);
   await page.getByRole('button', { name: '코드 실행' }).click();
   await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공');
@@ -341,4 +351,24 @@ test('in the mock exam, a statement read after the editor opened switches it to 
   await expect(toggle(page)).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('.cm-content')).toContainText('function solution(a, b) {');
   await expect(page.locator('.file-tab')).toHaveText('solution.js');
+});
+
+test('a saved starting code with an old header comment becomes the current one', async ({
+  page,
+  extensionId,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  const ruby = 'def solution(a, b)\n  answer = 0\n  return answer\nend\n';
+  await page.evaluate(
+    (code) =>
+      chrome.storage.local.set({
+        'ui:language': 'ruby',
+        'code:0:ruby:fn': `# 입력을 읽고 결과를 출력하는 코드는 자동으로 붙습니다.\n\n${code}`,
+      }),
+    ruby,
+  );
+  await page.reload();
+  await expect(page.locator('.file-tab')).toHaveText('solution.rb');
+  await expect(page.locator('.cm-content')).toContainText('def solution(a, b)');
+  await expect(page.locator('.cm-content')).not.toContainText('자동으로 붙습니다');
 });
