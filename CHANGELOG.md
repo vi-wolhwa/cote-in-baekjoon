@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.0...v0.21.1) (2026-11-24)
+
+
+### 버그 수정
+
+* **history:** 결과 칩 두 글자·같은 너비·초록/빨강/노랑, 정렬·아이디 링크·호버, 라이트 테마 컨트롤 대비 ([#187](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/187)) ([29c9183](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/29c91839561b1cc8b94e5179b45a756572edc275))
+
 ## [0.21.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.20.0...v0.21.0) (2026-11-24)
 
 
