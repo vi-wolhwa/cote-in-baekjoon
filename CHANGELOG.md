@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.20.0...v0.21.0) (2026-11-24)
+
+
+### 기능
+
+* **history:** 맞힌 사람 보기, 큰 화면 채우기, 현재 언어 필터 — 제출 코드는 백준에서만 읽고 코드 임시 저장은 3시간 ([#185](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/185)) ([66b6761](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/66b6761f2f0a758937a4a6366dba25c778f9be0c))
+
 ## [0.20.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.19.2...v0.20.0) (2026-11-24)
 
 
