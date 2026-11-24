@@ -7,11 +7,14 @@ import { cppStarter, javaStarter, jsStarter, pythonStarter } from './base-starte
 import { cLanguage } from './c';
 import { CPP_PREFIX, cppGlue } from './cpp';
 import { csharpLanguage } from './csharp';
+import { goLanguage } from './go';
 import { JAVA_PREFIX, javaGlue, unpublicSolution } from './java';
 import { jsGlue } from './js';
+import { kotlinLanguage } from './kotlin';
 import { pythonGlue } from './python';
 import { rubyLanguage } from './ruby';
 import { swiftLanguage } from './swift';
+import { rustLanguage } from './rust';
 import { tsLanguage } from './ts';
 import type { GlueId, GlueLanguage } from './types';
 
@@ -33,6 +36,9 @@ export const GLUES: Partial<Record<GlueId, GlueLanguage>> = {
   swift: swiftLanguage,
   csharp: csharpLanguage,
   ruby: rubyLanguage,
+  kotlin: kotlinLanguage,
+  rust: rustLanguage,
+  go: goLanguage,
 };
 
 export function glueLanguage(id: GlueId): GlueLanguage {

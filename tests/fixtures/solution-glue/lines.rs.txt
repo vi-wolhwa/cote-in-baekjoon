@@ -1,0 +1,216 @@
+// main 함수(입출력 코드)는 자동으로 붙습니다.
+
+fn solution(title: String, nums: Vec<i64>, k: i32, rows: Vec<Vec<i32>>) -> f64 {
+    let answer: f64 = 0.0;
+    answer
+}
+
+
+// ---- 입출력 코드 ----
+#[allow(non_camel_case_types)]
+struct __CibIn {
+    d: Vec<u8>,
+    p: usize,
+}
+fn __cib_fail() -> ! {
+    eprintln!("__cib_input");
+    std::process::exit(1)
+}
+fn __cib_ws(c: u8) -> bool {
+    c == b' ' || c == b'\n' || c == b'\r' || c == b'\t'
+}
+fn __cib_str(b: &[u8]) -> String {
+    String::from_utf8_lossy(b).into_owned()
+}
+fn __cib_ll(b: &[u8]) -> i64 {
+    let mut i = 0;
+    let mut neg = false;
+    if i < b.len() && (b[i] == b'-' || b[i] == b'+') {
+        neg = b[i] == b'-';
+        i += 1;
+    }
+    if i >= b.len() {
+        __cib_fail()
+    }
+    let mut v: i64 = 0;
+    while i < b.len() {
+        let c = b[i].wrapping_sub(b'0');
+        if c > 9 {
+            __cib_fail()
+        }
+        v = v.wrapping_mul(10).wrapping_sub(c as i64);
+        i += 1;
+    }
+    if neg {
+        v
+    } else {
+        v.wrapping_neg()
+    }
+}
+fn __cib_int(b: &[u8]) -> i32 {
+    __cib_ll(b) as i32
+}
+fn __cib_dbl(b: &[u8]) -> f64 {
+    match std::str::from_utf8(b).ok().and_then(|s| s.parse::<f64>().ok()) {
+        Some(v) => v,
+        None => __cib_fail(),
+    }
+}
+fn __cib_cnt(x: i64) -> usize {
+    if x < 0 {
+        __cib_fail()
+    }
+    x as usize
+}
+#[allow(dead_code)]
+impl __CibIn {
+    fn more(&mut self) -> bool {
+        while self.p < self.d.len() && __cib_ws(self.d[self.p]) {
+            self.p += 1;
+        }
+        self.p < self.d.len()
+    }
+    fn word(&mut self) -> &[u8] {
+        if !self.more() {
+            __cib_fail()
+        }
+        let s = self.p;
+        while self.p < self.d.len() && !__cib_ws(self.d[self.p]) {
+            self.p += 1;
+        }
+        &self.d[s..self.p]
+    }
+    fn tok(&mut self) -> String {
+        __cib_str(self.word())
+    }
+    fn ll(&mut self) -> i64 {
+        __cib_ll(self.word())
+    }
+    fn int(&mut self) -> i32 {
+        __cib_int(self.word())
+    }
+    fn dbl(&mut self) -> f64 {
+        __cib_dbl(self.word())
+    }
+    fn nl(&mut self) {
+        let n = self.d.len();
+        if self.p > 0 && self.d[self.p - 1] != b'\n' {
+            while self.p < n && self.d[self.p] != b'\n' {
+                self.p += 1;
+            }
+            if self.p < n {
+                self.p += 1;
+            }
+        }
+        loop {
+            let mut q = self.p;
+            while q < n && self.d[q] != b'\n' && __cib_ws(self.d[q]) {
+                q += 1;
+            }
+            if q < n && self.d[q] == b'\n' {
+                self.p = q + 1;
+            } else {
+                break;
+            }
+        }
+    }
+    fn end(&self) -> usize {
+        if self.p >= self.d.len() {
+            __cib_fail()
+        }
+        let mut e = self.p;
+        while e < self.d.len() && self.d[e] != b'\n' {
+            e += 1;
+        }
+        e
+    }
+    fn line(&mut self) -> String {
+        let mut e = self.end();
+        let mut s = self.p;
+        self.p = e;
+        while s < e && __cib_ws(self.d[s]) {
+            s += 1;
+        }
+        while e > s && __cib_ws(self.d[e - 1]) {
+            e -= 1;
+        }
+        __cib_str(&self.d[s..e])
+    }
+    // The words of the rest of the line, as ranges of the input.
+    fn rest(&mut self) -> Vec<(usize, usize)> {
+        let e = self.end();
+        let mut r = Vec::new();
+        let mut i = self.p;
+        self.p = e;
+        while i < e {
+            while i < e && __cib_ws(self.d[i]) {
+                i += 1;
+            }
+            let s = i;
+            while i < e && !__cib_ws(self.d[i]) {
+                i += 1;
+            }
+            if i > s {
+                r.push((s, i));
+            }
+        }
+        r
+    }
+    fn has(&self) -> bool {
+        let mut q = self.p;
+        while q < self.d.len() && __cib_ws(self.d[q]) {
+            q += 1;
+        }
+        q < self.d.len()
+    }
+    fn vec<T>(&mut self, n: usize, mut f: impl FnMut(&mut Self) -> T) -> Vec<T> {
+        let mut a = Vec::with_capacity(n.min(self.d.len() + 1));
+        for _ in 0..n {
+            a.push(f(&mut *self));
+        }
+        a
+    }
+}
+
+#[allow(unused_mut, unused_variables)]
+fn main() {
+    use std::fmt::Write as _;
+    use std::io::Read as _;
+    use std::io::Write as _;
+    let mut __cib_d = Vec::new();
+    std::io::stdin().read_to_end(&mut __cib_d).unwrap();
+    let mut __cib_in = __CibIn { d: __cib_d, p: 0 };
+    let mut __cib_o = String::new();
+    let mut __cib_cases = 0;
+    let __cib_end: &[&str] = &["0", "0"];
+    while __cib_in.has() {
+        let __cib_s = __cib_in.p;
+        let mut __cib_stop = true;
+        for __cib_w in __cib_end {
+            if !__cib_in.more() || __cib_in.tok() != *__cib_w {
+                __cib_stop = false;
+                break;
+            }
+        }
+        if __cib_stop {
+            break;
+        }
+        __cib_in.p = __cib_s;
+        let __cib_v0: String;
+        let __cib_v1: Vec<i64>;
+        let __cib_v2: i32;
+        let __cib_v3: Vec<Vec<i32>>;
+        __cib_in.nl();
+        __cib_v0 = __cib_in.line();
+        __cib_in.nl();
+        __cib_v1 = { let __cib_w = __cib_in.rest(); __cib_w.iter().map(|&(__cib_s, __cib_e)| __cib_ll(&__cib_in.d[__cib_s..__cib_e])).collect() };
+        __cib_v2 = __cib_in.int();
+        __cib_v3 = { let __cib_n = __cib_cnt(__cib_v2 as i64); __cib_in.vec(__cib_n, |__cib_q| { __cib_q.nl(); let __cib_w = __cib_q.rest(); __cib_w.iter().map(|&(__cib_s, __cib_e)| __cib_int(&__cib_q.d[__cib_s..__cib_e])).collect() }) };
+        let __cib_r = solution(__cib_v0, __cib_v1, __cib_v2, __cib_v3);
+        if __cib_cases > 0 { __cib_o.push('\n'); }
+        __cib_cases += 1;
+        write!(__cib_o, "{:.2}", __cib_r).unwrap();
+    }
+    if __cib_cases > 0 { __cib_o.push('\n'); }
+    std::io::stdout().write_all(__cib_o.as_bytes()).unwrap();
+}
