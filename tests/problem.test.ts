@@ -68,6 +68,16 @@ describe('outputsMatch', () => {
     expect(outputsMatch('3', '4')).toBe(false);
     expect(outputsMatch('1\n2', '1 2')).toBe(false);
   });
+
+  it('accepts numbers within an allowed error, absolute or relative', () => {
+    expect(outputsMatch('0.3333333333', '0.333333', 1e-6)).toBe(true);
+    expect(outputsMatch('0.3334', '0.333333', 1e-6)).toBe(false);
+    expect(outputsMatch('1000000.5', '1000000', 1e-6)).toBe(true);
+    expect(outputsMatch('1.0 x', '1 x', 1e-6)).toBe(true);
+    expect(outputsMatch('1.0 x', '1 y', 1e-6)).toBe(false);
+    expect(outputsMatch('1 2', '1', 1e-6)).toBe(false);
+    expect(outputsMatch('0.3333333333', '0.333333')).toBe(false);
+  });
 });
 
 describe('formulas already rendered by Baekjoon', () => {

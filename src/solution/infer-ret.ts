@@ -6,7 +6,7 @@
 import type { Sample } from '@/boj/problem';
 import type { RetSpec } from './dsl';
 import { kind, numeric } from './infer-layout';
-import { BOOL_PAIRS, INT_LIMIT, type TextHints } from './infer-text';
+import { BOOL_PAIRS, errorTolerance, INT_LIMIT, type TextHints } from './infer-text';
 
 export interface RetCandidate {
   ret: RetSpec;
@@ -44,7 +44,12 @@ export function retCandidates(
       }
       if (kinds.every((k) => k === 'double' || numeric(k))) {
         const digits = flat.map((x) => (x.split('.')[1] ?? '').length);
-        if (new Set(digits).size === 1 && kinds.includes('double')) {
+        if (hints.tol !== undefined && kinds.includes('double')) {
+          // Printed with a digit more than the error needs; compared within the error.
+          const need = Math.round(-Math.log10(hints.tol)) + 1;
+          const d = Math.min(15, Math.max(need, ...digits));
+          out.push({ ret: { type: 'double', digits: d, tol: hints.tol }, score: 3 });
+        } else if (new Set(digits).size === 1 && kinds.includes('double')) {
           out.push({ ret: { type: 'double', digits: digits[0] as number }, score: 2 });
         }
       }
@@ -137,9 +142,11 @@ const FORMATTED =
 export function unprintable(samples: readonly Sample[], outText = ''): boolean {
   const rows = samples.map((s) => outputRows(s.output).map((l) => l.trim().split(/\s+/)));
   const tokens = rows.flat(2);
-  // Answers within an error bound ("오차가 10^-9 이하이면 정답"): no fixed digits to print.
+  // Answers within an error bound ("오차가 10^-9 이하이면 정답") whose bound cannot be read: no
+  // fixed digits to print. With a readable bound the return is a double with `tol`.
   if (
     /오차/.test(outText) &&
+    errorTolerance(outText) === undefined &&
     tokens.every((t) => kind(t) !== 'string') &&
     tokens.some((t) => t.includes('.'))
   ) {

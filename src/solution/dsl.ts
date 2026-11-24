@@ -83,6 +83,11 @@ export interface RetSpec {
   no?: string;
   /** double: digits after the decimal point. */
   digits?: number;
+  /**
+   * double: the error the judge allows (1e-6 for "10^-6까지 허용"). Printing still uses `digits`;
+   * samples and run results are compared within it.
+   */
+  tol?: number;
 }
 
 export interface Format {
@@ -443,6 +448,13 @@ function parseRet(raw: unknown, fail: (e: string) => void): RetSpec | undefined 
   } else if (raw.digits !== undefined) {
     fail('소수 자리 수(digits)는 double 반환값에만 써요.');
   }
+  if (raw.tol !== undefined) {
+    const t = raw.tol;
+    if (type !== 'double') fail('허용 오차(tol)는 double 반환값에만 써요.');
+    else if (typeof t !== 'number' || !(t >= 1e-15 && t <= 1)) {
+      fail('허용 오차(tol)는 1e-15~1 사이 수여야 해요.');
+    } else ret.tol = t;
+  }
   return ret;
 }
 
@@ -469,7 +481,7 @@ export function formatToJson(format: Format, pretty = false): string {
     return out;
   });
   const ret: Record<string, unknown> = { type: format.ret.type };
-  for (const key of ['sep', 'yes', 'no', 'digits'] as const) {
+  for (const key of ['sep', 'yes', 'no', 'digits', 'tol'] as const) {
     if (format.ret[key] !== undefined) ret[key] = format.ret[key];
   }
   const ordered = { v: 1, params, lines: format.lines, cases: format.cases, ret };

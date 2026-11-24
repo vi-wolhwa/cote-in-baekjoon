@@ -202,6 +202,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       language,
       code: plan.code,
       ...(plan.transform ? { transform: plan.transform } : {}),
+      ...(plan.tol !== undefined ? { tol: plan.tol } : {}),
       cases: [...problem.samples, ...cases],
       problemLimitMs: problem.timeLimitMs,
       warmEngines: warmEngines.current,

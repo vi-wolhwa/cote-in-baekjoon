@@ -162,7 +162,8 @@ export function inferCandidates(input: InferInput): Candidate[] {
         const out = parseOutput(ret, s.output, caseCounts[i] as number);
         return (
           out.ok &&
-          (out.values.length === 0 || outputsMatch(formatOutput(ret, out.values), s.output))
+          (out.values.length === 0 ||
+            outputsMatch(formatOutput(ret, out.values), s.output, ret.tol))
         );
       });
       if (!fits) continue;

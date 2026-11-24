@@ -39,6 +39,8 @@ export function buildCaseReport(
   response: RunResponse,
   timeLimitMs: number,
   problemLimitMs?: number,
+  /** Allowed error for real answers (solution mode, `ret.tol`). */
+  tol?: number,
 ): CaseReport {
   const base = {
     index,
@@ -88,7 +90,7 @@ export function buildCaseReport(
     problemLimitMs && response.elapsedMs > problemLimitMs
       ? `실행 시간 ${seconds(response.elapsedMs)}초가 문제의 시간 제한 ${seconds(problemLimitMs)}초를 넘었습니다. 백준에서는 시간 초과가 될 수 있습니다.`
       : undefined;
-  if (outputsMatch(stdout, sample.output)) {
+  if (outputsMatch(stdout, sample.output, tol)) {
     return {
       ...base,
       status: 'pass',
