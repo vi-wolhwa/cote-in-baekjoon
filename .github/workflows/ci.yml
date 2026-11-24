@@ -11,7 +11,9 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A new push to a pull request replaces its old run. On main every merge keeps its full run:
+  # cancelling there dropped the safety net of the commit merged just before.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -36,6 +38,10 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             node scripts/ci/e2e-select.ts "origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ startsWith(github.event.head_commit.message, 'chore(main): release') }}" = "true" ]; then
+            # release-please commits change only the version and CHANGELOG; the merge before
+            # them already ran everything on the same code.
+            printf 'e2e=none\nunit=false\nshards=[1]\n' >> "$GITHUB_OUTPUT"
           else
             printf 'e2e=all\nunit=true\nshards=[1,2,3]\n' >> "$GITHUB_OUTPUT"
           fi
@@ -43,6 +49,9 @@ jobs:
 
   check:
     name: 린트·타입·빌드
+    # Documentation-only changes and release commits need no lint, type check or build.
+    needs: changes
+    if: needs.changes.outputs.unit == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

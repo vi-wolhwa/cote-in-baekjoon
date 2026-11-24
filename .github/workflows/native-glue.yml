@@ -2,16 +2,22 @@
 # Toolchains follow Baekjoon's languages; see tests/native/*.test.ts for the exact commands.
 name: 네이티브 연결 코드
 
+# Format inference (infer*.ts) and the format editor's table model (table.ts) never reach the
+# generated glue, so changing only those does not start the compilers.
 on:
   pull_request:
     paths:
       - 'src/solution/**'
+      - '!src/solution/infer*.ts'
+      - '!src/solution/table.ts'
       - 'tests/native/**'
       - '.github/workflows/native-glue.yml'
   push:
     branches: [main]
     paths:
       - 'src/solution/**'
+      - '!src/solution/infer*.ts'
+      - '!src/solution/table.ts'
       - 'tests/native/**'
   workflow_dispatch:
 
