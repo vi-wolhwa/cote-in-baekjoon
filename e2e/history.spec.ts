@@ -54,17 +54,21 @@ async function serveStatus(
 ) {
   const read: string[] = [];
   const tabs = new Set<Page>();
-  await context.route(/^https:\/\/(www\.)?acmicpc\.net\/status\?/, (route) => {
+  await context.route(/^https:\/\/(www\.)?acmicpc\.net\/status\?/, async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.has('from_mine')) return route.fallback();
-    // A tab may load twice (its first navigation, then answerTabs): count it once.
-    const tab = route.request().frame().page();
-    if (!tabs.has(tab)) read.push(url.search);
-    tabs.add(tab);
-    // The extension closes the tab as soon as it has read it.
-    return route
-      .fulfill({ contentType: 'text/html; charset=utf-8', body: pages(url.searchParams) })
-      .catch(() => undefined);
+    try {
+      // A tab may load twice (its first navigation, then answerTabs): count it once.
+      const tab = route.request().frame().page();
+      if (!tabs.has(tab)) read.push(url.search);
+      tabs.add(tab);
+      await route.fulfill({
+        contentType: 'text/html; charset=utf-8',
+        body: pages(url.searchParams),
+      });
+    } catch {
+      // The extension closed the tab as soon as it had read it.
+    }
   });
   return read;
 }
@@ -77,7 +81,12 @@ function answerTabs(context: BrowserContext, urls: string[]) {
   const queue = [...urls];
   context.on('page', (tab) => {
     const url = queue.shift();
-    if (url && !tab.isClosed()) void tab.goto(url).catch(() => undefined);
+    if (!url) return;
+    void (async () => {
+      // Where the first navigation is routed, the extension reads the tab and closes it.
+      await tab.waitForEvent('close', { timeout: 1500 }).catch(() => undefined);
+      if (!tab.isClosed()) await tab.goto(url).catch(() => undefined);
+    })();
   });
 }
 
