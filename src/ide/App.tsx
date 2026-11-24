@@ -132,7 +132,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       languageRef.current = lang;
       saveMeta(lang);
       editor.current = createEditor(editorHost.current, {
-        doc: code ?? sol.starter(lang, fn),
+        doc: sol.codeOr(code, lang, fn),
         keymap: km,
         syntax: languageInfo(lang).syntax,
         theme: th,
@@ -171,7 +171,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     editor.current?.setLanguage(nextInfo.syntax);
     // Languages that share saved code (Python 3 and PyPy3, C++14/17/20) keep the editor as it is.
     if (sol.group(next) !== sol.group(language)) {
-      editor.current?.setCode(saved ?? sol.starter(next));
+      editor.current?.setCode(sol.codeOr(saved, next));
     }
     setOutput({ state: 'empty' });
   };

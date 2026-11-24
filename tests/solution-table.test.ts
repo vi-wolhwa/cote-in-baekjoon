@@ -8,6 +8,7 @@ import bundledData from '@/data/formats.json';
 import { sampleRows } from '@/solution/cases';
 import { checkFormat, formatToJson, sameFormat, type Format } from '@/solution/dsl';
 import { signature } from '@/solution/edit';
+import { refreshStarter } from '@/solution/starter';
 import { parseBundled } from '@/solution/source';
 import {
   addRow,
@@ -360,5 +361,26 @@ describe("samples as '입출력 예' rows", () => {
     expect(sampleRows(art, { input: '', output: ' *\n***\n' })).toEqual([
       { params: {}, expected: '[" *", "***"]' },
     ]);
+  });
+});
+
+describe('refreshing an outdated starting code', () => {
+  const ruby = 'def solution(n, arr)\n  answer = []\n  return answer\nend\n';
+  it('replaces a starter whose header comment changed', () => {
+    const old = `# 입력을 읽고 결과를 출력하는 코드는 자동으로 붙습니다.\n\n${ruby}`;
+    expect(refreshStarter(old, ruby)).toBe(ruby);
+    const cpp = '// 자동 포함: bits/stdc++.h, using namespace std\n\nint solution() {\n}\n';
+    expect(
+      refreshStarter(
+        '// bits/stdc++.h와 using namespace std;는 자동으로 붙습니다.\n\nint solution() {\n}\n',
+        cpp,
+      ),
+    ).toBe(cpp);
+  });
+
+  it('keeps code the user changed, including an added #include', () => {
+    expect(refreshStarter(`${ruby}# note\n`, ruby)).toBe(`${ruby}# note\n`);
+    const c = 'int solution(int n) {\n    return 0;\n}\n';
+    expect(refreshStarter(`#include <math.h>\n${c}`, c)).toBe(`#include <math.h>\n${c}`);
   });
 });

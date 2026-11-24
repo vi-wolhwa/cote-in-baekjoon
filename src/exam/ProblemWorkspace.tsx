@@ -108,7 +108,7 @@ export function ProblemWorkspace(props: Props) {
       if (disposed || !editorHost.current) return;
       setCases(cs);
       editor.current = createEditor(editorHost.current, {
-        doc: code ?? sol.starter(language, fn),
+        doc: sol.codeOr(code, language, fn),
         keymap: props.keymap,
         syntax: info.syntax,
         theme: props.theme,
@@ -169,7 +169,7 @@ export function ProblemWorkspace(props: Props) {
     props.onLanguage(next);
     editor.current?.setLanguage(nextInfo.syntax);
     if (sol.group(next) !== sol.group(language)) {
-      editor.current?.setCode(saved ?? sol.starter(next));
+      editor.current?.setCode(sol.codeOr(saved, next));
     }
     setOutput({ state: 'empty' });
   };

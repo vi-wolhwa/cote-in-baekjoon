@@ -11,7 +11,7 @@ import { languageInfo, solutionLanguageReason, type LanguageId } from '@/shared/
 import { sameFormat, type Format } from '@/solution/dsl';
 import { buildProgram, mapRunMessages } from '@/solution/program';
 import { resolveFormat, type Resolved } from '@/solution/source';
-import { solutionFileName, starterCode } from '@/solution/starter';
+import { refreshStarter, solutionFileName, starterCode } from '@/solution/starter';
 import type { EditorHandle } from './editor';
 import * as store from './storage';
 
@@ -52,6 +52,17 @@ export function useSolution(deps: SolutionDeps) {
     return glue && format ? starterCode(glue, format) : languageInfo(lang).starter;
   };
 
+  /** Saved code, an outdated starter refreshed, or the starting code when nothing is saved. */
+  const codeOr = (
+    saved: string | undefined,
+    lang: LanguageId,
+    mode = fnRef.current,
+    format = formatRef.current,
+  ) => {
+    const fresh = starter(lang, mode, format);
+    return saved === undefined ? fresh : refreshStarter(saved, fresh);
+  };
+
   /**
    * Loads the choice and the format; returns whether solution mode is on. With an editor
    * already showing code (the exam loads the statement later), its code follows the mode.
@@ -80,7 +91,7 @@ export function useSolution(deps: SolutionDeps) {
     const saved = await store.loadCode(deps.problemId, group(lang, on));
     fnRef.current = on;
     formatRef.current = format;
-    deps.editor.current?.setCode(saved ?? starter(lang, on, format));
+    deps.editor.current?.setCode(codeOr(saved, lang, on, format));
   };
 
   const setMode = async (on: boolean) => {
@@ -150,6 +161,7 @@ export function useSolution(deps: SolutionDeps) {
     load,
     group,
     starter,
+    codeOr,
     setMode,
     saveFormat,
     resetFormat,

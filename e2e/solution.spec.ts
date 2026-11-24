@@ -352,3 +352,23 @@ test('in the mock exam, a statement read after the editor opened switches it to 
   await expect(page.locator('.cm-content')).toContainText('function solution(a, b) {');
   await expect(page.locator('.file-tab')).toHaveText('solution.js');
 });
+
+test('a saved starting code with an old header comment becomes the current one', async ({
+  page,
+  extensionId,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  const ruby = 'def solution(a, b)\n  answer = 0\n  return answer\nend\n';
+  await page.evaluate(
+    (code) =>
+      chrome.storage.local.set({
+        'ui:language': 'ruby',
+        'code:0:ruby:fn': `# 입력을 읽고 결과를 출력하는 코드는 자동으로 붙습니다.\n\n${code}`,
+      }),
+    ruby,
+  );
+  await page.reload();
+  await expect(page.locator('.file-tab')).toHaveText('solution.rb');
+  await expect(page.locator('.cm-content')).toContainText('def solution(a, b)');
+  await expect(page.locator('.cm-content')).not.toContainText('자동으로 붙습니다');
+});
