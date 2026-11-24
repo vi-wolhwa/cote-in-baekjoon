@@ -49,6 +49,15 @@ export function hasSamples(record: ProblemRecord): boolean {
   return record.samples.length > 0;
 }
 
+/**
+ * The input and output descriptions are there: the output is not empty and the input exists (it
+ * may be empty for problems that read nothing, as long as no sample has input).
+ */
+export function hasDescription(record: ProblemRecord): boolean {
+  if (record.input === null || record.output === null || record.output.trim() === '') return false;
+  return record.input.trim() !== '' || record.samples.every((s) => s.input.trim() === '');
+}
+
 export function isComplete(record: ProblemRecord): boolean {
   return hasIo(record) && hasSamples(record);
 }

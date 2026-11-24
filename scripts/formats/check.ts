@@ -36,11 +36,8 @@ for (const [id, format] of loadReviewed(file)) {
     continue;
   }
   const rec = JSON.parse(readFileSync(path, 'utf8')) as ProblemRecord;
-  if (rec.samples.length === 0) {
-    console.log(`${id}\t예제가 없어 검증할 수 없음`);
-    failed++;
-    continue;
-  }
+  // Without samples only the DSL checks apply; the extension validates against the real
+  // samples when the problem opens (ADR-0006).
   const v = validateFormat(format, rec.samples);
   if (v.ok) ok++;
   else {

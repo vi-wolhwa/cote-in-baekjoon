@@ -117,6 +117,9 @@ describe('parseReadme', () => {
     const r = parseReadme('# 9003번: 테스트\n### 입력\n<p>N</p>\n### 출력\n<p>M</p>\n');
     expect(readmeMatchesId(r, 9003)).toBe(true);
     expect(readmeMatchesId(r, 900)).toBe(false);
+    expect(readmeMatchesId(r, 9003, '테스트')).toBe(true);
+    // Another judge's problem with the same number.
+    expect(readmeMatchesId(r, 9003, '다른 문제')).toBe(false);
   });
 });
 
