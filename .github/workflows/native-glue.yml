@@ -39,6 +39,14 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
+      # Swift comes with the ubuntu runner image; install it only when the image drops it.
+      - name: Swift 확인
+        id: swift
+        run: echo "missing=$(command -v swiftc >/dev/null && echo false || echo true)" >> "$GITHUB_OUTPUT"
+      - uses: swift-actions/setup-swift@v2
+        if: steps.swift.outputs.missing == 'true'
+        with:
+          swift-version: '5.10'
       - uses: actions/setup-java@v5
         with:
           distribution: temurin

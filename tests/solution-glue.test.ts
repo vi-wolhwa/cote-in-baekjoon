@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { checkFormat, type Format } from '@/solution/dsl';
+import type { GlueId } from '@/solution/glue';
 import { makePlan, needsLines } from '@/solution/glue/plan';
 import {
   buildProgram,
@@ -58,8 +59,16 @@ const LINES = f({
   ret: { type: 'double', digits: 2 },
 });
 
-const ENGINES: EngineId[] = ['js', 'python', 'cpp', 'java'];
-const EXT: Record<EngineId, string> = { js: 'js', python: 'py', cpp: 'cpp', java: 'java' };
+const ENGINES: GlueId[] = ['js', 'python', 'cpp', 'java', 'swift', 'csharp', 'ruby'];
+const EXT: Partial<Record<GlueId, string>> = {
+  js: 'js',
+  python: 'py',
+  cpp: 'cpp',
+  java: 'java',
+  swift: 'swift',
+  csharp: 'cs',
+  ruby: 'rb',
+};
 
 describe('generated programs (golden files)', () => {
   for (const engine of ENGINES) {
@@ -71,7 +80,7 @@ describe('generated programs (golden files)', () => {
       it(`${name} in ${engine}`, async () => {
         const program = buildProgram(engine, format, starterCode(engine, format));
         await expect(program.source).toMatchFileSnapshot(
-          `fixtures/solution-glue/${name}.${EXT[engine]}.txt`,
+          `fixtures/solution-glue/${name}.${EXT[engine] ?? engine}.txt`,
         );
       });
     }
@@ -199,5 +208,50 @@ describe('mapRunMessages', () => {
       NO_SOLUTION_MESSAGE,
     );
     expect(mapRunMessages('cpp', cpp, { stderr: '__cib_input\n' }).error).toBe(GLUE_INPUT_MESSAGE);
+  });
+});
+
+describe('Swift, C# and Ruby glue', () => {
+  it('prefixes every top-level name the glue declares with __cib_', () => {
+    const names = (glue: GlueId, pattern: RegExp) => {
+      const { source } = buildProgram(glue, LINES, '');
+      const glueCode = source.slice(source.indexOf('입출력 코드'));
+      const found = [...glueCode.matchAll(pattern)].map((m) => (m[1] ?? m[2]) as string);
+      expect(found.length).toBeGreaterThan(1);
+      return found.filter((n) => n !== 'Main');
+    };
+    for (const name of names('swift', /^(?:final class|func|let|var) (\w+)/gm))
+      expect(name).toMatch(/^__cib_/);
+    for (const name of names(
+      'csharp',
+      /^ {0,4}(?:public )?(?:static|sealed) [^(=;]*?(\w+)\s*[(=;,:{]/gm,
+    ))
+      expect(name).toMatch(/^__cib_/);
+    for (const name of names('ruby', /^(?:def (\w+)|\$(\w+))/gm)) expect(name).toMatch(/^__cib_/);
+  });
+
+  it('writes typed signatures from the format', () => {
+    expect(starterCode('swift', AB)).toContain('func solution(_ a: Int, _ b: Int) -> Int {');
+    expect(starterCode('swift', GRID)).toContain(
+      'func solution(_ n: Int, _ m: Int, _ board: [String]) -> Bool {',
+    );
+    expect(starterCode('csharp', LINES)).toContain(
+      'public double solution(string title, long[] nums, int k, int[][] rows) {',
+    );
+    expect(starterCode('ruby', AB)).toContain('def solution(a, b)\n  answer = 0\n');
+    expect(solutionFileName('csharp')).toBe('Solution.cs');
+  });
+
+  it('keeps words from the format inside string literals', () => {
+    const format = f({
+      v: 1,
+      params: [{ name: 'n', type: 'int' }],
+      lines: [['n']],
+      cases: null,
+      ret: { type: 'bool', yes: 'a"b\\#{x}\'', no: 'no' },
+    });
+    expect(buildProgram('swift', format, '').source).toContain('"a\\"b\\\\#{x}\'"');
+    expect(buildProgram('csharp', format, '').source).toContain('"a\\"b\\\\#{x}\'"');
+    expect(buildProgram('ruby', format, '').source).toContain("'a\"b\\\\#{x}\\''");
   });
 });

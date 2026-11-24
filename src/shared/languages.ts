@@ -83,9 +83,9 @@ const ENTRIES: readonly Entry[] = [
   { id: 'kotlin', label: 'Kotlin (JVM)', fileName: 'solution.kt' },
   { id: 'rust', label: 'Rust 2021', fileName: 'solution.rs' },
   { id: 'go', label: 'Go', fileName: 'solution.go' },
-  { id: 'swift', label: 'Swift', fileName: 'solution.swift' },
-  { id: 'csharp', label: 'C#', fileName: 'solution.cs' },
-  { id: 'ruby', label: 'Ruby', fileName: 'solution.rb' },
+  { id: 'swift', label: 'Swift', fileName: 'solution.swift', glue: 'swift' },
+  { id: 'csharp', label: 'C#', fileName: 'solution.cs', glue: 'csharp' },
+  { id: 'ruby', label: 'Ruby', fileName: 'solution.rb', glue: 'ruby' },
 ].map((e) => ({ codeGroup: e.id, ...e }) as Entry);
 
 export const LANGUAGES: readonly LanguageInfo[] = ENTRIES.map((e) => ({

@@ -1,0 +1,124 @@
+import Foundation
+// import Foundation은 자동으로 붙습니다.
+
+func solution(_ a: Int, _ b: Int) -> Int {
+    return 0
+}
+
+
+// ---- 입출력 코드 ----
+final class __cib_Reader {
+    var d: [UInt8] = []
+    var p = 0
+    var n = 0
+    init() {
+        var buf = [UInt8](repeating: 0, count: 1 << 16)
+        while true {
+            let k = fread(&buf, 1, buf.count, stdin)
+            if k <= 0 { break }
+            d.append(contentsOf: buf[0..<k])
+        }
+        n = d.count
+    }
+    func fail() -> Never {
+        fputs("__cib_input\n", stderr)
+        exit(1)
+    }
+    @inline(__always) func ws(_ c: UInt8) -> Bool { return c == 32 || c == 10 || c == 13 || c == 9 }
+    func cnt(_ x: Int) -> Int {
+        if x < 0 { fail() }
+        return x
+    }
+    func more() -> Bool {
+        while p < n && ws(d[p]) { p += 1 }
+        return p < n
+    }
+    func has() -> Bool {
+        var q = p
+        while q < n && ws(d[q]) { q += 1 }
+        return q < n
+    }
+    func str(_ s: Int, _ e: Int) -> String { return String(decoding: d[s..<e], as: UTF8.self) }
+    func tok() -> String {
+        if !more() { fail() }
+        let s = p
+        while p < n && !ws(d[p]) { p += 1 }
+        return str(s, p)
+    }
+    func ll() -> Int {
+        if !more() { fail() }
+        var neg = false
+        if d[p] == 45 || d[p] == 43 { neg = d[p] == 45; p += 1 }
+        if p >= n || ws(d[p]) { fail() }
+        var v = 0
+        while p < n && !ws(d[p]) {
+            let c = Int(d[p]) - 48
+            if c < 0 || c > 9 { fail() }
+            v = v &* 10 &- c
+            p += 1
+        }
+        return neg ? v : 0 &- v
+    }
+    func pl(_ s: String) -> Int {
+        guard let v = Int(s) else { fail() }
+        return v
+    }
+    func pd(_ s: String) -> Double {
+        guard let v = Double(s) else { fail() }
+        return v
+    }
+    func dbl() -> Double { return pd(tok()) }
+    func nl() {
+        if p > 0 && d[p - 1] != 10 {
+            while p < n && d[p] != 10 { p += 1 }
+            if p < n { p += 1 }
+        }
+        while true {
+            var q = p
+            while q < n && d[q] != 10 && ws(d[q]) { q += 1 }
+            if q < n && d[q] == 10 { p = q + 1 } else { break }
+        }
+    }
+    func line() -> String {
+        if p >= n { fail() }
+        var e = p
+        while e < n && d[e] != 10 { e += 1 }
+        var s = p
+        p = e
+        while s < e && ws(d[s]) { s += 1 }
+        while e > s && ws(d[e - 1]) { e -= 1 }
+        return str(s, e)
+    }
+    func rest() -> [String] {
+        if p >= n { fail() }
+        var r: [String] = []
+        while p < n && d[p] != 10 {
+            while p < n && d[p] != 10 && ws(d[p]) { p += 1 }
+            let s = p
+            while p < n && !ws(d[p]) { p += 1 }
+            if p > s { r.append(str(s, p)) }
+        }
+        return r
+    }
+}
+
+func __cib_main() {
+    let __cib_in = __cib_Reader()
+    var __cib_o: [UInt8] = []
+    var __cib_cases = 0
+    do {
+        var __cib_v0: Int = 0
+        var __cib_v1: Int = 0
+        __cib_v0 = __cib_in.ll()
+        __cib_v1 = __cib_in.ll()
+        let __cib_res = solution(__cib_v0, __cib_v1)
+        if __cib_cases > 0 { __cib_o.append(10) }
+        __cib_cases += 1
+        __cib_o.append(contentsOf: String(__cib_res).utf8)
+    }
+    if __cib_cases > 0 { __cib_o.append(10) }
+    __cib_o.withUnsafeBufferPointer { _ = fwrite($0.baseAddress, 1, $0.count, stdout) }
+    fflush(stdout)
+}
+
+__cib_main()
