@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.9.0...v0.10.0) (2026-11-24)
+
+
+### 기능
+
+* **ide:** solution 함수 모드에서 예제를 '입출력 예' 표로 ([#146](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/146)) ([fa801e6](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/fa801e600532014868bd1f1bc4051815e0482531))
+
+
+### 버그 수정
+
+* **ide:** 선택 중에는 현재 줄 강조를 끄고, 시작 코드 주석을 언어마다 같은 형식으로 ([#144](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/144)) ([872ae64](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/872ae6403ae0b499c5fa407b2cfb85e1a7d0d1d4))
+
 ## [0.9.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.8.0...v0.9.0) (2026-11-24)
 
 
