@@ -377,7 +377,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
                           <>
                             {note && <p class="out-note">{note}</p>}
                             <SubmitOnlyNote language={language} />
-                            <RunOutput {...output} />
+                            <RunOutput {...output} format={sol.fn ? sol.format : undefined} />
                           </>
                         ) : (
                           <SubmitPanel

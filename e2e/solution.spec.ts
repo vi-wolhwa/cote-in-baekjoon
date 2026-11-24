@@ -64,6 +64,16 @@ test('opens in solution mode with a format inferred from the samples', async ({
   await toggle(page).click();
   await expect(io).toBeVisible();
 
+  // A wrong result reads as values: parameters in, a return value out.
+  await writeCode(page, page, 'function solution(a, b) {\n  return a - b;\n}');
+  await page.getByRole('button', { name: '코드 실행' }).click();
+  const first = page.getByTestId('case').first();
+  await expect(first.locator('td').nth(0)).toHaveText('1, 2');
+  await expect(first.locator('td').nth(1)).toHaveText('3');
+  await expect(first.locator('td').nth(2)).toHaveText(
+    '실행한 결괏값 -1이(가) 기댓값 3와(과) 다릅니다.',
+  );
+
   await writeCode(page, page, JS_SOLUTION);
   await page.getByRole('button', { name: '코드 실행' }).click();
   await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공');

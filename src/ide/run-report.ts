@@ -17,6 +17,8 @@ export interface CaseReport {
   message: string;
   /** Program output, shown in the "출력 〉" row when it helps. */
   output?: string;
+  /** What the program printed when it differs from the expected output (status 'fail'). */
+  actual?: string;
   /** Error details (stderr or exception). */
   error?: string;
   /** Shown when the run finished but took longer than the problem's time limit. */
@@ -105,6 +107,7 @@ export function buildCaseReport(
       ? `실행한 결괏값 ${actual || '(없음)'}이(가) 기댓값 ${expected}와(과) 다릅니다.`
       : '실행한 결괏값이 기댓값과 다릅니다.',
     output: oneLine ? undefined : stdout,
+    actual: stdout,
     error: stderr || undefined,
     warning,
   };

@@ -352,7 +352,7 @@ export function ProblemWorkspace(props: Props) {
                       <>
                         {note && <p class="out-note">{note}</p>}
                         <SubmitOnlyNote language={language} />
-                        <RunOutput {...output} />
+                        <RunOutput {...output} format={sol.fn ? sol.format : undefined} />
                       </>
                     ) : (
                       <AnswerPanel
