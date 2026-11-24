@@ -515,13 +515,16 @@ describe('validateFormat', () => {
     ).toBe(true);
   });
 
-  it('accepts tol only on a double return, between 1e-15 and 1', () => {
+  it('accepts tol on any return but bool, between 1e-15 and 1', () => {
     const base = JSON.parse(formatToJson(AB)) as Format;
     const ok = checkFormat({ ...base, ret: { type: 'double', digits: 6, tol: 1e-6 } });
     expect(ok.ok && formatToJson(ok.format)).toContain(
       '"ret":{"type":"double","digits":6,"tol":0.000001}',
     );
-    expect(checkFormat({ ...base, ret: { type: 'int', tol: 1e-6 } }).ok).toBe(false);
+    expect(checkFormat({ ...base, ret: { type: 'line[]', tol: 1e-6 } }).ok).toBe(true);
+    expect(checkFormat({ ...base, ret: { type: 'bool', yes: 'Y', no: 'N', tol: 1e-6 } }).ok).toBe(
+      false,
+    );
     expect(checkFormat({ ...base, ret: { type: 'double', digits: 6, tol: 0 } }).ok).toBe(false);
     expect(checkFormat({ ...base, ret: { type: 'double', digits: 6, tol: '1e-6' } }).ok).toBe(
       false,
