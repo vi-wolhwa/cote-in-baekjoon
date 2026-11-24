@@ -192,6 +192,17 @@ test('editing the format validates it against the samples, and saving makes it t
   await expect(page.getByTestId('format-check')).toBeVisible();
   await expect(page.getByRole('button', { name: '저장', exact: true })).toBeDisabled();
 
+  // With several cases: a label before each case's output and a blank line after it.
+  const label = page.getByRole('textbox', { name: '케이스 머리말' });
+  await expect(label).toBeHidden();
+  await page.getByRole('combobox', { name: '입력 반복' }).selectOption('count');
+  await label.fill('Case #{i}: ');
+  await page.getByRole('checkbox', { name: '케이스 뒤 빈 줄' }).check();
+  await shot(page, 'solution-format-case-label');
+  await page.getByRole('combobox', { name: '입력 반복' }).selectOption('once');
+  await expect(label).toBeHidden();
+  await expect(page.getByRole('checkbox', { name: '케이스 뒤 빈 줄' })).toBeChecked();
+
   // 형식 초기화 goes back to the inferred format.
   await page.getByRole('button', { name: '형식 초기화' }).click();
   await expect(page.getByTestId('format-source')).toHaveText('예제로 추론함');
