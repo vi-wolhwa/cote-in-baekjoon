@@ -26,52 +26,55 @@ export function HistoryPane({ problemId, onLoad }: Props) {
   useEffect(() => watchHistory(problemId, setEntries), [problemId]);
 
   const entry = entries?.find((e) => e.submittedAt === selected);
-  if (entry) {
-    return <HistoryDetail entry={entry} onBack={() => setSelected(undefined)} onLoad={onLoad} />;
-  }
   return (
-    <div class="history" data-testid="history">
-      <section class="history-section">
-        <div class="history-head">
-          <h4>풀이 화면에서 낸 제출</h4>
-          {entries && entries.length > 0 && <span class="history-count">{entries.length}개</span>}
-        </div>
-        {entries?.length === 0 && (
+    <>
+      {entry && (
+        <HistoryDetail entry={entry} onBack={() => setSelected(undefined)} onLoad={onLoad} />
+      )}
+      {/* Hidden, not removed, while one submission shows: loaded Baekjoon rows stay. */}
+      <div class="history" data-testid="history" hidden={entry !== undefined}>
+        <section class="history-section">
+          <div class="history-head">
+            <h4>풀이 화면에서 낸 제출</h4>
+            {entries && entries.length > 0 && <span class="history-count">{entries.length}개</span>}
+          </div>
+          {entries?.length === 0 && (
+            <p class="history-note">
+              아직 이 화면에서 제출한 기록이 없어요. 제출하기를 누르면 코드와 채점 결과가 여기에
+              쌓여요.
+            </p>
+          )}
+          {entries && entries.length > 0 && (
+            <ul class="history-list" aria-label="풀이 화면에서 낸 제출">
+              {entries.map((e) => (
+                <li key={e.submittedAt}>
+                  <button
+                    type="button"
+                    class="history-item"
+                    data-testid="history-item"
+                    onClick={() => setSelected(e.submittedAt)}
+                  >
+                    <ResultBadge
+                      code={e.result?.resultCode}
+                      text={e.result?.resultText ?? '결과 없음'}
+                    />
+                    <span class="history-lang">{languageInfo(e.language).label}</span>
+                    <span class="history-metrics">{e.result ? metricsText(e.result) : ''}</span>
+                    <time class="history-time" title={absoluteTime(e.submittedAt)}>
+                      {relativeTime(e.submittedAt, now)}
+                    </time>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           <p class="history-note">
-            아직 이 화면에서 제출한 기록이 없어요. 제출하기를 누르면 코드와 채점 결과가 여기에
-            쌓여요.
+            이 브라우저에만 저장하고, 문제마다 최근 {HISTORY_LIMIT}개까지 남겨요.
           </p>
-        )}
-        {entries && entries.length > 0 && (
-          <ul class="history-list" aria-label="풀이 화면에서 낸 제출">
-            {entries.map((e) => (
-              <li key={e.submittedAt}>
-                <button
-                  type="button"
-                  class="history-item"
-                  data-testid="history-item"
-                  onClick={() => setSelected(e.submittedAt)}
-                >
-                  <ResultBadge
-                    code={e.result?.resultCode}
-                    text={e.result?.resultText ?? '결과 없음'}
-                  />
-                  <span class="history-lang">{languageInfo(e.language).label}</span>
-                  <span class="history-metrics">{e.result ? metricsText(e.result) : ''}</span>
-                  <time class="history-time" title={absoluteTime(e.submittedAt)}>
-                    {relativeTime(e.submittedAt, now)}
-                  </time>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p class="history-note">
-          이 브라우저에만 저장하고, 문제마다 최근 {HISTORY_LIMIT}개까지 남겨요.
-        </p>
-      </section>
-      <BojSection problemId={problemId} now={now} />
-    </div>
+        </section>
+        <BojSection problemId={problemId} now={now} />
+      </div>
+    </>
   );
 }
 
