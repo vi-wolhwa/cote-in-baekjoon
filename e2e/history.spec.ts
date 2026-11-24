@@ -81,7 +81,9 @@ function answerTabs(context: BrowserContext, urls: string[], pages: Pages = defa
             .catch(() => undefined);
         })
         .catch(() => undefined);
-      if (!tab.isClosed()) await tab.goto(url).catch(() => undefined);
+      // Only to the commit: the extension closes the tab around its load event, and a
+      // navigation still waiting for it then breaks Playwright's connection.
+      if (!tab.isClosed()) await tab.goto(url, { waitUntil: 'commit' }).catch(() => undefined);
     })();
   });
   return result;
