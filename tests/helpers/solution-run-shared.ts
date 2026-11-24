@@ -470,10 +470,19 @@ export async function run(glue: GlueId, source: string, stdin: string): Promise<
  * Every case's program for these glue languages runs and prints the expected output. `part`
  * runs every other case (0 or 1 of 2) so a slow engine can be split over two test files.
  */
-export function runCases(glues: readonly GlueId[], part?: { index: number; of: number }): void {
+/**
+ * Runs the shared cases on the engines of `glues`: every case, the `part.index`-th of
+ * `part.of` slices, or only the cases named in `only`.
+ */
+export function runCases(
+  glues: readonly GlueId[],
+  part?: { index: number; of: number },
+  only?: readonly string[],
+): void {
   describe('solution programs run', { timeout: 180_000 }, () => {
     for (const [k, [name, c]] of Object.entries(CASES).entries()) {
       if (part && k % part.of !== part.index) continue;
+      if (only && !only.includes(name)) continue;
       for (const [glue, code] of Object.entries(c.code) as [GlueId, string][]) {
         if (!glues.includes(glue)) continue;
         it(`${name}: ${glue}`, async () => {
