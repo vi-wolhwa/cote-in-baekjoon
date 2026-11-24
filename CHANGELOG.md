@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.17.0...v0.18.0) (2026-11-24)
+
+
+### 기능
+
+* **ide:** 문제별 제출 기록 탭 (M7) ([#168](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/168)) ([f6a6246](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/f6a6246be7434a1d1dbffb130e37acbfded57f63))
+
 ## [0.17.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.16.0...v0.17.0) (2026-11-24)
 
 
