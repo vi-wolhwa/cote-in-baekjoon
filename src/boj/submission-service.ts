@@ -25,6 +25,8 @@ import {
   type SubmitResponse,
   type WatchQueryResponse,
 } from '@/shared/submission';
+import type { HistoryResult } from '@/shared/submission-history';
+import { recordJudgeResult, recordSubmission } from './history-service';
 import { bojPath, isExtensionPage, submitUrl } from './sender';
 import { isOwnSubmitTab, noteJudgeReport, openSubmitTab } from './submit-tab-service';
 
@@ -76,6 +78,14 @@ export async function handleSubmitRequest(
     await browser.storage.session.remove(pendingKey(message.problemId));
     return { ok: false, reason: '백준 제출 페이지를 열지 못했습니다.' };
   }
+  // The submission history (ADR-0012) is a convenience: failing to write it never stops a submit.
+  await recordSubmission({
+    problemId: message.problemId,
+    language: message.language,
+    code: message.code,
+    ...(message.fnCode !== undefined ? { fnCode: message.fnCode } : {}),
+    submittedAt: now,
+  }).catch((error: unknown) => console.error('[cib] history write failed', error));
   return { ok: true };
 }
 
@@ -200,6 +210,17 @@ export async function handleJudgeReport(
     ...(row.timeMs !== undefined ? { timeMs: row.timeMs } : {}),
   };
   await browser.storage.local.set({ [key]: result });
+  const linked: HistoryResult = {
+    solutionId: row.solutionId,
+    status,
+    resultCode: row.resultCode,
+    resultText: row.resultText,
+    ...(row.memoryKb !== undefined ? { memoryKb: row.memoryKb } : {}),
+    ...(row.timeMs !== undefined ? { timeMs: row.timeMs } : {}),
+  };
+  await recordJudgeResult(row.problemId, watch.since, linked).catch((error: unknown) =>
+    console.error('[cib] history write failed', error),
+  );
   await noteJudgeReport(row.problemId, status, sender, now);
   return { ok: true };
 }

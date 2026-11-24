@@ -38,6 +38,11 @@ export interface SubmitInput {
   code: string;
   /** Press Baekjoon's submit button after filling (#41, the user opted in). */
   autoSubmit?: boolean;
+  /**
+   * The solution function as written, when `code` is it plus glue (ADR-0006). Kept in the
+   * submission history so '편집기로 불러오기' can bring the function back (ADR-0012).
+   */
+  fnCode?: string;
 }
 
 export type SubmitResponse = { ok: true } | { ok: false; reason: string };
@@ -136,7 +141,9 @@ export function isSubmitRequestMessage(v: unknown): v is SubmitRequestMessage {
     typeof v.code === 'string' &&
     v.code.length > 0 &&
     v.code.length <= MAX_CODE_LENGTH &&
-    (v.autoSubmit === undefined || typeof v.autoSubmit === 'boolean')
+    (v.autoSubmit === undefined || typeof v.autoSubmit === 'boolean') &&
+    (v.fnCode === undefined ||
+      (typeof v.fnCode === 'string' && v.fnCode.length <= MAX_CODE_LENGTH))
   );
 }
 
