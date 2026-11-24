@@ -116,7 +116,9 @@ describe('accuracy', () => {
       const started = performance.now();
       const f = inferFormat({ samples: [{ input, output: '1\n' }], inputHtml: '', outputHtml: '' });
       expect(f).toBeDefined();
-      expect(performance.now() - started).toBeLessThan(3000);
+      // Catches a pathological slowdown (it takes well under a second alone); a tight bound
+      // failed when the whole suite shared the CPU.
+      expect(performance.now() - started).toBeLessThan(10_000);
     }
   });
 });

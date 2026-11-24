@@ -89,9 +89,10 @@ int main() {
     // C++17 shares the code; the same program does not compile there.
     await page.getByRole('combobox', { name: '언어' }).selectOption('cpp17');
     await page.getByRole('button', { name: '코드 실행' }).click();
-    await expect(page.getByTestId('case').first()).toContainText('컴파일 에러', {
-      timeout: FIRST_RUN_TIMEOUT,
-    });
+    const firstCase = page.getByTestId('case').first();
+    await expect(firstCase).toContainText('컴파일 에러', { timeout: FIRST_RUN_TIMEOUT });
+    // The error names the line in the user's file (cpp-run.test.ts pins the exact text).
+    await expect(firstCase).toContainText(/solution\.cpp:\d+:\d+: error/);
   });
 
   test('TypeScript runs with type annotations and reports syntax errors', async ({

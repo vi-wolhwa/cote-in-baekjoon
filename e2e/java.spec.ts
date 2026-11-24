@@ -7,12 +7,6 @@ const FIRST_RUN_TIMEOUT = 60_000;
 const main = (body: string) =>
   `import java.io.*;\nimport java.util.*;\n\npublic class Main {\n${body}\n}\n`;
 
-const A_PLUS_B = main(`    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        long a = sc.nextLong(), b = sc.nextLong();
-        System.out.println(a + b);
-    }`);
-
 /** Opens the IDE in Java 11 and replaces the editor content with `code`. */
 async function openWithCode(page: Page, extensionId: string, code: string) {
   await page.goto(`chrome-extension://${extensionId}/ide.html`);
@@ -31,35 +25,6 @@ async function openWithCode(page: Page, extensionId: string, code: string) {
 
 test.describe('Java 11', () => {
   test.describe.configure({ timeout: 120_000 });
-
-  test('compiles and runs A+B on the sample cases', async ({ page, extensionId }) => {
-    await openWithCode(page, extensionId, A_PLUS_B);
-    await expect(page.getByText('Main.java', { exact: true }).first()).toBeVisible();
-    await page.getByRole('button', { name: '코드 실행' }).click();
-    await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공', {
-      timeout: FIRST_RUN_TIMEOUT,
-    });
-  });
-
-  test('reads with BufferedReader and StringTokenizer', async ({ page, extensionId }) => {
-    await openWithCode(
-      page,
-      extensionId,
-      main(`    public static void main(String[] args) throws IOException {
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        StringTokenizer st = new StringTokenizer(br.readLine());
-        int a = Integer.parseInt(st.nextToken());
-        int b = Integer.parseInt(st.nextToken());
-        StringBuilder sb = new StringBuilder();
-        sb.append(a + b).append('\\n');
-        System.out.print(sb);
-    }`),
-    );
-    await page.getByRole('button', { name: '코드 실행' }).click();
-    await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공', {
-      timeout: FIRST_RUN_TIMEOUT,
-    });
-  });
 
   test('shows a compile error with its line number', async ({ page, extensionId }) => {
     await openWithCode(

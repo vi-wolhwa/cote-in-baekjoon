@@ -64,21 +64,37 @@ const CASES_CODE = `function solution(a: number, b: number): boolean {
 // The same with a case label line and a blank line after each case.
 const LABELED = f({ ...CASES, ret: { ...CASES.ret, label: 'Case #{i}:\n', blank: true } });
 
-/** Type errors of a program, compiled as a script like Baekjoon's single file. */
+/** Parsed lib and @types files per setup: parsing them is most of each compile's time. */
+const libFiles = new Map<ts.CompilerOptions, Map<string, ts.SourceFile | undefined>>();
+
+/**
+ * Type errors of a program, compiled as a script like Baekjoon's single file. Only
+ * solution.ts is checked (with the global and option diagnostics): a clash between the glue
+ * and a lib declaration is still reported there.
+ */
 function typeErrors(source: string, options: ts.CompilerOptions): string[] {
   const file = 'solution.ts';
+  const cache = libFiles.get(options) ?? new Map<string, ts.SourceFile | undefined>();
+  libFiles.set(options, cache);
   const host = ts.createCompilerHost(options);
   const read = host.readFile.bind(host);
   host.readFile = (name) => (name === file ? source : read(name));
   const exists = host.fileExists.bind(host);
   host.fileExists = (name) => name === file || exists(name);
   const get = host.getSourceFile.bind(host);
-  host.getSourceFile = (name, lang) =>
-    name === file ? ts.createSourceFile(file, source, lang) : get(name, lang);
+  host.getSourceFile = (name, lang) => {
+    if (name === file) return ts.createSourceFile(file, source, lang);
+    if (!cache.has(name)) cache.set(name, get(name, lang));
+    return cache.get(name);
+  };
   const program = ts.createProgram([file], options, host);
-  return ts
-    .getPreEmitDiagnostics(program)
-    .map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'));
+  const solution = program.getSourceFile(file);
+  return [
+    ...program.getOptionsDiagnostics(),
+    ...program.getGlobalDiagnostics(),
+    ...program.getSyntacticDiagnostics(solution),
+    ...program.getSemanticDiagnostics(solution),
+  ].map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'));
 }
 
 const SETUPS: Record<string, ts.CompilerOptions> = {
@@ -130,6 +146,12 @@ describe('TypeScript glue compiles with tsc', { timeout: 120_000 }, () => {
     );
     const options = SETUPS['strict, Node types'] as ts.CompilerOptions;
     expect(typeErrors(buildProgram('ts', SORT, starter).source, options)).toEqual([]);
+  });
+
+  it('still reports a type error with the cached libs', () => {
+    const options = SETUPS['strict, Node types'] as ts.CompilerOptions;
+    const wrong = 'function solution(n: number, arr: number[]): number[] {\n    return n;\n}\n';
+    expect(typeErrors(buildProgram('ts', SORT, wrong).source, options)).not.toEqual([]);
   });
 });
 

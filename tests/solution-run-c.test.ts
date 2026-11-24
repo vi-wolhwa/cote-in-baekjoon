@@ -6,7 +6,7 @@ import {
   GLUE_INPUT_MESSAGE,
   mapRunMessages,
 } from '@/solution/program';
-import { AB, CASES, run, runCases, SORT } from './helpers/solution-run-shared';
+import { AB, AB_CODE, run, runCases, SORT } from './helpers/solution-run-shared';
 
 runCases(['c']);
 
@@ -21,7 +21,7 @@ describe('errors point at the user code', { timeout: 180_000 }, () => {
     const m1 = mapRunMessages('cpp', broken, { compileError: r1.compileError, stderr: '' });
     expect(m1.compileError).toMatch(/^solution\.c:3:\d+: error: use of undeclared identifier 'c'/);
 
-    const ok = buildProgram('c', AB, CASES['A+B']?.code.c ?? '');
+    const ok = buildProgram('c', AB, AB_CODE.c);
     const r2 = await run('c', ok.source, '1 x\n');
     expect(r2.exitCode).toBe(1);
     expect(mapRunMessages('cpp', ok, { error: r2.error, stderr: r2.stderr }).error).toBe(
