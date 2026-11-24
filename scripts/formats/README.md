@@ -25,7 +25,12 @@ solution 함수 모드(ADR-0006)의 형식 데이터를 만들기 위해, 많이
    - README가 그 문제의 것인지 확인한다: `acmicpc.net/problem/{id}` 링크나 첫 제목의 번호가 맞아야 쓴다.
    - 입력·출력 설명은 한 파일에서 함께, 예제는 한 파일에서 묶음으로 가져온다. 서로 다른 파일일 수 있어 `source`와 `sampleSource`를 따로 적는다.
    - 인증된 `gh` 토큰(`GITHUB_TOKEN`이 있으면 그것)을 쓰고, 속도 제한에 걸리면 초기화 시각까지 기다린다.
-3. **acmicpc.net 직접 열기**(공개 자료로 못 구한 문제만, `--boj N`)
+3. **블로그**(GitHub로 덜 모인 문제만)
+   - Velog(`--velog`): 공개 GraphQL(`v2.velog.io/graphql`, 키 없음)로 "백준 {번호} {제목}"을 찾고, 제목에 문제 번호가 있는 글을 문제마다 최대 5개 읽는다. 1초 간격.
+   - Tistory·네이버 블로그 등(`--blog`): 카카오(다음) 블로그 검색 API(무료, 하루 3만 건)로 찾고, 제목에 번호가 있는 글을 문제마다 최대 8개 읽는다. 네이버 블로그는 본문 프레임(PostView)을 읽는다. 1초 간격.
+     - 키는 `KAKAO_REST_API_KEY` 환경 변수로만 준다(`data/boj-cache/kakao.env`처럼 커밋하지 않는 곳에 둔다). 유료 API는 켜지 않는다. 한도를 넘으면 요청이 거절될 뿐 요금은 없다.
+   - 글 본문에서 입력·출력 절과 "예제 입력/출력" 블록만 읽는다. 풀이 코드는 읽지 않는다. 문제를 그림으로 붙인 글이 많아 예제를 얻는 비율은 낮다(시험: Velog 약 5%, 블로그 약 13%).
+4. **acmicpc.net 직접 열기**(공개 자료로 못 구한 문제만, `--boj N`)
    - Edge(Playwright)로 문제 쪽을 실제로 연다. **1분에 1쪽 이하, 하루 100쪽 상한**, 실행마다 `--boj`로 정한 수 이하.
    - 연 쪽은 모두 `data/boj-cache/access-log.jsonl`에 `{ time, id, result }`로 남긴다. 간격과 하루 상한도 이 기록으로 계산하므로 실행을 나눠도 지켜진다.
    - 챌린지·403·429가 나오면 우회하지 않고 멈춘다.
@@ -37,6 +42,7 @@ solution 함수 모드(ADR-0006)의 형식 데이터를 만들기 위해, 많이
 ```bash
 node scripts/formats/collect.ts --top 1000                                    # 목록 + GitHub
 node scripts/formats/collect.ts --top 1000 --max-tries 30 --search-missing    # 빈 곳 채우기
+node scripts/formats/collect.ts --top 1000 --skip-github --velog --blog      # + 블로그(카카오 키 필요)
 node scripts/formats/collect.ts --top 1000 --boj 20 --headed                  # + 백준 직접 최대 20쪽(1분 간격)
 node scripts/formats/collect.ts --top 1000 --stats                            # 통계만 다시 계산
 ```
@@ -52,6 +58,8 @@ node scripts/formats/collect.ts --top 1000 --stats                            # 
 | `--max-tries` | 6 | 문제마다 읽을 README 수 상한 |
 | `--skip-github` | 꺼짐 | GitHub 단계를 건너뛴다 |
 | `--search-missing` | 꺼짐 | 덜 모인 문제를 문제마다 코드 검색한다 |
+| `--velog` | 꺼짐 | 덜 모인 문제를 Velog에서 찾는다 |
+| `--blog` | 꺼짐 | 덜 모인 문제를 블로그 검색(카카오)으로 찾는다 |
 | `--stats` | 꺼짐 | 아무것도 받지 않고 통계만 다시 계산한다 |
 
 모든 단계는 이어서 실행할 수 있다. 받은 목록 쪽, 저장소 색인, 완성된 문제는 다시 받지 않고, 덜 모인 문제는 아직 읽지 않은 README만 읽는다. 처음부터 다시 하려면 `data/boj-cache/`의 해당 파일을 지운다.

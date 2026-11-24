@@ -45,3 +45,4 @@ test-results/
 
 # Problem text collected for format data (ADR-0006): never committed
 /data/boj-cache/
+/data/boj-cache-*/

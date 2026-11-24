@@ -50,13 +50,22 @@ async function api<T>(pathAndQuery: string, search = false): Promise<T> {
     await (search ? searchPacer : apiPacer).wait();
     if (search) counters.githubSearch++;
     else counters.githubApi++;
-    const res = await fetch(`${API}${pathAndQuery}`, {
-      headers: {
-        Authorization: `Bearer ${cachedToken}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'cote-in-baekjoon-format-data',
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API}${pathAndQuery}`, {
+        headers: {
+          Authorization: `Bearer ${cachedToken}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'cote-in-baekjoon-format-data',
+        },
+      });
+    } catch (e) {
+      // Dropped connections (ECONNRESET, timeouts): back off and retry a few times.
+      if (attempt >= 4) throw e;
+      console.log(`GitHub 연결 오류: ${30 * (attempt + 1)}초 뒤 다시 시도합니다`);
+      await sleep(30_000 * (attempt + 1));
+      continue;
+    }
     if (res.ok) return (await res.json()) as T;
     const remaining = res.headers.get('x-ratelimit-remaining');
     if ((res.status === 403 || res.status === 429) && remaining === '0' && attempt < 2) {
@@ -64,6 +73,12 @@ async function api<T>(pathAndQuery: string, search = false): Promise<T> {
       const wait = Math.max(5000, reset - Date.now() + 2000);
       console.log(`GitHub 속도 제한: ${Math.round(wait / 1000)}초 기다립니다`);
       await sleep(wait);
+      continue;
+    }
+    // Code search answers 502/503 now and then under load; back off and retry.
+    if (res.status >= 500 && attempt < 4) {
+      console.log(`GitHub ${res.status}: ${30 * (attempt + 1)}초 뒤 다시 시도합니다`);
+      await sleep(30_000 * (attempt + 1));
       continue;
     }
     throw new Error(`GitHub API ${res.status} ${pathAndQuery}`);
