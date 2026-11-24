@@ -18,6 +18,12 @@ export function kind(tok: string): Kind {
 export const numeric = (k: Kind) => k === 'int' || k === 'long';
 const leadingZero = (tok: string) => /^0\d/.test(tok);
 
+/** Scalars: leading zeros ("0012") and numbers past 64 bits are text. */
+function scalarKind(k: Kind, tok: string): Kind {
+  if (numeric(k) && (leadingZero(tok) || tok.replace(/^[+-]/, '').length > 18)) return 'string';
+  return k;
+}
+
 /** A parameter under construction; names are given at the end. */
 export interface DraftParam {
   type: ParamType;
@@ -107,27 +113,60 @@ export class Lines {
   }
 }
 
+/** What the description says about the layout, to rank options while searching. */
+export interface LayoutHints {
+  /** Whether the text names `width` scalars on a case-relative line (before any block). */
+  scalars?: (rel: number, width: number) => boolean;
+  /** Whether the text talks about a case-relative line by its ordinal ("셋째 줄에는"). */
+  described?: (rel: number) => boolean;
+  /** Sizes the text states ("5개의 정수", "총 8줄"), and row widths ("세 정수씩"). */
+  fixed?: ReadonlySet<number>;
+  fixedCols?: ReadonlySet<number>;
+}
+
 /** Layouts for one case of `lines` starting at `start`, likelier options first. */
-export function layouts(lines: Lines, start: number, end: number, mustEnd: boolean): Draft[] {
+export function layouts(
+  lines: Lines,
+  start: number,
+  end: number,
+  mustEnd: boolean,
+  hints: LayoutHints = {},
+): Draft[] {
   const out: Draft[] = [];
   let visits = 0;
   const cost = (o: Option) => o.score - PARAM_COST * o.params.length;
-  const walk = (i: number, d: Draft) => {
-    if (++visits > MAX_VISITS || out.length >= MAX_DRAFTS) return;
-    if (i === end || (!mustEnd && i > start)) out.push(d);
-    if (i === end) return;
-    const opts = options(lines, i, end, d, start, mustEnd).sort((a, b) => cost(b) - cost(a));
-    for (const o of opts) {
-      // A format has at most MAX_PARAMS parameters; deeper layouts cannot be used.
-      if (d.params.length + o.params.length > MAX_PARAMS) continue;
-      walk(o.next, {
-        params: [...d.params, ...o.params],
-        lines: [...d.lines, o.line],
-        score: d.score + cost(o),
-      });
+  // Depth first, likeliest option first, but each option gets at most half of the drafts
+  // left: otherwise the first choice's variants use up the budget and later choices on
+  // early lines are never tried.
+  const walk = (i: number, d: Draft, budget: number): number => {
+    if (budget <= 0 || ++visits > MAX_VISITS) return 0;
+    let made = 0;
+    if (i === end || (!mustEnd && i > start)) {
+      out.push(d);
+      made++;
     }
+    if (i === end) return made;
+    const opts = options(lines, i, end, d, start, mustEnd, hints)
+      // A format has at most MAX_PARAMS parameters; deeper layouts cannot be used.
+      .filter((o) => d.params.length + o.params.length <= MAX_PARAMS)
+      .sort((a, b) => cost(b) - cost(a));
+    for (const [j, o] of opts.entries()) {
+      const left = budget - made;
+      if (left <= 0) break;
+      const share = j === opts.length - 1 ? left : Math.ceil(left / 2);
+      made += walk(
+        o.next,
+        {
+          params: [...d.params, ...o.params],
+          lines: [...d.lines, o.line],
+          score: d.score + cost(o),
+        },
+        share,
+      );
+    }
+    return made;
   };
-  walk(start, { params: [], lines: [], score: 0 });
+  walk(start, { params: [], lines: [], score: 0 }, MAX_DRAFTS);
   return out;
 }
 
@@ -145,15 +184,20 @@ function options(
   d: Draft,
   start: number,
   mustEnd: boolean,
+  hints: LayoutHints,
 ): Option[] {
   const t = lines.tokens[i] as string[];
-  const kinds = lines.kinds[i] as Kind[];
+  const kinds = (lines.kinds[i] as Kind[]).map((k, c) => scalarKind(k, t[c] as string));
   const base = d.params.length;
   const rel = d.lines.length;
   const ints = d.params.flatMap((p, id) => (p.value !== undefined ? [{ id, value: p.value }] : []));
+  const fixed = hints.fixed ?? new Set<number>();
   const opts: Option[] = [];
+  const beforeBlocks = !d.lines.some((l) => 'repeat' in l);
+  // The text names one scalar per token of this line ("x, y, w, h가 주어진다").
+  const named = beforeBlocks && (hints.scalars?.(rel, t.length) ?? false);
   // A: every token its own scalar.
-  if (t.length <= 6) {
+  if (t.length <= 6 || (named && t.length <= 8)) {
     opts.push({
       next: i + 1,
       params: t.map((tok, k) => ({
@@ -162,21 +206,22 @@ function options(
         ...(kinds[k] === 'int' ? { value: Number(tok) } : {}),
       })),
       line: { ids: t.map((_, k) => base + k) },
-      score: t.length >= 5 ? -5 : t.length === 4 ? -2 : 0,
+      score: named ? PARAM_COST * t.length - 1 : t.length >= 5 ? -5 : t.length === 4 ? -2 : 0,
     });
   }
-  // B: a line with spaces.
-  if (t.length >= 2 && kinds.some((k) => k === 'string')) {
+  // B: a line with spaces (or a word, in input whose other lines have spaces).
+  if (kinds.some((k) => k === 'string')) {
     opts.push({
       next: i + 1,
       params: [{ type: 'line', line: rel }],
       line: { ids: [base] },
-      score: -3,
+      score: t.length >= 2 ? -3 : -5,
     });
   }
   const arr = arrayType(kinds);
   if (arr) {
-    // C: an array whose length was read before.
+    // C: an array whose length was read before (one or two numbers counted by a value
+    // that happens to match are more often scalars).
     for (const e of ints) {
       for (const plus of [0, -1]) {
         if (e.value + plus !== t.length || t.length === 0) continue;
@@ -184,17 +229,32 @@ function options(
           next: i + 1,
           params: [{ type: arr, len: { id: e.id, plus }, line: rel }],
           line: { ids: [base] },
-          score: plus === 0 ? 2 : 0,
+          score: (plus === 0 ? 2 : 0) - (t.length <= 2 ? 2 : 0),
         });
       }
     }
-    // E: the rest of the line.
+    // E: the rest of the line, or as many as the text says ("5개의 정수").
     opts.push({
       next: i + 1,
       params: [{ type: arr, line: rel }],
       line: { ids: [base] },
-      score: t.length >= 4 ? 1 : -4,
+      score: named ? -4 : t.length >= 4 ? 1 : -4,
     });
+    if (fixed.has(t.length) && t.length >= 3) {
+      // Lines of the same size one after another are rows of one block.
+      const prev = d.lines[d.lines.length - 1];
+      const last =
+        prev && 'ids' in prev && prev.ids.length === 1
+          ? d.params[prev.ids[0] as number]
+          : undefined;
+      const again = last?.type === arr && last.len === t.length;
+      opts.push({
+        next: i + 1,
+        params: [{ type: arr, len: t.length, line: rel }],
+        line: { ids: [base] },
+        score: named ? -3 : again ? -2 : 2,
+      });
+    }
   }
   // D: "N a1 … aN" on one line.
   const restType = arrayType(kinds.slice(1));
@@ -210,39 +270,72 @@ function options(
       score: 2,
     });
   }
-  // F: several lines, one element or row each, counted by an integer read before.
+  // D': a number and as many values as the text says ("번호 T와 20개의 정수").
+  const restFixed = t.length - 1;
+  if (kinds[0] === 'int' && restType && restFixed >= 3 && fixed.has(restFixed) && !named) {
+    opts.push({
+      next: i + 1,
+      params: [
+        { type: 'int', line: rel, value: Number(t[0]) },
+        { type: restType, len: restFixed, line: rel },
+      ],
+      line: { ids: [base, base + 1] },
+      score: 5,
+    });
+  }
+  // F: several lines, one element or row each, counted by an integer read before. A single
+  // line counted by a 1 is more often a coincidence.
   const counts: { count: DraftCount; n: number; score: number }[] = [];
   for (const e of ints) {
     for (const plus of [0, -1]) {
       const n = e.value + plus;
-      if (n >= 1 && i + n <= end)
-        counts.push({ count: { id: e.id, plus }, n, score: plus ? 0 : 2 });
+      if (n >= 1 && i + n <= end) {
+        counts.push({ count: { id: e.id, plus }, n, score: (plus ? 0 : 2) - (n === 1 ? 4 : 0) });
+      }
     }
   }
-  // G: a fixed number of lines up to the end (only for a single case).
-  if (mustEnd && i > start && end - i >= 2) {
+  // G: as many lines as the text says ("총 5줄"), or up to the end (only for a single case).
+  for (const k of fixed) {
+    if (k >= 3 && i + k <= end) counts.push({ count: k, n: k, score: 0 });
+  }
+  if (mustEnd && i > start && end - i >= 2 && !fixed.has(end - i)) {
     counts.push({ count: end - i, n: end - i, score: -3 });
   }
+  // A block right after a block of the same rows is usually one block split by coincidence.
+  const prev = d.lines[d.lines.length - 1];
+  const before = prev && 'repeat' in prev ? d.params[prev.id] : undefined;
   for (const c of counts) {
-    for (const p of blockParams(lines.shape(i, c.n), ints, rel)) {
+    // The text describes a line inside the block on its own ("셋째 줄에는"): not one block.
+    let inside = false;
+    for (let k = 1; beforeBlocks && k < c.n && !inside; k++) inside = !!hints.described?.(rel + k);
+    const countId = typeof c.count === 'object' ? c.count.id : undefined;
+    const shape = lines.shape(i, c.n);
+    for (const p of blockParams(shape, ints, rel, hints.fixedCols ?? fixed, countId)) {
+      const split = before?.type === p.param.type && sameCount(before.cols, p.param.cols);
       opts.push({
         next: i + c.n,
         params: [p.param],
         line: { repeat: c.count, id: base },
-        score: c.score + p.score,
+        score: c.score + p.score - (split ? 4 : 0) - (inside ? 3 : 0),
       });
     }
   }
   return opts;
 }
 
+function sameCount(a: DraftCount | undefined, b: DraftCount | undefined): boolean {
+  if (typeof a !== 'object' || typeof b !== 'object') return a === b;
+  return a.id === b.id && a.plus === b.plus;
+}
+
 function blockParams(
   shape: BlockShape,
   ints: { id: number; value: number }[],
   rel: number,
+  fixed: ReadonlySet<number>,
+  countId?: number,
 ): { param: DraftParam; score: number }[] {
   const out: { param: DraftParam; score: number }[] = [];
-  const colsFor = (w: number) => ints.find((e) => e.value === w);
   const { allInt, allNumeric, allString, zeros } = shape;
   if (shape.width === 1) {
     if (allNumeric) {
@@ -256,21 +349,35 @@ function blockParams(
     }
     const w = shape.tokenLength;
     if (w !== undefined && w >= 2) {
-      const cols = colsFor(w);
-      out.push({
-        param: { type: 'char[][]', line: rel, ...(cols ? { cols: { id: cols.id, plus: 0 } } : {}) },
-        score: (cols ? 2 : 0) + (allNumeric && !zeros ? -2 : 1),
-      });
+      const base = allNumeric && !zeros ? -2 : 1;
+      const cols: DraftCount[] = ints
+        .filter((e) => e.value === w)
+        .map((e) => ({ id: e.id, plus: 0 }));
+      if (fixed.has(w)) cols.push(w);
+      for (const c of cols) {
+        // Rows of digits as long as another number says ("N M" then N rows of M digits).
+        const digits = typeof c === 'object' && c.id !== countId && allNumeric && !zeros;
+        out.push({
+          param: { type: 'char[][]', line: rel, cols: c },
+          score: 2 + (digits ? 0 : base),
+        });
+      }
+      if (cols.length === 0) out.push({ param: { type: 'char[][]', line: rel }, score: base });
     }
     return out;
   }
   if (!allInt) return out;
   if (shape.width !== undefined) {
     const w = shape.width;
-    const cols = colsFor(w);
-    if (cols)
-      out.push({ param: { type: 'int[][]', line: rel, cols: { id: cols.id, plus: 0 } }, score: 2 });
-    if (w <= 4) out.push({ param: { type: 'int[][]', line: rel, cols: w }, score: cols ? 0 : 1 });
+    // Every integer with this value: the text decides which one counts the columns.
+    const cols = ints.filter((e) => e.value === w);
+    for (const c of cols) {
+      out.push({ param: { type: 'int[][]', line: rel, cols: { id: c.id, plus: 0 } }, score: 2 });
+    }
+    if (w <= 4 || fixed.has(w)) {
+      const score = fixed.has(w) ? 2 : cols.length ? 0 : 1;
+      out.push({ param: { type: 'int[][]', line: rel, cols: w }, score });
+    }
     out.push({ param: { type: 'int[][]', line: rel }, score: -2 });
   } else {
     out.push({ param: { type: 'int[][]', line: rel }, score: -3 });

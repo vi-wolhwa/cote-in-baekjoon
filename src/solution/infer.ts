@@ -2,16 +2,25 @@
  * Infers a problem's input/output format from its samples and description (#115, ADR-0006
  * source 3). Candidate layouts come from the samples' token shapes (infer-layout.ts), kept
  * only if every sample reads and round-trips, paired with return types that print every expected
- * output back, ranked with hints from the text, and named from its variables ("N과 M" → n, m).
+ * output back (infer-ret.ts), ranked with hints from the text, and named from its variables
+ * ("N과 M" → n, m) and words ("간선" → edges, infer-names.ts and infer-vocab.ts).
  * Returns undefined when nothing fits well enough; the user can still define a format.
  */
 import type { Sample } from '@/boj/problem';
 import type { Cases, Format, LineSpec, Param, ParamType, RetSpec } from './dsl';
 import { isValidName } from './dsl';
-import { kind, layouts, Lines, numeric, type Draft, type DraftCount } from './infer-layout';
-import { BOOL_PAIRS, INT_LIMIT, textHints, type TextHints } from './infer-text';
+import {
+  kind,
+  layouts,
+  Lines,
+  type Draft,
+  type DraftCount,
+  type LayoutHints,
+} from './infer-layout';
+import { retCandidates, unprintable } from './infer-ret';
+import { textHints, type TextHints } from './infer-text';
 export type { DraftCount, DraftLine, DraftParam } from './infer-layout';
-import { nameParams } from './infer-names';
+import { caseCountLetter, HUGE, lineDescribed, lineScalars, nameParams } from './infer-names';
 import { formatOutput, parseOutput } from './output';
 import { inputLines, readInput, sameInput, writeInput } from './reader';
 import { validateFormat } from './validate';
@@ -44,6 +53,9 @@ function checkLimit(samples: readonly Sample[]): number {
   );
 }
 
+const last = (l: string[][]) => (l[l.length - 1] ?? []).join(' ');
+const outputLines = (out: string) => out.replace(/\s+$/, '').split(/\r?\n/).length;
+
 const TERMINATOR = /^(?:-?0|-1|#|END|end|\.)(?: (?:-?0|-1|#))*$/;
 
 interface Layout {
@@ -58,24 +70,41 @@ function caseLayouts(samples: readonly Sample[], hints: TextHints): Layout[] {
   const add = (drafts: Draft[], cases: Cases, score: number) => {
     for (const draft of drafts) out.push({ draft, cases, score: score + draft.score });
   };
-  const last = (l: string[][]) => (l[l.length - 1] ?? []).join(' ');
   const counted = all.every(
     (l) => l[0]?.length === 1 && kind(l[0][0] as string) === 'int' && Number(l[0][0]) >= 1,
   );
+  // One output line per counted case: the first number is a case count, whatever the text says.
+  const perCase =
+    counted && samples.every((s, i) => outputLines(s.output) === Number(all[i]?.[0]?.[0]));
+  const ended = all.every((l) => TERMINATOR.test(last(l)));
   // Layouts come from each of the first samples (a tiny sample alone can be ambiguous);
   // every sample checks them later.
-  for (const tokens of all.slice(0, MAX_SOURCES)) {
+  const { fixed, fixedCols } = hints;
+  const described = lineDescribed(hints);
+  const single: LayoutHints = { scalars: lineScalars(hints, false), described, fixed, fixedCols };
+  const caseHints: LayoutHints = { scalars: lineScalars(hints, true), fixed, fixedCols };
+  // Also the sample with the longest token: its numbers may not fit a long ("10^10000").
+  const longest = (l: string[][]) => Math.max(0, ...l.flat().map((x) => x.length));
+  const widest = all.reduce((a, b) => (longest(b) > longest(a) ? b : a), all[0] ?? []);
+  const sources = all.slice(0, MAX_SOURCES);
+  if (!sources.includes(widest)) sources.push(widest);
+  for (const tokens of sources) {
     const lines = new Lines(tokens);
     const n = tokens.length;
-    add(layouts(lines, 0, n, true), null, 0);
-    if (counted) add(layouts(lines, 1, n, false), { count: 'T' }, hints.testCases ? 5 : -3);
+    add(layouts(lines, 0, n, true, single), null, 0);
+    if (counted) {
+      const score = (hints.testCases ? 5 : -3) + (perCase ? 5 : 0);
+      add(layouts(lines, 1, n, false, caseHints), { count: 'T' }, score);
+    }
     const end = last(tokens);
     if (n >= 2 && all.every((l) => last(l) === end) && TERMINATOR.test(end)) {
-      add(layouts(lines, 0, n - 1, false), { until: end }, hints.endLine ? 4 : 1);
+      add(layouts(lines, 0, n - 1, false, single), { until: end }, hints.endLine ? 4 : 1);
     }
     if (n >= 2) {
-      const drafts = layouts(lines, 0, n, false).filter((d) => d.lines.length > 0);
-      add(drafts, { until: 'EOF' }, hints.eof ? 3 : hints.testCases ? 0 : -4);
+      const drafts = layouts(lines, 0, n, false, single).filter((d) => d.lines.length > 0);
+      // An end line the text mentions is not a case.
+      const score = (hints.eof ? 3 : hints.testCases ? 0 : -4) - (ended && hints.endLine ? 4 : 0);
+      add(drafts, { until: 'EOF' }, score);
     }
   }
   return out;
@@ -101,75 +130,12 @@ function draftFormat(draft: Draft, cases: Cases, ret: RetSpec): Format {
   return { v: 1, params, lines, cases, ret };
 }
 
-/** Return value candidates from the expected outputs, given each sample's case count. */
-function retCandidates(
-  samples: readonly Sample[],
-  caseCounts: number[],
-  hints: TextHints,
-): { ret: RetSpec; score: number }[] {
-  const outs = samples.map((s) => s.output.replace(/\r\n?/g, '\n').replace(/\s+$/, '').split('\n'));
-  const lines = outs.flat();
-  const toks = lines.map((l) => l.trim().split(/\s+/).filter(Boolean));
-  const flat = toks.flat();
-  const kinds = flat.map(kind);
-  const big = kinds.includes('long') || hints.outputBound > INT_LIMIT || hints.inputBound >= 1e9;
-  const out: { ret: RetSpec; score: number }[] = [];
-  const oneLinePerCase = outs.every((o, i) => o.length === caseCounts[i]);
-  const single = toks.every((t) => t.length === 1);
-  if (oneLinePerCase) {
-    if (single) {
-      if (kinds.every(numeric)) out.push({ ret: { type: big ? 'long' : 'int' }, score: 3 });
-      if (kinds.every((k) => k === 'double' || numeric(k))) {
-        const digits = flat.map((x) => (x.split('.')[1] ?? '').length);
-        if (new Set(digits).size === 1 && kinds.includes('double')) {
-          out.push({ ret: { type: 'double', digits: digits[0] as number }, score: 2 });
-        }
-      }
-      const words = new Set(flat);
-      for (const [yes, no] of BOOL_PAIRS) {
-        if (![...words].every((w) => w === yes || w === no)) continue;
-        const named = hints.quoted.includes(yes) && hints.quoted.includes(no);
-        out.push({ ret: { type: 'bool', yes, no }, score: named || words.size === 2 ? 5 : 3 });
-        break;
-      }
-    }
-    if (kinds.every(numeric) && toks.some((t) => t.length > 1)) {
-      out.push({
-        ret: { type: kinds.every((k) => k === 'int') ? 'int[]' : 'long[]', sep: ' ' },
-        score: 2,
-      });
-    }
-    out.push({
-      ret: { type: 'string' },
-      score: kinds.every((k) => k === 'string') && single ? 1 : -2,
-    });
-  }
-  if (caseCounts.every((c) => c === 1) && outs.some((o) => o.length > 1)) {
-    if (single && kinds.every(numeric)) {
-      out.push({
-        ret: { type: kinds.every((k) => k === 'int') ? 'int[]' : 'long[]', sep: '\n' },
-        score: 2,
-      });
-    }
-    const lens = new Set(lines.map((l) => l.trim().length));
-    if (single && lens.size === 1)
-      out.push({ ret: { type: 'char[][]' }, score: kinds.every(numeric) ? 0 : 2 });
-    if (single && kinds.every((k) => k === 'string'))
-      out.push({ ret: { type: 'string[]', sep: '\n' }, score: 1 });
-    if (!single && kinds.every((k) => k === 'int'))
-      out.push({ ret: { type: 'int[][]' }, score: 2 });
-    if (!single && flat.every((x) => x.length === 1) && kinds.every((k) => k === 'string')) {
-      out.push({ ret: { type: 'char[][]', sep: ' ' }, score: 1 });
-    }
-  }
-  return out;
-}
-
 /** Every format that passes sample validation, best first. */
 export function inferCandidates(input: InferInput): Candidate[] {
   const { samples } = input;
   if (samples.length === 0 || samples.every((s) => s.input.trim() === '')) return [];
   const hints = textHints(input.inputHtml, input.outputHtml);
+  if (unprintable(samples, hints.output.join(' '))) return [];
   const seen = new Set<string>();
   const found: Candidate[] = [];
   // The likeliest layouts only: reading big samples with thousands of layouts would stall the page.
@@ -200,8 +166,13 @@ export function inferCandidates(input: InferInput): Candidate[] {
         );
       });
       if (!fits) continue;
-      // Several cases expected but every sample has one: the case loop explains nothing.
-      const lonely = layout.cases !== null && caseCounts.every((c) => c === 1) ? -3 : 0;
+      // Several cases expected but every sample has one: the case loop explains nothing
+      // (unless the text gives a case count, which may well be 1 in a sample).
+      const counts = layout.cases !== null && 'count' in layout.cases;
+      const lonely =
+        layout.cases !== null && !(counts && hints.testCases) && caseCounts.every((c) => c === 1)
+          ? -3
+          : 0;
       const named = nameParams(layout.draft, layout.cases, hints);
       const format = draftFormat(layout.draft, layout.cases, ret);
       const renamed = applyNames(format, named.names, named.types, ret, hints);
@@ -244,16 +215,24 @@ function applyNames(
       : { repeat: rename(l.repeat), of: map.get(l.of) as string },
   );
   const longIn = params.some((p) => p.type === 'long' || p.type === 'long[]');
-  const finalRet: RetSpec = ret.type === 'int' && longIn ? { type: 'long' } : ret;
+  // Numbers past 64 bits in, so the answer is one too ("10^10000 이하의 A, B").
+  const hugeIn =
+    hints.inputBound >= HUGE &&
+    params.some((p, i) => p.type === 'string' && format.params[i]?.type !== 'string');
+  const numeric = ret.type === 'int' || ret.type === 'long';
+  const finalRet: RetSpec =
+    numeric && hugeIn
+      ? { type: 'string' }
+      : ret.type === 'int' && longIn && !hints.intAnswer
+        ? { type: 'long' }
+        : ret;
   const caseName = format.cases && 'count' in format.cases ? countName(hints, names) : undefined;
   const cases = caseName ? { count: caseName } : format.cases;
   return { ...format, params, lines, cases, ret: finalRet };
 }
 
 function countName(hints: TextHints, names: string[]): string {
-  const sentence = hints.input.find((s) => /테스트\s*케이스/.test(s) && /개수|수\s/.test(s));
-  const letter = sentence?.match(/(?<![A-Za-z])([A-Z])(?![A-Za-z])/)?.[1];
-  const name = letter ?? 'T';
+  const name = caseCountLetter(hints) ?? 'T';
   return names.includes(name) || (!isValidName(name.toLowerCase()) && !/^[A-Z]$/.test(name))
     ? 'T'
     : name;
