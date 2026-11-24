@@ -2,7 +2,7 @@
  * Return values as standard output, and expected output read back as return values
  * (ADR-0006 step 2). The glue code prints exactly what `formatReturn` prints.
  */
-import { isOneLineRet, retSep, type RetSpec } from './dsl';
+import { caseLabel, isOneLineRet, retSep, type RetSpec } from './dsl';
 import { elementType, parseToken, type Value } from './values';
 
 /** One case's return value as output text (no trailing newline). */
@@ -30,16 +30,20 @@ export function formatReturn(ret: RetSpec, v: Value): string {
   }
 }
 
-/** Every case's output, one after another (what the glue prints). */
+/** Every case's output, one after another (what the glue prints): label, value, blank line. */
 export function formatOutput(ret: RetSpec, values: Value[]): string {
-  return `${values.map((v) => formatReturn(ret, v)).join('\n')}\n`;
+  const blank = ret.blank ? '\n' : '';
+  const text = values.map((v, i) => caseLabel(ret, i + 1) + formatReturn(ret, v) + blank);
+  return `${text.join('\n')}\n`;
 }
 
 export type OutputResult = { ok: true; values: Value[] } | { ok: false; error: string };
 
 /**
- * Reads expected output as `cases` return values. With several cases, each case must be
- * one line unless the return value spans lines; then only the tokens are checked.
+ * Reads expected output as `cases` return values. Each case's label and blank line are
+ * checked and dropped. With several cases, each case must be one line unless the return
+ * value spans lines; those are split by their labels or blank lines, else only the tokens
+ * are checked (no values).
  */
 export function parseOutput(ret: RetSpec, text: string, cases: number): OutputResult {
   const lines = text
@@ -49,19 +53,83 @@ export function parseOutput(ret: RetSpec, text: string, cases: number): OutputRe
     .map((l) => l.trimEnd());
   const all = lines.length === 1 && lines[0] === '' ? [] : lines;
   try {
-    if (isOneLineRet(ret)) {
-      if (all.length !== cases) {
-        throw new Error(`출력이 ${all.length}줄이에요. 케이스마다 한 줄씩 ${cases}줄이어야 해요`);
-      }
-      return { ok: true, values: all.map((l) => readOneLine(ret, l)) };
+    const blocks = caseBlocks(ret, all, cases);
+    if (!blocks) {
+      // Several multi-line results that cannot be split apart: check the tokens only.
+      for (const l of all) if (!(ret.blank && l === '')) readBlock(ret, [l]);
+      return { ok: true, values: [] };
     }
-    if (cases === 1) return { ok: true, values: [readBlock(ret, all)] };
-    // Several multi-line results cannot be split apart: check the tokens only.
-    for (const l of all) readBlock(ret, [l]);
-    return { ok: true, values: [] };
+    const one = isOneLineRet(ret);
+    return {
+      ok: true,
+      values: blocks.map((b) => (one ? readOneBlock(ret, b) : readBlock(ret, b))),
+    };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
+}
+
+/** Each case's output lines, labels and blank lines dropped; undefined when they cannot be split. */
+function caseBlocks(ret: RetSpec, all: string[], cases: number): string[][] | undefined {
+  if (ret.label !== undefined) return labelBlocks(ret, all, cases);
+  if (isOneLineRet(ret) && !ret.blank) {
+    if (all.length !== cases) {
+      throw new Error(`출력이 ${all.length}줄이에요. 케이스마다 한 줄씩 ${cases}줄이어야 해요`);
+    }
+    return all.map((l) => [l]);
+  }
+  if (cases === 1) return [all];
+  if (!ret.blank) return undefined;
+  const groups: string[][] = [];
+  for (const [k, l] of all.entries()) {
+    if (l === '') continue;
+    if (k === 0 || all[k - 1] === '') groups.push([]);
+    groups[groups.length - 1]?.push(l);
+  }
+  if (groups.length === cases) return groups;
+  if (isOneLineRet(ret)) {
+    throw new Error(
+      `출력이 빈 줄로 나뉜 ${groups.length}묶음이에요. 케이스마다 한 묶음씩 ${cases}묶음이어야 해요`,
+    );
+  }
+  return undefined;
+}
+
+/** Splits output at each case's label ("Case #1: …", or "Scenario #1:" on a line of its own). */
+function labelBlocks(ret: RetSpec, all: string[], cases: number): string[][] {
+  const own = (ret.label as string).endsWith('\n');
+  const head = (i: number) => caseLabel(ret, i).replace(/\n$/, '');
+  const starts = (line: string | undefined, i: number) =>
+    line !== undefined && (line === head(i).trimEnd() || (!own && line.startsWith(head(i))));
+  const blocks: string[][] = [];
+  let pos = 0;
+  for (let i = 1; i <= cases; i++) {
+    if (!starts(all[pos], i)) {
+      throw new Error(`${i}번째 케이스 출력이 '${head(i).trim()}'(으)로 시작하지 않아요`);
+    }
+    let end = pos + 1;
+    while (end < all.length && !(i < cases && starts(all[end], i + 1))) end++;
+    const block = all.slice(pos, end);
+    if (own) block.shift();
+    else block[0] = (block[0] as string).slice(head(i).length);
+    if (ret.blank && i < cases) {
+      if (block[block.length - 1] !== '') {
+        throw new Error(`${i}번째 케이스 출력 뒤에 빈 줄이 없어요`);
+      }
+      block.pop();
+    }
+    blocks.push(block);
+    pos = end;
+  }
+  if (pos < all.length) throw new Error(`출력이 ${cases}개 케이스보다 길어요`);
+  return blocks;
+}
+
+function readOneBlock(ret: RetSpec, block: string[]): Value {
+  if (block.length !== 1) {
+    throw new Error(`케이스마다 한 줄씩 출력해야 하는데 ${block.length}줄인 케이스가 있어요`);
+  }
+  return readOneLine(ret, block[0] as string);
 }
 
 function tokens(line: string): string[] {
