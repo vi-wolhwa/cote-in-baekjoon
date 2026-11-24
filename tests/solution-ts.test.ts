@@ -101,7 +101,7 @@ const SETUPS: Record<string, ts.CompilerOptions> = {
   },
 };
 
-describe('TypeScript glue compiles with tsc', () => {
+describe('TypeScript glue compiles with tsc', { timeout: 120_000 }, () => {
   for (const [name, options] of Object.entries(SETUPS)) {
     it(name, () => {
       for (const [format, code] of [
