@@ -21,5 +21,13 @@ nativeSuite(
     emptyThenEof: 'def solution(n, arr, rest)\n  rest.sum\nend',
     caseLabel: 'def solution(a, b)\n  a + b\nend',
     scenario: 'def solution(n, arr)\n  arr\nend',
+    exprFlow: 'def solution(n, arr, g)\n  arr.sum * 100 + g.size * 10 + g[0].size\nend',
+    blockCount:
+      'def solution(n, k, name, items)\n  name.each_with_index.map { |s, i| "#{s}:#{items[i].sum}" }\nend',
+    blockUntil:
+      'def solution(m, vals, x, y)\n  vals.map(&:max) + x.zip(y).map { |a, b| a * b }\nend',
+    endConds: 'def solution(n, words, p)\n  n + words.size * 10 + p.sum * 100\nend',
+    rawLines:
+      'def solution(t, n, ls, mid, rest)\n  ([t] + ls + mid + rest).map { |s| "[#{s}]" }\nend',
   },
 );
