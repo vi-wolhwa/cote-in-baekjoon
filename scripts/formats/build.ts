@@ -23,7 +23,7 @@ import { isExcluded } from '@/solution/source';
 import { validateFormat } from '@/solution/validate';
 import { formatsFile } from './lib/json-lines.ts';
 import { escapeText, loadReviewed, type Reviewed } from './lib/reviewed.ts';
-import type { ProblemRecord } from './lib/record.ts';
+import { hasDescription, type ProblemRecord } from './lib/record.ts';
 
 const { values: args } = parseArgs({
   options: {
@@ -42,6 +42,7 @@ const reviewed = loadReviewed(args.reviewed);
 
 type Outcome =
   | 'reviewed'
+  | 'reviewed-no-samples'
   | 'reviewed-none'
   | 'reviewed-invalid'
   | 'unreviewed'
@@ -52,6 +53,7 @@ type Outcome =
 
 const counts: Record<Outcome, number> = {
   reviewed: 0,
+  'reviewed-no-samples': 0,
   'reviewed-none': 0,
   'reviewed-invalid': 0,
   unreviewed: 0,
@@ -84,7 +86,10 @@ for (const id of ids) {
     note('excluded');
     continue;
   }
-  if (rec.samples.length === 0) {
+  // Without samples, a format can still be reviewed from the description alone. It passes only
+  // the DSL checks here; the extension validates it against the real samples when the problem
+  // opens and falls back to inference otherwise (ADR-0006).
+  if (rec.samples.length === 0 && !hasDescription(rec)) {
     note('no-samples');
     continue;
   }
@@ -104,6 +109,10 @@ for (const id of ids) {
       const v = validateFormat(review, rec.samples);
       if (v.ok) {
         formats[id] = v.format;
+        if (rec.samples.length === 0) {
+          note('reviewed-no-samples');
+          continue;
+        }
         note('reviewed');
         compared++;
         if (inferred && sameFormat(inferred, v.format)) agreed++;

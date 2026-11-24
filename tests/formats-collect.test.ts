@@ -11,7 +11,12 @@ import {
 } from '../scripts/formats/lib/boj-policy.ts';
 import { refFromContentsUrl } from '../scripts/formats/github.ts';
 import { indexTree, problemIdFromPath, rawUrl } from '../scripts/formats/lib/paths.ts';
-import { emptyRecord, isComplete, mergePartial } from '../scripts/formats/lib/record.ts';
+import {
+  emptyRecord,
+  hasDescription,
+  isComplete,
+  mergePartial,
+} from '../scripts/formats/lib/record.ts';
 import { coverage } from '../scripts/formats/lib/stats.ts';
 import { parseSearchPage } from '../scripts/formats/solvedac.ts';
 
@@ -216,5 +221,21 @@ describe('parseSearchPage', () => {
 
   it('rejects other bodies', () => {
     expect(() => parseSearchPage('<html>')).toThrow();
+  });
+});
+
+describe('hasDescription', () => {
+  const rec = (input: string | null, output: string | null, sampleInput = '1') => ({
+    ...emptyRecord(1, 't', 'now'),
+    input,
+    output,
+    samples: [{ input: sampleInput, output: '2' }],
+  });
+  it('needs an output and an input, which may be empty only when the samples read nothing', () => {
+    expect(hasDescription(rec('N이 주어진다.', 'N을 출력한다.'))).toBe(true);
+    expect(hasDescription(rec('N이 주어진다.', ' '))).toBe(false);
+    expect(hasDescription(rec(null, '출력'))).toBe(false);
+    expect(hasDescription(rec('', '출력'))).toBe(false);
+    expect(hasDescription(rec('', '출력', ''))).toBe(true);
   });
 });
