@@ -67,6 +67,10 @@ test('시험 종료 submits the saved answers one at a time and shows the result
   await handleSubmitTab(second, 1001);
   await expect(rows.nth(1).getByTestId('result-text')).toHaveText('맞았습니다!!');
   await expect(progress).toHaveText('제출 완료 2/2');
+  await expect(rows.nth(1).getByTestId('status-link')).toHaveAttribute(
+    'href',
+    /^https:\/\/www\.acmicpc\.net\/status\?problem_id=1001/,
+  );
   await expect(page.getByTestId('result-score')).toContainText('2 / 3');
   await expect(rows.nth(1)).toContainText('Python 3');
 
