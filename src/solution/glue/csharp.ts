@@ -13,7 +13,9 @@ import {
   type RetSpec,
   type RetType,
 } from '../dsl';
+import { CSHARP_ROWS, CSHARP_RUNTIME } from './csharp-runtime';
 import {
+  planVar,
   renderCount,
   renderRows,
   usesRows,
@@ -62,128 +64,6 @@ export function csharpQuote(s: string): string {
   return `"${body}"`;
 }
 
-const RUNTIME = `    sealed class __cib_Error : System.Exception { }
-    static byte[] __cib_d;
-    static int __cib_p, __cib_n;
-    static System.Exception __cib_fail() { return new __cib_Error(); }
-    static bool __cib_ws(byte c) { return c == ' ' || c == '\\n' || c == '\\r' || c == '\\t'; }
-    static int __cib_cnt(long x) { if (x < 0 || x > int.MaxValue) throw __cib_fail(); return (int)x; }
-    static string __cib_str(int s, int e) { return System.Text.Encoding.UTF8.GetString(__cib_d, s, e - s); }
-    static bool __cib_more() {
-        while (__cib_p < __cib_n && __cib_ws(__cib_d[__cib_p])) __cib_p++;
-        return __cib_p < __cib_n;
-    }
-    static bool __cib_has() {
-        int q = __cib_p;
-        while (q < __cib_n && __cib_ws(__cib_d[q])) q++;
-        return q < __cib_n;
-    }
-    static string __cib_tok() {
-        if (!__cib_more()) throw __cib_fail();
-        int s = __cib_p;
-        while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) __cib_p++;
-        return __cib_str(s, __cib_p);
-    }
-    static long __cib_ll() {
-        if (!__cib_more()) throw __cib_fail();
-        bool neg = false;
-        if (__cib_d[__cib_p] == '-' || __cib_d[__cib_p] == '+') neg = __cib_d[__cib_p++] == '-';
-        if (__cib_p >= __cib_n || __cib_ws(__cib_d[__cib_p])) throw __cib_fail();
-        long v = 0;
-        while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) {
-            int c = __cib_d[__cib_p++] - '0';
-            if (c < 0 || c > 9) throw __cib_fail();
-            v = unchecked(v * 10 - c);
-        }
-        return neg ? v : unchecked(-v);
-    }
-    static int __cib_int() { return unchecked((int)__cib_ll()); }
-    static long __cib_pl(string s) {
-        long v;
-        if (!long.TryParse(s, System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out v)) throw __cib_fail();
-        return v;
-    }
-    static int __cib_pi(string s) { return unchecked((int)__cib_pl(s)); }
-    static double __cib_pd(string s) {
-        double v;
-        if (!double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v)) throw __cib_fail();
-        return v;
-    }
-    static double __cib_dbl() { return __cib_pd(__cib_tok()); }
-    static void __cib_nl() {
-        if (__cib_p > 0 && __cib_d[__cib_p - 1] != '\\n') {
-            while (__cib_p < __cib_n && __cib_d[__cib_p] != '\\n') __cib_p++;
-            if (__cib_p < __cib_n) __cib_p++;
-        }
-        for (;;) {
-            int q = __cib_p;
-            while (q < __cib_n && __cib_d[q] != '\\n' && __cib_ws(__cib_d[q])) q++;
-            if (q < __cib_n && __cib_d[q] == '\\n') __cib_p = q + 1;
-            else break;
-        }
-    }
-    static string __cib_line() {
-        if (__cib_p >= __cib_n) throw __cib_fail();
-        int e = __cib_p;
-        while (e < __cib_n && __cib_d[e] != '\\n') e++;
-        int s = __cib_p;
-        __cib_p = e;
-        while (s < e && __cib_ws(__cib_d[s])) s++;
-        while (e > s && __cib_ws(__cib_d[e - 1])) e--;
-        return __cib_str(s, e);
-    }
-    static string[] __cib_rest() {
-        if (__cib_p >= __cib_n) throw __cib_fail();
-        var r = new System.Collections.Generic.List<string>();
-        while (__cib_p < __cib_n && __cib_d[__cib_p] != '\\n') {
-            while (__cib_p < __cib_n && __cib_d[__cib_p] != '\\n' && __cib_ws(__cib_d[__cib_p])) __cib_p++;
-            int s = __cib_p;
-            while (__cib_p < __cib_n && !__cib_ws(__cib_d[__cib_p])) __cib_p++;
-            if (__cib_p > s) r.Add(__cib_str(s, __cib_p));
-        }
-        return r.ToArray();
-    }`;
-
-/** Counting rows ahead for end-line and end-of-input repeats (only when used). */
-const ROWS = `    static bool __cib_at(string[] w) {
-        int s = __cib_p;
-        bool ok = true;
-        foreach (string x in w) if (!__cib_more() || __cib_tok() != x) { ok = false; break; }
-        __cib_p = s;
-        return ok;
-    }
-    static int __cib_rowsTok(string[] w, long k) {
-        int s = __cib_p, r = 0;
-        for (;;) {
-            if (w.Length == 0 ? !__cib_has() : __cib_at(w)) break;
-            if (k < 1 || !__cib_has()) throw __cib_fail();
-            for (long i = 0; i < k; i++) __cib_tok();
-            r++;
-        }
-        __cib_p = s;
-        return r;
-    }
-    static string __cib_raw() {
-        int e = __cib_p;
-        while (e < __cib_n && __cib_d[e] != '\\n') e++;
-        int s = __cib_p;
-        __cib_p = e;
-        while (e > s && __cib_ws(__cib_d[e - 1])) e--;
-        return __cib_str(s, e);
-    }
-    static int __cib_rowsLine(string e, bool raw) {
-        int s = __cib_p, r = 0;
-        for (;;) {
-            __cib_nl();
-            if (!__cib_has()) { if (e != null) throw __cib_fail(); break; }
-            string t = raw ? __cib_raw() : __cib_line();
-            if (e != null && t == e) break;
-            r++;
-        }
-        __cib_p = s;
-        return r;
-    }`;
-
 const READ: Record<Scalar, string> = {
   int: '__cib_int()',
   long: '__cib_ll()',
@@ -202,13 +82,63 @@ const count = (c: CountRef) => `__cib_cnt(${renderCount(c, variable)})`;
 const rows = (n: Rows) =>
   renderRows(n, count, {
     tok: (end, k) => `__cib_rowsTok(new string[] {${end.map(csharpQuote).join(', ')}}, ${k})`,
-    line: (end, raw) =>
-      `__cib_rowsLine(${end === null ? 'null' : csharpQuote(end)}, ${raw ? 'true' : 'false'})`,
+    line: (end, text) =>
+      `__cib_rowsLine(${end.mode}, ${csharpQuote(end.text)}, ${text ? 'true' : 'false'})`,
+    phys: (end) => `__cib_rowsPhys(${end.mode}, ${csharpQuote(end.text)})`,
   });
 
-function step(s: Step): string {
+/** A declaration of a variable of this C# type with a default value. */
+function declare(type: string, name: string): string {
+  const init = type === 'int' || type === 'long' ? '0' : type === 'double' ? '0.0' : 'null';
+  return `${type} ${name} = ${init};`;
+}
+
+/**
+ * A block: each pass reads the block's variables (locals) and adds them to a List buffer per
+ * parameter, which becomes the parameter's array after the loop (a negative count is an
+ * input error, by __cib_cnt).
+ */
+function block(plan: Plan, s: Extract<Step, { op: 'block' }>): string {
+  const head = (() => {
+    switch (s.loop.kind) {
+      case 'count':
+        return `for (int __cib_b = 0, __cib_bn = ${count(s.loop.n)}; __cib_b < __cib_bn; __cib_b++) {`;
+      case 'eof':
+        return 'while (__cib_has()) {';
+      case 'tok':
+        return `while (!__cib_at(new string[] {${s.loop.end.map(csharpQuote).join(', ')}})) {`;
+      case 'line':
+        return `while (!__cib_endl(${s.loop.end.mode}, ${csharpQuote(s.loop.end.text)})) {`;
+    }
+  })();
+  const type = (v: number) => CSHARP_TYPES[planVar(plan, v).type];
+  const buffer = (x: { list: number }) => `__cib_l${x.list}`;
+  return [
+    '{',
+    ...s.items.map(
+      (x) => `    var ${buffer(x)} = new System.Collections.Generic.List<${type(x.item)}>();`,
+    ),
+    `    ${head}`,
+    ...s.items.map((x) => `        ${declare(type(x.item), variable(x.item))}`),
+    ...s.steps.flatMap((x) => step(plan, x).split('\n')).map((l) => `        ${l}`),
+    ...s.items.map((x) => `        ${buffer(x)}.Add(${variable(x.item)});`),
+    '    }',
+    ...s.items.map((x) => `    ${variable(x.list)} = ${buffer(x)}.ToArray();`),
+    '}',
+  ].join('\n');
+}
+
+function step(plan: Plan, s: Step): string {
   const v = variable('v' in s ? s.v : 0);
   switch (s.op) {
+    case 'block':
+      return block(plan, s);
+    case 'raw':
+      return `${v} = __cib_rawl();`;
+    case 'rawLines':
+      return `${v} = new string[${rows(s.n)}]; for (int __cib_i = 0; __cib_i < ${v}.Length; __cib_i++) ${v}[__cib_i] = __cib_rawl();`;
+    case 'endRaw':
+      return '__cib_rawl();';
     case 'nl':
       return '__cib_nl();';
     case 'scalar':
@@ -279,16 +209,12 @@ function printer(ret: RetSpec): string[] {
 export function csharpGlue(plan: Plan, ret: RetSpec): string {
   const vars = plan.params.map((_, i) => variable(i));
   const label = labelParts(ret);
-  const decls = plan.params.map((p, i) => {
-    const type = CSHARP_TYPES[p.type];
-    const init = type === 'int' || type === 'long' ? '0' : type === 'double' ? '0.0' : 'null';
-    return `${type} ${variable(i)} = ${init};`;
-  });
+  const decls = plan.params.map((p, i) => declare(CSHARP_TYPES[p.type], variable(i)));
   const body = (n: number) =>
     [
       ...decls,
       'try {',
-      ...plan.steps.map((s) => `    ${step(s)}`),
+      ...plan.steps.flatMap((s) => step(plan, s).split('\n')).map((l) => `    ${l}`),
       '} catch (System.Exception __cib_e) when (!(__cib_e is __cib_Error)) {',
       '    throw __cib_fail();',
       '}',
@@ -312,6 +238,10 @@ export function csharpGlue(plan: Plan, ret: RetSpec): string {
         return `        int __cib_t = __cib_int();\n        for (int __cib_k = 0; __cib_k < __cib_t; __cib_k++) {\n${body(12)}\n        }`;
       case 'eof':
         return `        while (__cib_has()) {\n${body(12)}\n        }`;
+      case 'line': {
+        const { mode, text } = plan.loop.end;
+        return `        while (__cib_has() && !__cib_endl(${mode}, ${csharpQuote(text)})) {\n${body(12)}\n        }`;
+      }
       case 'until': {
         const words = plan.loop.tokens.map(csharpQuote).join(', ');
         return [
@@ -334,8 +264,8 @@ export function csharpGlue(plan: Plan, ret: RetSpec): string {
     '// ---- 입출력 코드 ----',
     '#nullable disable',
     'public static class __cib_Main {',
-    RUNTIME,
-    ...(usesRows(plan) ? [ROWS] : []),
+    CSHARP_RUNTIME,
+    ...(usesRows(plan) ? [CSHARP_ROWS] : []),
     '',
     '    static void __cib_run() {',
     '        var __cib_ms = new System.IO.MemoryStream();',

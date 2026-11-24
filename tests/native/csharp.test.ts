@@ -69,5 +69,20 @@ nativeSuite(
     ),
     caseLabel: cls('public int solution(int a, int b) {\n        return a + b;\n    }'),
     scenario: cls('public int[] solution(int n, int[] arr) {\n        return arr;\n    }'),
+    exprFlow: cls(
+      'public long solution(int n, int[] arr, int[][] g) {\n        return (long)arr.Sum() * 100 + g.Length * 10 + g[0].Length;\n    }',
+    ),
+    blockCount: cls(
+      'public string[] solution(int n, int[] k, string[] name, int[][] items) {\n        return name.Select((s, i) => s + ":" + items[i].Sum()).ToArray();\n    }',
+    ),
+    blockUntil: cls(
+      'public int[] solution(int[] m, int[][] vals, int[] x, int[] y) {\n        return vals.Select(r => r.Max()).Concat(x.Select((a, i) => a * y[i])).ToArray();\n    }',
+    ),
+    endConds: cls(
+      'public long solution(int n, string[] words, int[] p) {\n        return n + words.Length * 10L + p.Sum() * 100L;\n    }',
+    ),
+    rawLines: cls(
+      'public string[] solution(string t, int n, string[] ls, string[] mid, string[] rest) {\n        return new[] { t }.Concat(ls).Concat(mid).Concat(rest).Select(s => "[" + s + "]").ToArray();\n    }',
+    ),
   },
 );
