@@ -150,9 +150,13 @@ export function parseReadme(markdown: string): ReadmeSections {
 
 /**
  * Whether a parsed README belongs to problem `id`: it links to the problem page,
- * or its first heading carries the id as a whole number (`- 1000`, `1000.`).
+ * or its first heading carries the id as a whole number (`- 1000`, `1000.`) and, when `title`
+ * is given, the problem title: other judges (CodeUp, ...) reuse the same numbers.
  */
-export function readmeMatchesId(sections: ReadmeSections, id: number): boolean {
+export function readmeMatchesId(sections: ReadmeSections, id: number, title?: string): boolean {
   if (sections.linkedId !== null) return sections.linkedId === id;
-  return sections.heading !== null && new RegExp(`(^|\\D)${id}(\\D|$)`).test(sections.heading);
+  const heading = sections.heading;
+  if (heading === null || !new RegExp(`(^|\\D)${id}(\\D|$)`).test(heading)) return false;
+  const squash = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+  return title === undefined || squash(heading).includes(squash(title));
 }

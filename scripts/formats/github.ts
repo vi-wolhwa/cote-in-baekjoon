@@ -294,7 +294,7 @@ export async function fetchFromGithub(
       }
       stat.fetched++;
       const parsed = parseReadme(text);
-      if (!readmeMatchesId(parsed, problem.id)) {
+      if (!readmeMatchesId(parsed, problem.id, problem.title)) {
         stat.mismatch++;
         continue;
       }
