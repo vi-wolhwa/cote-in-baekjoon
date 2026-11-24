@@ -8,6 +8,15 @@
  */
 import type { JsRunResult } from './js/execute';
 
+/**
+ * How an engine family builds one language (ADR-0007). Several Baekjoon languages share an
+ * engine (`EngineId`); the compiler mode and standard come from the language.
+ * - `clang`: C or C++ with a `-std` value (C99, C11, C++14, C++17, C++20)
+ * - `typescript`: strip the types, then run on the JavaScript engine
+ */
+export type BuildOptions =
+  { kind: 'clang'; lang: 'c' | 'c++'; std: string } | { kind: 'typescript' };
+
 export interface EngineInput {
   code: string;
   stdin: string;
@@ -16,10 +25,12 @@ export interface EngineInput {
    * Engines load `pyodide/`, `clang/`, `wasi/` and `teavm/` from here; nothing is fetched remotely.
    */
   runtimeBase: string;
+  /** The language's build settings; without them an engine uses its first language (C++17, JS). */
+  build?: BuildOptions;
 }
 
 export interface EngineResult extends JsRunResult {
-  /** Compiler output when the program did not compile (C++, Java). */
+  /** Compiler output when the program did not compile (C, C++, Java, TypeScript). */
   compileError?: string;
 }
 

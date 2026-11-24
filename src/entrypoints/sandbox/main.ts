@@ -13,7 +13,7 @@ import {
 import { createJavaEngine } from '@/runner/java/engine';
 import { createJsEngine } from '@/runner/js/engine';
 import { createPythonEngine } from '@/runner/python/engine';
-import { languageInfo, type EngineId } from '@/shared/languages';
+import { languageInfo, SUBMIT_ONLY_REASON, type EngineId } from '@/shared/languages';
 import {
   isCancelRequest,
   isRunRequest,
@@ -43,7 +43,22 @@ window.addEventListener('message', (event) => {
 });
 
 async function run(req: RunRequest) {
-  const engineId = languageInfo(req.language).engine;
+  const info = languageInfo(req.language);
+  const engineId = info.engine;
+  if (!engineId) {
+    // Submit-only languages never reach here from the IDE (ADR-0007).
+    const error = SUBMIT_ONLY_REASON;
+    const result = { stdout: '', stderr: '', exitCode: 1, error, outputLimitExceeded: false };
+    const response: RunResponse = {
+      type: 'cib:run-result',
+      id: req.id,
+      status: 'error',
+      result,
+      elapsedMs: 0,
+    };
+    window.parent.postMessage(response, '*');
+    return;
+  }
   let engine = engines.get(engineId);
   if (!engine) {
     engine = FACTORIES[engineId]();
@@ -82,7 +97,12 @@ async function run(req: RunRequest) {
 
   try {
     const result = await engine.run(
-      { code: req.code, stdin: req.stdin, runtimeBase: req.runtimeBase },
+      {
+        code: req.code,
+        stdin: req.stdin,
+        runtimeBase: req.runtimeBase,
+        ...(info.build ? { build: info.build } : {}),
+      },
       {
         onRunStart() {
           runStartedAt = performance.now();

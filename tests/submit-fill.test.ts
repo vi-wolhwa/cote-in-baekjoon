@@ -77,6 +77,14 @@ describe('selectLanguage', () => {
     expect(events).toEqual(['change', 'chosen:updated']);
   });
 
+  it('selects C99, whose Baekjoon id is 0, and submit-only languages', () => {
+    const doc = load();
+    expect(selectLanguage(doc, 0)).toBe('ok');
+    expect((doc.querySelector('select#language') as HTMLSelectElement).value).toBe('0');
+    expect(selectLanguage(doc, 113)).toBe('ok');
+    expect(isFillRequest({ nonce: 'n', languageId: 0, code: 'int main(void){}' })).toBe(true);
+  });
+
   it('reports a missing select or option', () => {
     const doc = load();
     expect(selectLanguage(doc, 999)).toBe('unavailable');

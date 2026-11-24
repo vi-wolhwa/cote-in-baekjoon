@@ -3,12 +3,13 @@ import type { Problem, Sample } from '@/boj/problem';
 import { SandboxRunner } from '@/runner/client';
 import { describeBrowser } from '@/shared/report';
 import { isProblemMessage, type CloseMessage, type ReadyMessage } from '@/shared/messages';
-import { DEFAULT_LANGUAGE, LANGUAGES, languageInfo, type LanguageId } from '@/shared/languages';
+import { DEFAULT_LANGUAGE, languageInfo, type LanguageId } from '@/shared/languages';
 import { DEMO_PROBLEM } from './demo';
 import { applyTheme, DEFAULT_THEME, type Theme } from '@/shared/theme';
 import { ResetDialog, TestCaseDialog } from './dialogs';
 import { createEditor, type EditorHandle } from './editor';
 import { BackArrowIcon } from './icons';
+import { LanguageSelect, RunButton, SubmitOnlyNote } from './language-controls';
 import { ProblemPane, runBlockReason, runNote } from './ProblemPane';
 import { ideReportUrl } from './report-link';
 import { runCases } from './run-cases';
@@ -94,7 +95,6 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     () => sol.submission(editor.current?.getCode() ?? '', languageRef.current),
     language,
   );
-  const info = languageInfo(language);
   const blockReason = runBlockReason(problem.labels);
   const note = runNote(problem.labels);
   const reportUrl = ideReportUrl({
@@ -134,7 +134,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
       editor.current = createEditor(editorHost.current, {
         doc: code ?? sol.starter(lang, fn),
         keymap: km,
-        engine: languageInfo(lang).engine,
+        syntax: languageInfo(lang).syntax,
         theme: th,
         onChange: (text) => {
           clearTimeout(saveTimer.current);
@@ -168,9 +168,11 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
     setLanguage(next);
     void store.saveLanguage(next);
     saveMeta(next);
-    editor.current?.setLanguage(nextInfo.engine);
-    // Python 3 and PyPy3 share code; switching between them keeps the editor as it is.
-    if (nextInfo.codeGroup !== info.codeGroup) editor.current?.setCode(saved ?? sol.starter(next));
+    editor.current?.setLanguage(nextInfo.syntax);
+    // Languages that share saved code (Python 3 and PyPy3, C++14/17/20) keep the editor as it is.
+    if (sol.group(next) !== sol.group(language)) {
+      editor.current?.setCode(saved ?? sol.starter(next));
+    }
     setOutput({ state: 'empty' });
   };
 
@@ -279,10 +281,8 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
               <SolutionToggle
                 on={sol.fn}
                 busy={running || !ready}
-                {...(sol.resolved.reason ? { reason: sol.resolved.reason } : {})}
-                {...(sol.resolved.reason && !blockReason
-                  ? { onDefine: () => setFormatOpen(true) }
-                  : {})}
+                {...(sol.reason ? { reason: sol.reason } : {})}
+                {...(sol.canDefine && !blockReason ? { onDefine: () => setFormatOpen(true) } : {})}
                 onChange={(on) => {
                   setOutput({ state: 'empty' });
                   void sol.setMode(on);
@@ -302,19 +302,11 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
                   </button>
                 ))}
               </div>
-              <select
-                class="language"
+              <LanguageSelect
                 value={language}
-                aria-label="언어"
                 disabled={running || !ready}
-                onChange={(e) => void changeLanguage(e.currentTarget.value as LanguageId)}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(next) => void changeLanguage(next)}
+              />
             </div>
           </header>
 
@@ -384,6 +376,7 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
                         {tab === 'run' ? (
                           <>
                             {note && <p class="out-note">{note}</p>}
+                            <SubmitOnlyNote language={language} />
                             <RunOutput {...output} />
                           </>
                         ) : (
@@ -427,15 +420,12 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
               >
                 초기화
               </button>
-              {running ? (
-                <button type="button" class="btn btn-dark" onClick={() => runner.cancel()}>
-                  실행 중지
-                </button>
-              ) : (
-                <button type="button" class="btn btn-dark" onClick={() => void run()}>
-                  코드 실행
-                </button>
-              )}
+              <RunButton
+                language={language}
+                running={running}
+                onRun={() => void run()}
+                onStop={() => runner.cancel()}
+              />
               <button
                 type="button"
                 class="btn btn-primary"

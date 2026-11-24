@@ -1,6 +1,6 @@
 # ADR-0004: 코드 실행 엔진
 
-- 상태: 승인 (JavaScript, Python, C++, Java)
+- 상태: 승인 (JavaScript, Python, C++, Java). M6 언어(C, C++14·20, Java 8, TypeScript)는 ADR-0007
 - 날짜: 2026-11-23
 - 관련: PRD R3·R4, 이슈 #4
 

@@ -11,7 +11,12 @@ import { cpp } from '@codemirror/lang-cpp';
 import { java } from '@codemirror/lang-java';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
-import { bracketMatching, indentUnit } from '@codemirror/language';
+import { bracketMatching, indentUnit, StreamLanguage } from '@codemirror/language';
+import { csharp, kotlin } from '@codemirror/legacy-modes/mode/clike';
+import { go } from '@codemirror/legacy-modes/mode/go';
+import { ruby } from '@codemirror/legacy-modes/mode/ruby';
+import { rust } from '@codemirror/legacy-modes/mode/rust';
+import { swift } from '@codemirror/legacy-modes/mode/swift';
 import { searchKeymap } from '@codemirror/search';
 import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import {
@@ -24,7 +29,7 @@ import {
 } from '@codemirror/view';
 import { emacs } from '@replit/codemirror-emacs';
 import { vim } from '@replit/codemirror-vim';
-import type { EngineId } from '@/shared/languages';
+import type { SyntaxId } from '@/shared/languages';
 import type { Theme } from '@/shared/theme';
 import { editorBase, editorTheme } from './editor-theme';
 import type { Keymap } from './storage';
@@ -45,18 +50,30 @@ function keymapExtension(name: Keymap): Extension {
   return sublimeTab;
 }
 
-function languageExtension(engine: EngineId): Extension {
-  if (engine === 'python') return python();
-  if (engine === 'cpp') return cpp();
-  if (engine === 'java') return java();
-  return javascript();
+/** Submit-only languages use CodeMirror 5 modes (ADR-0007). */
+const LEGACY: Partial<Record<SyntaxId, Parameters<typeof StreamLanguage.define>[0]>> = {
+  kotlin,
+  csharp,
+  rust,
+  go,
+  swift,
+  ruby,
+};
+
+function languageExtension(syntax: SyntaxId): Extension {
+  const legacy = LEGACY[syntax];
+  if (legacy) return StreamLanguage.define(legacy);
+  if (syntax === 'python') return python();
+  if (syntax === 'c' || syntax === 'cpp') return cpp();
+  if (syntax === 'java') return java();
+  return javascript({ typescript: syntax === 'typescript' });
 }
 
 export interface EditorHandle {
   getCode(): string;
   setCode(code: string): void;
   setKeymap(name: Keymap): void;
-  setLanguage(engine: EngineId): void;
+  setLanguage(syntax: SyntaxId): void;
   setTheme(theme: Theme): void;
   focus(): void;
   destroy(): void;
@@ -67,7 +84,7 @@ export function createEditor(
   options: {
     doc: string;
     keymap: Keymap;
-    engine: EngineId;
+    syntax: SyntaxId;
     theme: Theme;
     onChange: (code: string) => void;
   },
@@ -93,7 +110,7 @@ export function createEditor(
         EditorState.tabSize.of(4),
         EditorView.lineWrapping,
         keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
-        languageSlot.of(languageExtension(options.engine)),
+        languageSlot.of(languageExtension(options.syntax)),
         editorBase,
         themeSlot.of(editorTheme(options.theme)),
         EditorView.updateListener.of((u) => {
@@ -108,8 +125,8 @@ export function createEditor(
     setCode: (code) =>
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: code } }),
     setKeymap: (name) => view.dispatch({ effects: keymapSlot.reconfigure(keymapExtension(name)) }),
-    setLanguage: (engine) =>
-      view.dispatch({ effects: languageSlot.reconfigure(languageExtension(engine)) }),
+    setLanguage: (syntax) =>
+      view.dispatch({ effects: languageSlot.reconfigure(languageExtension(syntax)) }),
     setTheme: (theme) => view.dispatch({ effects: themeSlot.reconfigure(editorTheme(theme)) }),
     focus: () => view.focus(),
     destroy: () => view.destroy(),
