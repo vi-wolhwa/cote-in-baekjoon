@@ -1,5 +1,9 @@
 name: CI
 
+# Jobs run in parallel (ADR-0009): checks, unit tests in two shards, and E2E in three shards.
+# Pull requests run only the E2E specs of the areas they change (scripts/ci/e2e-select.ts);
+# pushes to main run everything.
+
 on:
   pull_request:
   push:
@@ -13,8 +17,31 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: 변경 범위
+    runs-on: ubuntu-latest
+    outputs:
+      e2e: ${{ steps.pick.outputs.e2e }}
+      unit: ${{ steps.pick.outputs.unit }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - id: pick
+        name: 돌릴 테스트 고르기
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/ci/e2e-select.ts "origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            printf 'e2e=all\nunit=true\n' >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
   check:
-    name: 린트·타입·테스트·빌드
+    name: 린트·타입·빌드
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -26,15 +53,60 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run licenses
-      - run: npm test
       - run: npm run build
+
+  unit:
+    name: 단위 테스트 (${{ matrix.shard }}/2)
+    needs: changes
+    if: needs.changes.outputs.unit == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run --shard=${{ matrix.shard }}/2
+
+  e2e:
+    name: E2E (${{ matrix.shard }}/3)
+    needs: changes
+    if: needs.changes.outputs.e2e != 'none'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - id: pw
+        name: Playwright 버전
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - run: npx playwright install --with-deps chromium
       - name: E2E (확장을 띄운 Chromium)
-        run: xvfb-run --auto-servernum npm run e2e
+        run: |
+          SPECS="${{ needs.changes.outputs.e2e }}"
+          [ "$SPECS" = "all" ] && SPECS=""
+          xvfb-run --auto-servernum npx playwright test $SPECS --shard=${{ matrix.shard }}/3 --pass-with-no-tests
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
