@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.8.0...v0.9.0) (2026-11-24)
+
+
+### 기능
+
+* **solution:** 모든 언어에서 solution 함수 ([#141](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/141)) ([0c842eb](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/0c842ebd73803267d840eb548653fcb2bd95456a))
+
 ## [0.8.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.7.1...v0.8.0) (2026-11-24)
 
 
