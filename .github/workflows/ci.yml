@@ -1,8 +1,8 @@
 name: CI
 
-# Jobs run in parallel (ADR-0009): checks, unit tests in two shards, and E2E in three shards.
-# Pull requests run only the E2E specs of the areas they change (scripts/ci/e2e-select.ts);
-# pushes to main run everything.
+# Jobs run in parallel (ADR-0009): checks, unit tests in two shards, and E2E in up to three shards.
+# Pull requests run only the E2E specs of the areas they change (scripts/ci/e2e-select.ts), in as
+# many shards as those specs need; pushes to main run everything.
 
 on:
   pull_request:
@@ -23,6 +23,7 @@ jobs:
     outputs:
       e2e: ${{ steps.pick.outputs.e2e }}
       unit: ${{ steps.pick.outputs.unit }}
+      shards: ${{ steps.pick.outputs.shards }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -36,7 +37,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             node scripts/ci/e2e-select.ts "origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
           else
-            printf 'e2e=all\nunit=true\n' >> "$GITHUB_OUTPUT"
+            printf 'e2e=all\nunit=true\nshards=[1,2,3]\n' >> "$GITHUB_OUTPUT"
           fi
           cat "$GITHUB_OUTPUT"
 
@@ -74,14 +75,14 @@ jobs:
       - run: npx vitest run --shard=${{ matrix.shard }}/2
 
   e2e:
-    name: E2E (${{ matrix.shard }}/3)
+    name: E2E (${{ matrix.shard }}/${{ strategy.job-total }})
     needs: changes
     if: needs.changes.outputs.e2e != 'none'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: ${{ fromJSON(needs.changes.outputs.shards) }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -102,7 +103,7 @@ jobs:
         run: |
           SPECS="${{ needs.changes.outputs.e2e }}"
           [ "$SPECS" = "all" ] && SPECS=""
-          xvfb-run --auto-servernum npx playwright test $SPECS --shard=${{ matrix.shard }}/3 --pass-with-no-tests
+          xvfb-run --auto-servernum npx playwright test $SPECS --shard=${{ matrix.shard }}/${{ strategy.job-total }} --pass-with-no-tests
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

@@ -28,6 +28,13 @@ export const RULES: [RegExp, Target][] = [
   [/^scripts\/(formats|help-md)/, NONE],
   [/^\.claude\//, NONE],
   [/^LICENSE|^THIRD_PARTY/, NONE],
+  [/^third_party\/licenses\//, NONE],
+  [/^\.github\/(CONTRIBUTING\.md|pull_request_template\.md|dependabot\.yml)$/, NONE],
+  [/^\.claude-flow\//, NONE],
+  [/^scripts\/(store|teavm-classlib|render-icons)/, NONE],
+  // Icons and release config: the check job builds and lists licenses; no E2E behavior.
+  [/^(public\/icon|assets)\//, NONE],
+  [/^(\.release-please-manifest|release-please-config)\.json$/, NONE],
   // One spec changes only itself; shared E2E helpers change their users.
   [/^e2e\/([\w-]+)\.spec\.ts$/, (m) => [m[1] as string]],
   [/^e2e\/exam-helpers\.ts$/, ['exam', 'exam-batch', 'solution', 'submit-tab']],
@@ -37,6 +44,14 @@ export const RULES: [RegExp, Target][] = [
   [/^src\/runner\/python\//, ['python', 'solution']],
   [/^src\/runner\/js\//, ['ide', 'languages', 'solution']],
   [/^src\/(solution|ide\/solution|data)\//, ['solution', 'exam', 'languages']],
+  // Bundled format data (ADR-0011): which problems open in solution mode.
+  [/^public\/formats\//, ['solution', 'exam']],
+  [/^vendor\/teavm-javac\//, ['java']],
+  // Submission history tab (ADR-0012).
+  [
+    /^src\/(ide\/history\/|boj\/(history-service|status-history)\.ts|shared\/(boj-history|submission-history)\.ts|entrypoints\/ide\/history\.css)/,
+    ['history'],
+  ],
   [/^src\/ide\/useSolution\.ts$/, ['solution', 'exam', 'languages']],
   [/^src\/exam\//, ['exam', 'exam-batch', 'exam-setup']],
   [/^src\/entrypoints\/exam\//, ['exam', 'exam-batch', 'exam-setup']],
@@ -83,11 +98,22 @@ export function needsUnit(files: string[]): boolean {
   return files.some((f) => !/^docs\/|^[^/]+\.md$|^\.github\/ISSUE_TEMPLATE\//.test(f));
 }
 
-/** `e2e=…` and `unit=…` lines for $GITHUB_OUTPUT. */
+/**
+ * How many E2E shards to start: each shard installs, builds and starts a browser on its own, so
+ * a few specs run in one or two shards instead of leaving the others with nothing to do.
+ */
+export function shardCount(picked: string[] | typeof NONE | typeof ALL): number {
+  if (picked === ALL) return 3;
+  if (picked === NONE) return 1;
+  return picked.length <= 2 ? 1 : picked.length <= 5 ? 2 : 3;
+}
+
+/** `e2e=…`, `unit=…` and `shards=[…]` lines for $GITHUB_OUTPUT. */
 export function outputs(files: string[]): string {
   const picked = selectSpecs(files);
   const e2e = Array.isArray(picked) ? picked.map((s) => `e2e/${s}.spec.ts`).join(' ') : picked;
-  return `e2e=${e2e}\nunit=${needsUnit(files)}\n`;
+  const shards = JSON.stringify(Array.from({ length: shardCount(picked) }, (_, i) => i + 1));
+  return `e2e=${e2e}\nunit=${needsUnit(files)}\nshards=${shards}\n`;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
