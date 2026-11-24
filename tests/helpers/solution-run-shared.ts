@@ -183,7 +183,7 @@ interface Case {
   code: Partial<Record<GlueId, string>>;
 }
 
-const AB_CODE = {
+export const AB_CODE = {
   js: 'function solution(a, b) {\n  return a + b;\n}',
   python: 'def solution(a, b):\n    return a + b',
   cpp: 'int solution(int a, int b) {\n    return a + b;\n}',
@@ -192,7 +192,6 @@ const AB_CODE = {
 };
 
 export const CASES: Record<string, Case> = {
-  'A+B': { format: AB, input: '1 2\n', output: '3\n', code: AB_CODE },
   'sorting an array (lines wrapped differently from the format)': {
     format: SORT,
     input: '3\n5\n1 4\n',

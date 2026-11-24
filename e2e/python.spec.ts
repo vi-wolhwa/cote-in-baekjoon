@@ -24,18 +24,6 @@ async function writePython(page: Page, code: string) {
 test.describe('Python 3', () => {
   test.describe.configure({ timeout: 60_000 });
 
-  test('runs an A+B solution on the sample cases', async ({ page, extensionId }) => {
-    await page.goto(`chrome-extension://${extensionId}/ide.html`);
-    await writePython(
-      page,
-      'import sys\ninput = sys.stdin.readline\na, b = map(int, input().split())\nprint(a + b)',
-    );
-    await page.getByRole('button', { name: '코드 실행' }).click();
-    await expect(page.getByTestId('summary')).toHaveText('2개 중 2개 성공', {
-      timeout: FIRST_RUN_TIMEOUT,
-    });
-  });
-
   test('stops an infinite loop with a timeout', async ({ page, extensionId }) => {
     await page.goto(`chrome-extension://${extensionId}/ide.html`);
     await writePython(page, 'while True: pass');
