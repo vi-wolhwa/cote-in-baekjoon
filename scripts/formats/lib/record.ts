@@ -4,7 +4,7 @@
  */
 import type { Sample } from './readme.ts';
 
-export type SourceKind = 'github' | 'boj';
+export type SourceKind = 'github' | 'velog' | 'blog' | 'boj';
 
 export interface SourceRef {
   kind: SourceKind;

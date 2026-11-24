@@ -6,6 +6,8 @@
  *   node scripts/formats/collect.ts --top 1000            solved.ac list + GitHub
  *   node scripts/formats/collect.ts --top 1000 --boj 20   ... + up to 20 Baekjoon pages
  *   node scripts/formats/collect.ts --top 1000 --search-missing   ... + code search for gaps
+ *   node scripts/formats/collect.ts --top 1000 --velog            ... + Velog blog posts for gaps
+ *   KAKAO_REST_API_KEY=… node scripts/formats/collect.ts --top 1000 --blog   ... + Tistory etc. via Kakao blog search
  *   node scripts/formats/collect.ts --top 1000 --stats    report only
  *
  * Every step is resumable: finished pages, indexes and problems are reused.
@@ -17,6 +19,8 @@ import { Cache, counters } from './lib/cache.ts';
 import { isComplete, type ProblemRecord } from './lib/record.ts';
 import { coverage, topEntries } from './lib/stats.ts';
 import { loadTop, type TopProblem } from './solvedac.ts';
+import { blogCounters, fetchFromBlogs } from './blog.ts';
+import { fetchFromVelog, velogCounters } from './velog.ts';
 
 const { values } = parseArgs({
   options: {
@@ -27,6 +31,8 @@ const { values } = parseArgs({
     'max-tries': { type: 'string', default: '6' },
     'skip-github': { type: 'boolean', default: false },
     'search-missing': { type: 'boolean', default: false },
+    velog: { type: 'boolean', default: false },
+    blog: { type: 'boolean', default: false },
     stats: { type: 'boolean', default: false },
   },
 });
@@ -99,6 +105,16 @@ if (!values.stats) {
       const extra = await searchMissing(cache, missing);
       await fetchFromGithub(cache, list, [...indexes, ...extra], { maxTries });
     }
+  }
+  if (values.velog) {
+    const filled = await fetchFromVelog(cache, list);
+    console.log(`velog로 ${filled}문제를 채웠습니다 ${JSON.stringify(velogCounters)}`);
+  }
+  if (values.blog) {
+    const key = process.env.KAKAO_REST_API_KEY;
+    if (!key) throw new Error('KAKAO_REST_API_KEY가 없습니다');
+    const filled = await fetchFromBlogs(cache, list, key);
+    console.log(`블로그로 ${filled}문제를 채웠습니다 ${JSON.stringify(blogCounters)}`);
   }
   if (bojLimit > 0) await fetchFromBoj(cache, list, { limit: bojLimit, headed: values.headed });
 }
