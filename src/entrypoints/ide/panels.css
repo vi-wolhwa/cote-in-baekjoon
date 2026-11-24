@@ -234,28 +234,38 @@
     animation-duration: 3s;
   }
 }
+/*
+ * Buttons inside panels stay quiet: filled blue is only '제출하기', and the filled gray of the
+ * bottom bar only its own buttons. A panel button is an outline; the one to press first has
+ * link-coloured text.
+ */
 .out-button {
   margin-top: 8px;
   padding: 4px 12px;
-  border: 1px solid var(--btn-border);
-  border-radius: 4px;
-  background: var(--btn-bg);
-  color: var(--btn-text);
+  border: 1px solid var(--chip-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chip-text);
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
-.out-button:hover {
-  background: var(--btn-hover-bg);
+.out-button:hover:not(:disabled) {
+  background: var(--icon-hover-bg);
+  color: var(--text-strong);
+}
+.out-button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .out-button.is-primary {
-  border-color: var(--blue);
-  background: var(--blue);
-  color: #ffffff;
+  border-color: color-mix(in srgb, var(--link) 55%, transparent);
+  color: var(--link);
 }
-.out-button.is-primary:hover {
-  background: var(--blue-hover);
+.out-button.is-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--link) 12%, transparent);
+  color: var(--link);
 }
 
 /* "채점 현황 보기": Baekjoon's status page for a finished submission. */

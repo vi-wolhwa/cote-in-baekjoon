@@ -51,7 +51,7 @@
 }
 .modal-help {
   font-size: 14px;
-  color: #5f7f90;
+  color: var(--out-hint);
 }
 .modal-footer {
   display: flex;
@@ -91,5 +91,13 @@
   white-space: pre-wrap;
 }
 .case-fixed td {
-  color: #5f7f90;
+  color: var(--out-hint);
+}
+/* A dialog's confirm button: dark navy, not the blue kept for '제출하기'. */
+.modal-footer .btn-primary {
+  background: #263747;
+  color: #ffffff;
+}
+.modal-footer .btn-primary:hover:not(:disabled) {
+  background: #44576c;
 }

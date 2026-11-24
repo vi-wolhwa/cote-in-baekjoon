@@ -359,7 +359,7 @@
 .case-type {
   font-weight: 400;
   font-size: 12px;
-  color: #5f7f90;
+  color: var(--out-hint);
   font-family: var(--font-mono);
 }
 .case-error {
@@ -370,7 +370,7 @@
 .case-raw-note {
   margin: 4px 0 0;
   font-size: 12px;
-  color: #5f7f90;
+  color: var(--out-hint);
 }
 .case-table textarea[aria-invalid='true'] {
   border-color: #c62828;

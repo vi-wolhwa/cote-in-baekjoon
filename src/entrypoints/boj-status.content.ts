@@ -17,12 +17,7 @@ import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
 import { fetchSolutionStatus } from '@/boj/status-ajax';
 import { showJudgingNotice } from '@/boj/submit-banner';
 import { StatusPoller } from '@/boj/status-poller';
-import { parseStatusPage } from '@/boj/status-page';
-import {
-  queryOfUrl,
-  type StatusCaptureQuery,
-  type StatusCaptureResult,
-} from '@/shared/status-page';
+import { answerCapture } from '@/boj/capture-answer';
 import {
   isWatchQueryResponse,
   type JudgeReportMessage,
@@ -37,15 +32,8 @@ export default defineContentScript({
   matches: ['https://acmicpc.net/status*', 'https://www.acmicpc.net/status*'],
   runAt: 'document_idle',
   async main(ctx) {
-    if (await isCaptureTab()) {
-      const page = parseStatusPage(document, queryOfUrl(location.href) ?? {});
-      const result: StatusCaptureResult = {
-        type: 'cib:status-capture-result',
-        ...(page ? { page } : {}),
-      };
-      await browser.runtime.sendMessage(result).catch(() => undefined);
-      return;
-    }
+    // A tab the background opened to read this page for the 제출 기록 tab (ADR-0012).
+    if (await answerCapture(document, location.href)) return;
     const query: WatchQueryMessage = { type: 'cib:watch-query' };
     const answer: unknown = await browser.runtime.sendMessage(query).catch(() => undefined);
     const response = isWatchQueryResponse(answer) && answer.watches.length > 0 ? answer : undefined;
@@ -114,17 +102,6 @@ export default defineContentScript({
     });
   },
 });
-
-/** True in a tab the background opened to read this status page. */
-async function isCaptureTab(): Promise<boolean> {
-  const query: StatusCaptureQuery = { type: 'cib:status-capture-query' };
-  const answer: unknown = await browser.runtime.sendMessage(query).catch(() => undefined);
-  return (
-    typeof answer === 'object' &&
-    answer !== null &&
-    (answer as { capture?: unknown }).capture === true
-  );
-}
 
 function log(message: string) {
   console.info(`[코딩테스트 in 백준] ${message}`);

@@ -1,17 +1,21 @@
 /**
- * Pages of Baekjoon's status list for the 제출 기록 tab (ADR-0012): the first page loads when
- * the tab opens, later pages when the user pages past the loaded rows. The background reads
- * each page by opening it in an inactive tab (status-capture.ts), one at a time.
+ * Pages of a Baekjoon list (status or short-coding ranking) for the 제출 기록 tab (ADR-0012):
+ * the first page loads when its view opens, later pages when the user pages past the loaded
+ * rows. The background reads each page by opening it in an inactive tab (status-capture.ts),
+ * one at a time.
  *
- * Loaded pages are kept for this IDE frame (CACHE_MS), so switching tabs back and forth does
+ * Loaded lists are kept for this IDE frame (CACHE_MS), so switching views back and forth does
  * not open Baekjoon again.
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   STATUS_FAILURE_TEXT,
-  isStatusPageResult,
+  isPageResult,
+  type PageQuery,
+  type PageResult,
+  type ShortQuery,
+  type SourcePage,
   type StatusPageRequest,
-  type StatusPageResult,
   type StatusPageRow,
   type StatusQuery,
 } from '@/shared/status-page';
@@ -19,10 +23,13 @@ import {
 /** A list loaded this recently is shown again without reloading it. */
 export const CACHE_MS = 60_000;
 
+/** A list without its paging cursor. */
+export type ListBase = Omit<StatusQuery, 'top'> | Omit<ShortQuery, 'page'>;
+
 export interface StatusList {
   rows: StatusPageRow[];
-  /** `top` of the next (older) page; undefined once the last page is loaded. */
-  nextTop?: number;
+  /** Where the next page starts; undefined once the last page is loaded. */
+  next?: number;
   /** At least one page arrived. */
   loaded: boolean;
   loading: boolean;
@@ -37,14 +44,22 @@ interface Cached {
 const cache = new Map<string, Cached>();
 const EMPTY: StatusList = { rows: [], loaded: false, loading: false };
 
-export async function requestStatusPage(query: StatusQuery): Promise<StatusPageResult | 'gone'> {
+export async function requestPage(query: PageQuery): Promise<PageResult | 'gone'> {
   const message: StatusPageRequest = { type: 'cib:status-page-request', query };
   try {
     const answer: unknown = await browser.runtime.sendMessage(message);
-    return isStatusPageResult(answer) ? answer : 'gone';
+    return isPageResult(answer) ? answer : 'gone';
   } catch {
     return 'gone';
   }
+}
+
+/** A submission's source from its Baekjoon page, or the text saying why not. */
+export async function requestSource(solutionId: number): Promise<SourcePage | { error: string }> {
+  const result = await requestPage({ kind: 'source', solutionId });
+  if (result === 'gone') return { error: STATUS_FAILURE_TEXT.disconnected };
+  if (!result.ok) return { error: STATUS_FAILURE_TEXT[result.reason] };
+  return 'source' in result ? result.source : { error: STATUS_FAILURE_TEXT.layout };
 }
 
 /** Adds a page's rows, skipping ones already there (new submissions shift the pages). */
@@ -53,12 +68,14 @@ export function appendRows(list: StatusPageRow[], page: StatusPageRow[]): Status
   return [...list, ...page.filter((r) => !seen.has(r.solutionId))];
 }
 
-/**
- * The status list for `query` (all users when `userId` is unset). `query` undefined loads
- * nothing.
- */
-export function useStatusList(query: Omit<StatusQuery, 'top'> | undefined) {
-  const key = query ? `${query.problemId}:${query.userId ?? ''}` : '';
+function withCursor(base: ListBase, next: number | undefined): PageQuery {
+  if (next === undefined) return base;
+  return base.kind === 'short' ? { ...base, page: next } : { ...base, top: next };
+}
+
+/** The list for `base`; undefined loads nothing. */
+export function useStatusList(base: ListBase | undefined) {
+  const key = base ? JSON.stringify(base) : '';
   const [list, setList] = useState<StatusList>(() => cache.get(key)?.list ?? EMPTY);
   const current = useRef({ key, list });
   current.current.key = key;
@@ -70,28 +87,28 @@ export function useStatusList(query: Omit<StatusQuery, 'top'> | undefined) {
     setList(next);
   };
 
-  const load = async (top: number | undefined, reset: boolean) => {
-    if (!query) return;
+  const load = async (cursor: number | undefined, reset: boolean) => {
+    if (!base) return;
     const forKey = key;
     if (current.current.list.loading) return;
     const before = reset ? EMPTY : withoutError(current.current.list);
     update(forKey, { ...before, loading: true });
-    const result = await requestStatusPage({ ...query, ...(top !== undefined ? { top } : {}) });
-    if (result === 'gone' || !result.ok) {
-      const error = STATUS_FAILURE_TEXT[result === 'gone' ? 'disconnected' : result.reason];
-      return update(forKey, { ...before, loading: false, error });
+    const result = await requestPage(withCursor(base, cursor));
+    if (result === 'gone' || !result.ok || !('page' in result)) {
+      const reason = result === 'gone' ? 'disconnected' : result.ok ? 'layout' : result.reason;
+      return update(forKey, { ...before, loading: false, error: STATUS_FAILURE_TEXT[reason] });
     }
     const { page } = result;
     update(forKey, {
       rows: appendRows(before.rows, page.rows),
-      ...(page.nextTop !== undefined ? { nextTop: page.nextTop } : {}),
+      ...(page.next !== undefined ? { next: page.next } : {}),
       loaded: true,
       loading: false,
     });
   };
 
   useEffect(() => {
-    if (!query) {
+    if (!base) {
       current.current.list = EMPTY;
       setList(EMPTY);
       return;
@@ -109,10 +126,10 @@ export function useStatusList(query: Omit<StatusQuery, 'top'> | undefined) {
 
   return {
     list,
-    /** Loads the next older page, if there is one. */
+    /** Loads the next page, if there is one. */
     more: () => {
-      const { nextTop } = current.current.list;
-      if (nextTop !== undefined) void load(nextTop, false);
+      const { next } = current.current.list;
+      if (next !== undefined) void load(next, false);
     },
     /** Loads the first page again. */
     reload: () => void load(undefined, true),

@@ -65,7 +65,7 @@ describe('paging helpers', () => {
   });
 
   it('fits whole rows below the header', () => {
-    expect(rowsThatFit(30 + 30 * 7 + 29)).toBe(7);
+    expect(rowsThatFit(32 + 36 * 7 + 35)).toBe(7);
     expect(rowsThatFit(10)).toBe(1);
   });
 });

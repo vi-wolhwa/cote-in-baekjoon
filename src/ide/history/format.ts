@@ -1,38 +1,4 @@
-/** Text for the '제출 기록' tab (ADR-0012): result tones, sizes and relative times. */
-import type { ResultCode } from '@/boj/status';
-
-/** Badge colour: the run output's pass/fail colours, muted while judging. */
-export type Tone = 'pass' | 'fail' | 'partial' | 'wait' | 'none';
-
-export function resultTone(code: ResultCode | undefined): Tone {
-  switch (code) {
-    case undefined:
-    case 'del':
-      return 'none';
-    case 'ac':
-      return 'pass';
-    case 'pac':
-      return 'partial';
-    case 'wait':
-    case 'rejudge-wait':
-    case 'compile':
-    case 'judging':
-      return 'wait';
-    default:
-      return 'fail';
-  }
-}
-
-/** "44ms · 9.0MB", like the judge result line; empty when Baekjoon gave neither. */
-export function metricsText(r: { timeMs?: number | undefined; memoryKb?: number | undefined }) {
-  return [
-    r.timeMs !== undefined ? `${r.timeMs}ms` : undefined,
-    r.memoryKb !== undefined ? `${(r.memoryKb / 1024).toFixed(1)}MB` : undefined,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
-
+/** Times in the '제출 기록' tab (ADR-0012): absolute and relative. */
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** "2026-11-25 14:03" in local time. */

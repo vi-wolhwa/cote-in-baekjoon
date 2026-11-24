@@ -194,9 +194,9 @@
   color: var(--timer-text);
 }
 .timer-chip[aria-pressed='true'] {
-  border-color: var(--blue);
-  background: var(--blue);
-  color: #ffffff;
+  border-color: var(--timer-accent);
+  background: color-mix(in srgb, var(--timer-accent) 14%, transparent);
+  color: var(--timer-accent);
 }
 
 .timer-note {
@@ -220,4 +220,19 @@
   height: 36px;
   font-size: 14px;
   font-weight: 600;
+}
+/* Inside the popover the buttons stay quiet (filled blue is only '제출하기'). */
+.timer-actions .btn-primary,
+.timer-actions .btn-dark {
+  border-color: var(--chip-border);
+  background: transparent;
+  color: var(--timer-text);
+}
+.timer-actions .btn-primary {
+  border-color: color-mix(in srgb, var(--timer-accent) 55%, transparent);
+  color: var(--timer-accent);
+}
+.timer-actions .btn-primary:hover:not(:disabled),
+.timer-actions .btn-dark:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--timer-accent) 12%, transparent);
 }
