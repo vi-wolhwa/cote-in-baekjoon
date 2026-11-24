@@ -128,8 +128,8 @@ export function ExamScreen({ id, theme, onTheme, onFinished }: Props) {
           }}
           onFlag={() => change((e) => toggleFlag(e, problem.id))}
           onRetry={() => reading.retry(problem.id)}
-          onSaveAnswer={(code, lang) =>
-            change((e) => saveAnswer(e, problem.id, code, lang, Date.now()))
+          onSaveAnswer={(code, lang, solution) =>
+            change((e) => saveAnswer(e, problem.id, code, lang, Date.now(), solution))
           }
         />
         <ExamSidebar remainingMs={remainingMs(exam, now)} theme={theme} onTheme={onTheme} />

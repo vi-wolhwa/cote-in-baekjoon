@@ -8,7 +8,10 @@ import { MAX_CODE_LENGTH } from '@/boj/submit-fill';
 import { isLanguageId, type LanguageId } from '@/shared/languages';
 
 export interface ExamAnswer {
+  /** What is submitted: in solution-function mode, the function with the glue code. */
   code: string;
+  /** The editor's code when saved in solution-function mode (ADR-0006). */
+  solution?: string;
   language: LanguageId;
   /** When 제출하기 saved it. */
   savedAt: number;
@@ -50,7 +53,9 @@ export function isAnswer(v: unknown): v is ExamAnswer {
     v.code.length > 0 &&
     v.code.length <= MAX_CODE_LENGTH &&
     isLanguageId(v.language) &&
-    isTime(v.savedAt)
+    isTime(v.savedAt) &&
+    (v.solution === undefined ||
+      (typeof v.solution === 'string' && v.solution.length <= MAX_CODE_LENGTH))
   );
 }
 
