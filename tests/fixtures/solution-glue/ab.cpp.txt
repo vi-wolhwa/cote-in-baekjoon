@@ -1,6 +1,6 @@
 #include <bits/stdc++.h>
 using namespace std;
-// bits/stdc++.h와 using namespace std;는 자동으로 붙습니다.
+// 자동 포함: bits/stdc++.h, using namespace std
 
 int solution(int a, int b) {
     int answer = 0;

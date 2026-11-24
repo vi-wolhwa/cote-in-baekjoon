@@ -22,11 +22,11 @@ import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import {
   drawSelection,
   EditorView,
-  highlightActiveLine,
   highlightActiveLineGutter,
   keymap,
   lineNumbers,
 } from '@codemirror/view';
+import { activeLineWithoutSelection } from './active-line';
 import { emacs } from '@replit/codemirror-emacs';
 import { vim } from '@replit/codemirror-vim';
 import type { SyntaxId } from '@/shared/languages';
@@ -101,7 +101,7 @@ export function createEditor(
         keymapSlot.of(keymapExtension(options.keymap)),
         lineNumbers(),
         highlightActiveLineGutter(),
-        highlightActiveLine(),
+        activeLineWithoutSelection,
         drawSelection(),
         history(),
         bracketMatching(),

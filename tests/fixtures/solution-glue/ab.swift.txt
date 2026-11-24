@@ -1,5 +1,5 @@
 import Foundation
-// import Foundation은 자동으로 붙습니다.
+// 자동 포함: Foundation
 
 func solution(_ a: Int, _ b: Int) -> Int {
     return 0

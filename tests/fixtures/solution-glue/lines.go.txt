@@ -1,6 +1,6 @@
 package main
 import (__cib_io "io"; __cib_os "os"; __cib_strconv "strconv")
-// package main과 main 함수(입출력 코드)는 자동으로 붙습니다. import는 맨 위에 써 주세요.
+// 자동 포함: package main
 
 func solution(title string, nums []int64, k int, rows [][]int) float64 {
     var answer float64

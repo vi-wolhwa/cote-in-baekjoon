@@ -371,7 +371,7 @@ const PLACEHOLDER: Record<RetType, string> = {
 export function kotlinStarter(format: Format): string {
   const params = format.params.map((p) => `${p.name}: ${KOTLIN_TYPES[p.type]}`).join(', ');
   const type = KOTLIN_TYPES[format.ret.type];
-  return `// main 함수(입출력 코드)는 자동으로 붙습니다. import는 맨 위에 써 주세요.\n\nclass Solution {\n    fun solution(${params}): ${type} {\n        var answer: ${type} = ${PLACEHOLDER[format.ret.type]}\n        return answer\n    }\n}\n`;
+  return `class Solution {\n    fun solution(${params}): ${type} {\n        var answer: ${type} = ${PLACEHOLDER[format.ret.type]}\n        return answer\n    }\n}\n`;
 }
 
 export const kotlinLanguage: GlueLanguage = {

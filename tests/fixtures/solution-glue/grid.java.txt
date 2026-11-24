@@ -1,5 +1,5 @@
 import java.util.*; import java.io.*;
-// java.util.*와 java.io.*는 자동으로 import됩니다.
+// 자동 포함: java.util.*, java.io.*
 
 class Solution {
     public boolean solution(int n, int m, char[][] board) {

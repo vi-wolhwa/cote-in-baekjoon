@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-// stdio.h, stdlib.h, string.h, stdbool.h는 자동으로 포함됩니다.
+// 자동 포함: stdio.h, stdlib.h, string.h, stdbool.h
 
 int solution(int a, int b) {
     int answer = 0;

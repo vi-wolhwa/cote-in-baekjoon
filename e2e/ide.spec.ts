@@ -162,3 +162,16 @@ test('switches languages with their own file name, starter and saved code', asyn
   await language.selectOption('javascript');
   await expect(page.locator('.cm-content')).toContainText('console.log(42);');
 });
+
+test('a selection is not hidden by the current-line highlight', async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/ide.html`);
+  await page.locator('.cm-content').click();
+  await expect(page.locator('.cm-editor')).toHaveClass(/cm-focused/);
+  await expect(page.locator('.cm-activeLine')).toHaveCount(1);
+  await page.keyboard.press('ControlOrMeta+A');
+  await expect(page.locator('.cm-selectionBackground').first()).toBeVisible();
+  await expect(page.locator('.cm-activeLine')).toHaveCount(0);
+  if (process.env.SCREENS) await page.screenshot({ path: 'tmp-screens/editor-selection.png' });
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.cm-activeLine')).toHaveCount(1);
+});

@@ -366,7 +366,7 @@ export function swiftStarter(format: Format): string {
     .map((p) => `_ ${KEYWORDS.has(p.name) ? `\`${p.name}\`` : p.name}: ${SWIFT_TYPES[p.type]}`)
     .join(', ');
   const type = SWIFT_TYPES[format.ret.type];
-  return `// import Foundation은 자동으로 붙습니다.\n\nfunc solution(${params}) -> ${type} {\n    return ${PLACEHOLDER[type] ?? '[]'}\n}\n`;
+  return `// 자동 포함: Foundation\n\nfunc solution(${params}) -> ${type} {\n    return ${PLACEHOLDER[type] ?? '[]'}\n}\n`;
 }
 
 export const swiftLanguage: GlueLanguage = {

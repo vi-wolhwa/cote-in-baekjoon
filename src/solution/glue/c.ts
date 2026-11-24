@@ -300,22 +300,19 @@ export function cStarter(format: Format): string {
   const type = format.ret.type;
   const ret = RET_TYPES[type];
   const shapes = format.params.map(shape);
-  const comments = ['// stdio.h, stdlib.h, string.h, stdbool.h는 자동으로 포함됩니다.'];
-  if (shapes.includes('array')) comments.push('// 배열은 포인터와 길이(이름_len)로 받습니다.');
+  const comments = ['// 자동 포함: stdio.h, stdlib.h, string.h, stdbool.h'];
+  if (shapes.includes('array')) comments.push('// 배열은 길이(이름_len)와 함께 받아요.');
   if (shapes.includes('chars'))
-    comments.push('// 문자 격자는 한 행씩 문자열로, 행 수는 이름_rows로 받습니다.');
+    comments.push('// 문자 격자는 행마다 문자열이고, 행 수(이름_rows)와 함께 받아요.');
   if (shapes.includes('rect'))
-    comments.push('// 2차원 배열은 행 수(이름_rows)와 열 수(이름_cols)를 함께 받습니다.');
+    comments.push('// 2차원 배열은 행 수(이름_rows), 열 수(이름_cols)와 함께 받아요.');
   if (shapes.includes('ragged'))
-    comments.push(
-      '// 2차원 배열은 행 수(이름_rows)와 i번째 행의 길이(이름_cols[i])를 함께 받습니다.',
-    );
+    comments.push('// 2차원 배열은 행 수(이름_rows), 행마다의 길이(이름_cols[i])와 함께 받아요.');
   const extra: string[] = [];
   let init: string[];
   if (type === 'int[][]') {
     comments.push(
-      '// 2차원 배열을 반환할 때는 malloc으로 만든 배열을 돌려주고, 행 수를 *ret_rows에,',
-      '// 행마다의 길이를 담은 배열(malloc)을 *ret_cols에 넣어 주세요.',
+      '// 반환: malloc한 2차원 배열. 행 수는 *ret_rows, 행마다의 길이 배열(malloc)은 *ret_cols에 적어요.',
     );
     extra.push('size_t* ret_rows', 'size_t** ret_cols');
     init = [
@@ -325,15 +322,11 @@ export function cStarter(format: Format): string {
     ];
   } else if (type.endsWith('[]')) {
     const element = ret.slice(0, -1);
-    comments.push(
-      type === 'char[][]' || type === 'string[]' || type === 'line[]'
-        ? '// 문자열 배열을 반환할 때는 malloc으로 만든 배열을 돌려주고, 길이를 *ret_len에 넣어 주세요.'
-        : '// 배열을 반환할 때는 malloc으로 만든 배열을 돌려주고, 길이를 *ret_len에 넣어 주세요.',
-    );
+    comments.push('// 반환: malloc한 배열. 길이는 *ret_len에 적어요.');
     extra.push('size_t* ret_len');
     init = [`${ret} answer = (${ret})malloc(sizeof(${element}) * 1);`, '*ret_len = 0;'];
   } else if (type === 'string') {
-    comments.push('// 문자열은 malloc으로 만들어 돌려주세요.');
+    comments.push('// 반환: malloc한 문자열.');
     init = ['char* answer = (char*)malloc(sizeof(char) * 1);', "answer[0] = '\\0';"];
   } else {
     init = [`${ret} answer = ${type === 'bool' ? 'true' : '0'};`];

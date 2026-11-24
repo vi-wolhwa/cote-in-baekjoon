@@ -1,6 +1,6 @@
 #include <bits/stdc++.h>
 using namespace std;
-// bits/stdc++.h와 using namespace std;는 자동으로 붙습니다.
+// 자동 포함: bits/stdc++.h, using namespace std
 
 double solution(string title, vector<long long> nums, int k, vector<vector<int>> rows) {
     double answer = 0;
