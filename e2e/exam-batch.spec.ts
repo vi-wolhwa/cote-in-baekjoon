@@ -1,10 +1,17 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { handleSubmitWindow, MIN, seedExam, serveBaekjoon, storedExam } from './exam-helpers';
+import {
+  handleSubmitTab,
+  MIN,
+  seedExam,
+  serveBaekjoon,
+  storedExam,
+  submitTabInfo,
+} from './exam-helpers';
 
 /**
- * After the exam the saved answers go to Baekjoon one after another (ADR-0005): each through
- * its own submit window, the next only once the previous one was reported and closed.
+ * After the exam the saved answers go to Baekjoon one after another (ADR-0005): each in its
+ * own background tab, the next only once the previous one was reported and closed.
  */
 test('시험 종료 submits the saved answers one at a time and shows the results', async ({
   page,
@@ -36,8 +43,10 @@ test('시험 종료 submits the saved answers one at a time and shows the result
   await dialog.getByRole('button', { name: '시험 종료' }).click();
   await expect(page).toHaveURL(new RegExp(`exam.html#${id}/result$`));
 
-  // The first answer: its submit window, and nothing else opens meanwhile.
+  // The first answer: its background tab, and nothing else opens meanwhile.
   const first = await opened;
+  // A tab in the same window, behind the result page: no window, no focus change.
+  expect(await submitTabInfo(page, 1000)).toEqual({ windows: 1, active: false });
   const progress = page.getByTestId('batch-progress');
   await expect(progress).toContainText('제출 중 1/2');
   const rows = page.getByTestId('result-row');
@@ -47,15 +56,15 @@ test('시험 종료 submits the saved answers one at a time and shows the result
   await page.waitForTimeout(500);
   expect(windows).toHaveLength(1);
   opened = context.waitForEvent('page');
-  await handleSubmitWindow(first, 1000);
+  await handleSubmitTab(first, 1000);
   expect(new URL(first.url()).searchParams.get('problem_id')).toBe('1000');
   await expect(rows.nth(0).getByTestId('result-text')).toHaveText('맞았습니다!!');
 
-  // Then the second, after the first window closed.
+  // Then the second, after the first tab closed.
   const second = await opened;
   expect(first.isClosed()).toBe(true);
   await expect(progress).toContainText('제출 중 2/2');
-  await handleSubmitWindow(second, 1001);
+  await handleSubmitTab(second, 1001);
   await expect(rows.nth(1).getByTestId('result-text')).toHaveText('맞았습니다!!');
   await expect(progress).toHaveText('제출 완료 2/2');
   await expect(page.getByTestId('result-score')).toContainText('2 / 3');
@@ -74,7 +83,7 @@ test('시험 종료 submits the saved answers one at a time and shows the result
   expect(windows).toHaveLength(2);
 });
 
-test('a closed submit window fails that answer, the next goes on, and it can be resent', async ({
+test('a submission tab closed before sending fails that answer, the next goes on, and it can be resent', async ({
   page,
   context,
   extensionId,
@@ -98,14 +107,14 @@ test('a closed submit window fails that answer, the next goes on, and it can be 
   await first.close();
   const rows = page.getByTestId('result-row');
   await expect(rows.nth(0).getByTestId('result-text')).toHaveText('제출 실패');
-  await expect(rows.nth(0)).toContainText('제출 창이 닫혀 제출하지 못했어요.');
-  await handleSubmitWindow(await opened, 1002);
+  await expect(rows.nth(0)).toContainText('제출 탭이 제출 전에 닫혀 제출하지 못했어요.');
+  await handleSubmitTab(await opened, 1002);
   await expect(rows.nth(2).getByTestId('result-text')).toHaveText('맞았습니다!!');
   await expect(page.getByTestId('batch-progress')).toHaveText('제출 완료 1/2');
 
   opened = context.waitForEvent('page');
   await rows.nth(0).getByRole('button', { name: '다시 제출' }).click();
-  await handleSubmitWindow(await opened, 1000);
+  await handleSubmitTab(await opened, 1000);
   await expect(rows.nth(0).getByTestId('result-text')).toHaveText('맞았습니다!!');
   await expect(page.getByTestId('batch-progress')).toHaveText('제출 완료 2/2');
 });

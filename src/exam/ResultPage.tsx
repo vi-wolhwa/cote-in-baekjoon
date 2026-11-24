@@ -7,12 +7,22 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { CheckIcon, CrossIcon, DashIcon } from '@/ide/icons';
+import { Spinner } from '@/ide/submit';
+import {
+  describeNeedsUser,
+  focusSubmitTab,
+  isActiveTab,
+  requestRecheck,
+  submitView,
+  watchSubmitTab,
+  type SubmitTab,
+} from '@/shared/submit-tab';
 import { batchProgress, finishExam, retrySubmission } from './batch';
 import { examLabel, formatClock, formatDuration, isOver } from './model';
 import { summarizeExam, type Outcome, type ProblemRow } from './results';
 import { PRACTICE_HASH, problemPageUrl } from './routes';
 import { tierName } from './solvedac';
-import { focusSubmitWindow, useBatchSubmit } from './useBatch';
+import { useBatchSubmit } from './useBatch';
 import { useExamRecord, useNow } from './useExam';
 
 export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => void }) {
@@ -27,6 +37,7 @@ export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => voi
     }
   }, [exam, over]);
   useBatchSubmit(exam);
+  const tabs = useSubmitTabs(exam?.problems.map((p) => p.id) ?? []);
 
   if (state.status === 'loading') return <div class="ide-loading">결과를 불러오는 중입니다…</div>;
   if (!exam || state.status !== 'ready') {
@@ -110,6 +121,7 @@ export function ResultPage({ id, onNewExam }: { id: string; onNewExam: () => voi
             key={row.problem.id}
             row={row}
             hidden={!over}
+            {...(tabs.get(row.problem.id) ? { tab: tabs.get(row.problem.id) } : {})}
             onRetry={() =>
               void update((e) => retrySubmission(e, row.problem.id, Date.now())).catch(
                 () => undefined,
@@ -135,24 +147,88 @@ const OUTCOME_LABEL: Record<Outcome, string> = {
   none: '결과 없음',
 };
 
+/** The submission tab of each problem (shared/submit-tab.ts), kept live. */
+function useSubmitTabs(problemIds: readonly number[]): ReadonlyMap<number, SubmitTab> {
+  const [tabs, setTabs] = useState<ReadonlyMap<number, SubmitTab>>(new Map());
+  const key = problemIds.join(',');
+  useEffect(() => {
+    const stops = problemIds.map((id) =>
+      watchSubmitTab(id, (tab) =>
+        setTabs((m) => {
+          const next = new Map(m);
+          if (tab) next.set(id, tab);
+          else next.delete(id);
+          return next;
+        }),
+      ),
+    );
+    return () => stops.forEach((stop) => stop());
+  }, [key]);
+  return tabs;
+}
+
+/** What a row shows about its submission: spinner states, the user's turn, or nothing. */
+type Live = 'submitting' | 'judging' | 'needs-user' | 'lost' | undefined;
+
+function liveState(row: ProblemRow, tab: SubmitTab | undefined): Live {
+  const sent = row.stage === 'submitting' || row.stage === 'manual' || row.stage === 'submitted';
+  if (!sent || !row.submission) return undefined;
+  const view = submitView(tab, row.judge, row.submission.at);
+  if (view.kind === 'done' || view.kind === 'idle') return undefined;
+  if (view.kind === 'judging' && !view.tab && row.stage === 'submitted') return 'lost';
+  if (view.kind === 'lost') return row.stage === 'submitted' ? 'lost' : 'submitting';
+  return view.kind;
+}
+
+const LIVE_TEXT: Record<NonNullable<Live>, string> = {
+  submitting: '제출 중',
+  judging: '채점 중',
+  'needs-user': '직접 확인이 필요해요',
+  lost: '결과를 아직 못 받았어요',
+};
+
 function ResultRow({
   row,
   hidden,
+  tab,
   onRetry,
 }: {
   row: ProblemRow;
   hidden: boolean;
+  tab?: SubmitTab;
   onRetry: () => void;
 }) {
-  const [focusFailed, setFocusFailed] = useState(false);
-  const outcome: Outcome = hidden ? 'none' : row.outcome;
-  const stageClass = row.stage === 'failed' || row.stage === 'manual' ? ` is-${row.stage}` : '';
+  const [notice, setNotice] = useState<string>();
+  const live = hidden ? undefined : liveState(row, tab);
+  const outcome: Outcome = hidden || live ? 'none' : row.outcome;
+  const attention = live === 'needs-user' || live === 'lost' || row.stage === 'failed';
   const Icon = outcome === 'accepted' ? CheckIcon : outcome === 'wrong' ? CrossIcon : DashIcon;
   const meta = [tierName(row.problem.level), row.language].filter(Boolean).join(' · ');
+  const text = hidden
+    ? row.stage === 'none'
+      ? '제출 안 함'
+      : '답안 저장함'
+    : live
+      ? LIVE_TEXT[live]
+      : row.resultText;
+  const progress =
+    live === 'judging' && row.judge && row.judge.status !== 'done' ? row.judge.resultText : '';
+  const focus = () =>
+    void focusSubmitTab(row.problem.id).then((ok) =>
+      setNotice(
+        ok ? undefined : '제출 탭을 찾지 못했어요. 탭이 닫혔다면 잠시 뒤 다시 확인해 주세요.',
+      ),
+    );
+  const recheck = () =>
+    void (
+      row.submission ? requestRecheck(row.problem.id, row.submission.at) : Promise.resolve(false)
+    ).then((ok) =>
+      setNotice(ok ? undefined : '결과를 다시 확인하지 못했어요. 잠시 뒤 다시 눌러 주세요.'),
+    );
   return (
     <li class="result-row" data-testid="result-row">
       <span class={`result-status is-${outcome}`} role="img" aria-label={OUTCOME_LABEL[outcome]}>
-        <Icon size={16} />
+        {live === 'submitting' || live === 'judging' ? <Spinner /> : <Icon size={16} />}
       </span>
       <span class="result-main">
         <span class="result-name">
@@ -161,29 +237,37 @@ function ResultRow({
         <span class="result-meta">{meta}</span>
       </span>
       <span class="result-judge">
-        <span class={`result-text is-${outcome}${stageClass}`} data-testid="result-text">
-          {hidden ? (row.stage === 'none' ? '제출 안 함' : '답안 저장함') : row.resultText}
+        <span
+          class={`result-text is-${outcome}${attention ? ' is-attention' : ''}`}
+          data-testid="result-text"
+        >
+          {text}
         </span>
-        {!hidden && row.reason && <span class="result-reason">{row.reason}</span>}
-        {!hidden && row.stage === 'manual' && (
+        {progress && <span class="result-reason">{progress}</span>}
+        {live === 'needs-user' && (
+          <span class="result-reason">{describeNeedsUser(tab?.reason)}</span>
+        )}
+        {!hidden && !live && row.reason && <span class="result-reason">{row.reason}</span>}
+        {live && live !== 'lost' && isActiveTab(tab) && (
           <button
             type="button"
-            class="btn btn-primary result-action"
-            onClick={() => void focusSubmitWindow(row.problem.id).then((ok) => setFocusFailed(!ok))}
+            class={`btn ${live === 'needs-user' ? 'btn-primary' : 'btn-dark'} result-action`}
+            onClick={focus}
           >
-            제출 창 보기
+            직접 확인
           </button>
         )}
-        {focusFailed && row.stage === 'manual' && (
-          <span class="result-reason">
-            제출 창을 찾지 못했어요. 창이 닫혔다면 잠시 뒤 다시 제출할 수 있어요.
-          </span>
+        {live === 'lost' && (
+          <button type="button" class="btn btn-primary result-action" onClick={recheck}>
+            결과 다시 확인
+          </button>
         )}
         {!hidden && row.stage === 'failed' && (
           <button type="button" class="btn btn-primary result-action" onClick={onRetry}>
             다시 제출
           </button>
         )}
+        {notice && <span class="result-reason">{notice}</span>}
         {row.submittedAfterMs !== undefined && (
           <span class="result-at">시작 후 {formatClock(row.submittedAfterMs)}</span>
         )}

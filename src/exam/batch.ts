@@ -3,7 +3,7 @@
  *
  * - During the exam 제출하기 saves the answer (saveAnswer); nothing goes to Baekjoon.
  * - When the exam ends (finishExam), each saved answer gets a queue entry, in problem order.
- * - The result page submits them one at a time through the usual submit window: one entry is
+ * - The result page submits them one at a time through the usual submission tab: one entry is
  *   'submitting' or 'manual' at a time, the next starts after it is reported or fails.
  * - Entries are stored in the exam record, so a reload resumes; an entry is claimed before it
  *   is sent, and one whose fate is unknown after a reload is marked failed instead of being
@@ -142,22 +142,24 @@ export function retrySubmission(exam: Exam, problemId: number, now: number): Exa
 
 /**
  * After a reload, an entry left 'submitting' or 'manual': reported (a judge result since it
- * was sent) → submitted; its submit window still open → keep waiting; otherwise its fate is
- * unknown → failed, never sent again by itself.
+ * was sent) or sent before its tab closed → submitted; its submission tab still running →
+ * keep waiting; otherwise its fate is unknown → failed, never sent again by itself.
  */
 export function resumeEntry(
   exam: Exam,
   problemId: number,
   judge: JudgeResult | undefined,
-  windowOpen: boolean,
+  tabRunning: boolean,
   now: number,
+  sent = false,
 ): Exam {
   const entry = exam.submitQueue?.[problemId];
   if (!entry || (entry.state !== 'submitting' && entry.state !== 'manual')) return exam;
   if (judge && entry.startedAt !== undefined && judge.updatedAt >= entry.startedAt) {
     return markSubmitted(exam, problemId, now);
   }
-  if (windowOpen) return exam;
+  if (tabRunning) return exam;
+  if (sent) return markSubmitted(exam, problemId, now);
   return markFailed(exam, problemId, UNKNOWN_REASON, now);
 }
 

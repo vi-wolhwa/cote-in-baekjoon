@@ -1,109 +1,202 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+/**
+ * Submission on the IDE side (ADR-0002): Baekjoon's submit page opens in a background tab,
+ * is filled and submitted there, and its status page reports the result. The IDE shows a
+ * spinner meanwhile, with '직접 확인' to bring that tab to the front, and '결과 다시 확인'
+ * when the tab closed before the result came.
+ */
+import { useEffect, useState } from 'preact/hooks';
 import { findBlockedPatterns } from '@/boj/waf';
+import {
+  describeNeedsUser,
+  focusSubmitTab,
+  isActiveTab,
+  requestRecheck,
+  submitView,
+  watchSubmitTab,
+  type SubmitTab,
+  type SubmitView,
+} from '@/shared/submit-tab';
 import {
   requestSubmit,
   watchJudgeResult,
-  watchSubmitWindow,
   type JudgeResult,
   type SubmitLanguage,
 } from '@/shared/submission';
 
-export type SubmitState =
-  | { phase: 'idle'; last?: JudgeResult }
-  | { phase: 'opening'; warnings: string[] }
-  | { phase: 'waiting'; warnings: string[] }
-  | { phase: 'closed' }
-  | { phase: 'result'; result: JudgeResult }
-  | { phase: 'error'; reason: string };
+export interface SubmitInfo {
+  /** When the submission being shown was asked for (this session, or a tab still running). */
+  since?: number;
+  /** requestSubmit() is on its way. */
+  opening: boolean;
+  warnings: string[];
+  error?: string;
+  /** The latest stored result of the problem (maybe an older submission's). */
+  last?: JudgeResult;
+  view: SubmitView;
+}
 
-/** Submission flow on the IDE side (ADR-0002): open the official page, then show its result. */
 export function useSubmit(problemId: number, getCode: () => string, language: SubmitLanguage) {
-  const [state, setState] = useState<SubmitState>({ phase: 'idle' });
-  /** Results older than the latest 제출하기 click belong to an earlier submission. */
-  const startedAt = useRef(0);
+  const [since, setSince] = useState<number>();
+  const [opening, setOpening] = useState(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [error, setError] = useState<string>();
+  const [judge, setJudge] = useState<JudgeResult>();
+  const [tab, setTab] = useState<SubmitTab>();
 
   useEffect(() => {
     if (!problemId) return;
-    const stopResults = watchJudgeResult(problemId, (result) => {
-      if (startedAt.current === 0) setState({ phase: 'idle', last: result });
-      else if (result.updatedAt >= startedAt.current) setState({ phase: 'result', result });
-    });
-    // The user closed the submit window without a result: say so instead of waiting forever.
-    const stopWindow = watchSubmitWindow(problemId, (windowState) => {
-      if (windowState === 'closed') {
-        setState((s) => (s.phase === 'waiting' || s.phase === 'opening' ? { phase: 'closed' } : s));
+    const stopResults = watchJudgeResult(problemId, setJudge);
+    const stopTab = watchSubmitTab(problemId, (next) => {
+      setTab(next);
+      // Opened again while a submission tab still runs (or closed early): follow it.
+      if (next && (isActiveTab(next) || next.state === 'closed')) {
+        setSince((s) => s ?? next.since);
       }
     });
     return () => {
       stopResults();
-      stopWindow();
+      stopTab();
     };
   }, [problemId]);
 
   /** Always auto-submits: Baekjoon's submit button is pressed for the user (#76). */
   const start = async () => {
     const code = getCode();
-    const warnings = findBlockedPatterns(code);
-    startedAt.current = Date.now();
-    setState({ phase: 'opening', warnings });
+    setWarnings(findBlockedPatterns(code));
+    setError(undefined);
+    setSince(Date.now());
+    setOpening(true);
     const res = await requestSubmit({ problemId, language, code, autoSubmit: true });
-    setState(res.ok ? { phase: 'waiting', warnings } : { phase: 'error', reason: res.reason });
+    setOpening(false);
+    if (!res.ok) setError(res.reason);
     return res.ok;
   };
 
-  return { state, start };
+  const view = submitView(tab, judge, since);
+  const info: SubmitInfo = {
+    ...(since !== undefined ? { since } : {}),
+    opening,
+    warnings,
+    ...(error ? { error } : {}),
+    ...(judge ? { last: judge } : {}),
+    view,
+  };
+  return {
+    info,
+    start,
+    focus: () => focusSubmitTab(problemId),
+    recheck: () =>
+      since !== undefined ? requestRecheck(problemId, since) : Promise.resolve(false),
+  };
 }
 
-export function SubmitPanel({ state }: { state: SubmitState }) {
-  switch (state.phase) {
+/** A small spinning ring next to "제출 중" / "채점 중". */
+export function Spinner() {
+  return <span class="spinner" aria-hidden="true" />;
+}
+
+export function SubmitPanel({
+  info,
+  onFocus,
+  onRecheck,
+}: {
+  info: SubmitInfo;
+  onFocus: () => void;
+  onRecheck: () => void;
+}) {
+  const { view } = info;
+  if (info.error) return <p class="out-fail">{info.error}</p>;
+  if (info.opening || view.kind === 'submitting') {
+    return (
+      <div data-testid="submit-progress">
+        <Warnings items={info.warnings} />
+        <p class="out-busy" role="status">
+          <Spinner />
+          제출 중
+        </p>
+        <p class="out-note">
+          백준 제출 페이지를 뒤쪽 탭에서 열어 제출하고 있습니다. 채점이 끝나면 탭은 저절로 닫힙니다.
+        </p>
+        {view.kind === 'submitting' && <FocusButton onFocus={onFocus} />}
+      </div>
+    );
+  }
+  switch (view.kind) {
     case 'idle':
       return (
         <>
           <p class="out-muted">
-            제출하기를 누르면 백준 제출 창이 열리고 언어와 코드가 채워집니다. 백준의 제출 버튼을
-            직접 누르면, 채점이 끝난 뒤 창이 닫히고 결과가 여기에 표시됩니다.
+            제출하기를 누르면 백준 제출 페이지를 뒤쪽 탭에서 열어 언어와 코드를 채우고 제출합니다.
+            창은 뜨지 않고, 채점이 끝나면 결과가 여기에 표시됩니다.
           </p>
-          {state.last && (
+          {info.last && (
             <>
               <h3 class="out-heading">지난 제출</h3>
-              <JudgeView result={state.last} />
+              <JudgeView result={info.last} />
             </>
           )}
         </>
       );
-    case 'opening':
+    case 'needs-user':
       return (
-        <>
-          <Warnings items={state.warnings} />
-          <p class="out-muted">백준 제출 페이지를 여는 중입니다…</p>
-        </>
-      );
-    case 'waiting':
-      return (
-        <>
-          <Warnings items={state.warnings} />
-          <p class="out-muted">
-            백준 제출 창에서 제출이 진행됩니다. 채점이 끝나면 창이 자동으로 닫히고 결과가 여기에
-            표시됩니다. 그 전에 제출 창을 닫지 말아 주세요.
+        <div data-testid="submit-needs-user">
+          <Warnings items={info.warnings} />
+          <p class="out-warn-title" role="alert">
+            직접 확인이 필요해요
           </p>
-        </>
+          <p class="out-note">{describeNeedsUser(view.tab.reason)}</p>
+          <FocusButton onFocus={onFocus} emphasized />
+        </div>
       );
-    case 'closed':
+    case 'judging':
       return (
-        <p class="out-muted">
-          제출 창이 닫혔습니다. 제출하지 않았다면 제출하기를 다시 눌러 주세요.
-        </p>
+        <div data-testid="submit-judging">
+          <p class="out-busy" role="status">
+            <Spinner />
+            채점 중
+            {view.judge && view.judge.status !== 'done' && (
+              <span class="out-muted"> · {view.judge.resultText}</span>
+            )}
+          </p>
+          {view.tab && <FocusButton onFocus={onFocus} />}
+        </div>
       );
-    case 'error':
-      return <p class="out-fail">{state.reason}</p>;
-    case 'result':
+    case 'lost':
+      return (
+        <div data-testid="submit-lost">
+          <p class="out-warn-title" role="alert">
+            결과를 아직 못 받았어요
+          </p>
+          <p class="out-note">
+            채점 결과를 읽기 전에 제출 탭이 닫혔습니다. 제출이 됐다면 백준 채점 현황에서 결과를 다시
+            읽어 올 수 있어요.
+          </p>
+          <button type="button" class="out-button is-primary" onClick={onRecheck}>
+            결과 다시 확인
+          </button>
+        </div>
+      );
+    case 'done':
       return (
         <>
           <h3 class="out-heading">채점을 시작합니다.</h3>
-          <JudgeView result={state.result} />
+          <JudgeView result={view.judge} />
         </>
       );
   }
+}
+
+function FocusButton({ onFocus, emphasized }: { onFocus: () => void; emphasized?: boolean }) {
+  return (
+    <button
+      type="button"
+      class={`out-button${emphasized ? ' is-primary' : ''}`}
+      title="백준 제출 탭을 앞으로 가져옵니다"
+      onClick={onFocus}
+    >
+      직접 확인
+    </button>
+  );
 }
 
 export function Warnings({ items }: { items: string[] }) {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import type { StatusRow } from '@/boj/status';
+import { submitTabKey } from '@/shared/submit-tab';
 import {
   FILL_TTL_MS,
   WATCH_TTL_MS,
@@ -10,8 +11,6 @@ import {
   handleLanguageMissingQuery,
   handleSubmitRequest,
   handleWatchQuery,
-  handleWindowRemoved,
-  finishSubmitWindow,
 } from '@/boj/submission-service';
 import {
   isJudgeReportMessage,
@@ -23,7 +22,6 @@ import {
   judgeKey,
   pendingKey,
   requestSubmit,
-  submitWindowKey,
   watchJudgeResult,
   type JudgeResult,
   type SubmitRequestMessage,
@@ -39,20 +37,12 @@ const ideSender: Sender = {
   url: `chrome-extension://${EXT}/ide.html`,
   tab: { id: 7, index: 2, windowId: 1 } as Browser.tabs.Tab,
 };
-const POPUP_WINDOW = 50;
-const POPUP_TAB = 77;
-/** The popup window the background opens for the submit page. */
-function mockPopup() {
-  vi.spyOn(fakeBrowser.windows, 'get').mockResolvedValue({
-    id: 1,
-    left: 0,
-    top: 0,
-    width: 1600,
-    height: 1000,
-  } as never);
-  return vi.spyOn(fakeBrowser.windows, 'create').mockResolvedValue({
-    id: POPUP_WINDOW,
-    tabs: [{ id: POPUP_TAB } as Browser.tabs.Tab],
+const SUBMIT_TAB = 77;
+/** The background tab the background opens for the submit page. */
+function mockTab() {
+  return vi.spyOn(fakeBrowser.tabs, 'create').mockResolvedValue({
+    id: SUBMIT_TAB,
+    windowId: 1,
   } as never);
 }
 const submitSender = (tabId: number, path = '/submit/1000'): Sender => ({
@@ -119,28 +109,29 @@ describe('message guards', () => {
 });
 
 describe('handleSubmitRequest', () => {
-  it('stores the pending code and opens the submit page in a popup over the IDE', async () => {
-    const create = mockPopup();
+  it('stores the pending code and opens the submit page in a background tab next to the IDE', async () => {
+    const create = mockTab();
     await expect(handleSubmitRequest(submitMessage, ideSender, NOW)).resolves.toEqual({
       ok: true,
     });
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: 'https://acmicpc.net/submit/1000',
-        type: 'popup',
-        focused: true,
-      }),
-    );
+    expect(create).toHaveBeenCalledWith({
+      url: 'https://acmicpc.net/submit/1000',
+      active: false,
+      windowId: 1,
+      index: 3,
+      openerTabId: 7,
+    });
     const stored = (await fakeBrowser.storage.session.get(pendingKey(1000)))[pendingKey(1000)];
-    expect(stored).toMatchObject({ problemId: 1000, languageId: 17, tabId: POPUP_TAB });
-    const win = (await fakeBrowser.storage.session.get(submitWindowKey(1000)))[
-      submitWindowKey(1000)
-    ];
-    expect(win).toMatchObject({
-      windowId: POPUP_WINDOW,
-      returnTabId: 7,
-      returnWindowId: 1,
-      state: 'open',
+    expect(stored).toMatchObject({ problemId: 1000, languageId: 17, tabId: SUBMIT_TAB });
+    const tab = (await fakeBrowser.storage.session.get(submitTabKey(1000)))[submitTabKey(1000)];
+    expect(tab).toEqual({
+      problemId: 1000,
+      tabId: SUBMIT_TAB,
+      windowId: 1,
+      state: 'submitting',
+      kind: 'submit',
+      since: NOW,
+      updatedAt: NOW,
     });
   });
 
@@ -152,9 +143,9 @@ describe('handleSubmitRequest', () => {
 
 describe('handlePendingQuery', () => {
   async function openedTabId(): Promise<number> {
-    mockPopup();
+    mockTab();
     await handleSubmitRequest(submitMessage, ideSender, NOW);
-    return POPUP_TAB;
+    return SUBMIT_TAB;
   }
 
   it('hands the code to the opened tab once', async () => {
@@ -196,7 +187,7 @@ describe('judge results', () => {
   it('lists active watches to status pages only', async () => {
     expect(await handleWatchQuery(statusSender, NOW + 1000)).toEqual({
       watches: [{ problemId: 1000, since: NOW }],
-      inSubmitWindow: false,
+      inSubmitTab: false,
     });
     expect(await handleWatchQuery(submitSender(1), NOW + 1000)).toEqual({ watches: [] });
     expect(await handleWatchQuery(statusSender, NOW + WATCH_TTL_MS + 1)).toMatchObject({
@@ -289,51 +280,57 @@ describe('watchJudgeResult', () => {
   });
 });
 
-describe('submit popup window', () => {
-  const popupSender: Sender = {
+describe('submission tab', () => {
+  const tabSender: Sender = {
     ...statusSender,
-    tab: { id: POPUP_TAB, index: 0, windowId: POPUP_WINDOW } as Browser.tabs.Tab,
+    tab: { id: SUBMIT_TAB, index: 3, windowId: 1 } as Browser.tabs.Tab,
   };
 
-  it('closes the popup and returns to the IDE when judging finishes there', async () => {
-    mockPopup();
+  it('tells the status page whether it is the background submission tab', async () => {
+    mockTab();
     await handleSubmitRequest(submitMessage, ideSender, NOW);
-    const remove = vi.spyOn(fakeBrowser.windows, 'remove').mockResolvedValue();
-    const focus = vi.spyOn(fakeBrowser.windows, 'update').mockResolvedValue({} as never);
-    const activate = vi.spyOn(fakeBrowser.tabs, 'update').mockResolvedValue({} as never);
-
-    await finishSubmitWindow(1000, popupSender, NOW + 60_000, 0);
-    expect(remove).toHaveBeenCalledWith(POPUP_WINDOW);
-    expect(focus).toHaveBeenCalledWith(1, { focused: true });
-    expect(activate).toHaveBeenCalledWith(7, { active: true });
-  });
-
-  it('leaves other windows alone', async () => {
-    mockPopup();
-    await handleSubmitRequest(submitMessage, ideSender, NOW);
-    const remove = vi.spyOn(fakeBrowser.windows, 'remove').mockResolvedValue();
-    await finishSubmitWindow(1000, statusSender, NOW + 60_000, 0);
-    expect(remove).not.toHaveBeenCalled();
-  });
-
-  it('marks the window closed when the user closes it first', async () => {
-    mockPopup();
-    await handleSubmitRequest(submitMessage, ideSender, NOW);
-    await handleWindowRemoved(POPUP_WINDOW, NOW + 5000);
-    const win = (await fakeBrowser.storage.session.get(submitWindowKey(1000)))[
-      submitWindowKey(1000)
-    ];
-    expect(win).toMatchObject({ state: 'closed' });
-  });
-
-  it('tells the status page whether it runs inside the open submit popup', async () => {
-    mockPopup();
-    await handleSubmitRequest(submitMessage, ideSender, NOW);
-    await expect(handleWatchQuery(popupSender, NOW + 1000)).resolves.toMatchObject({
-      inSubmitWindow: true,
+    await expect(handleWatchQuery(tabSender, NOW + 1000)).resolves.toMatchObject({
+      inSubmitTab: true,
     });
     await expect(handleWatchQuery(statusSender, NOW + 1000)).resolves.toMatchObject({
-      inSubmitWindow: false,
+      inSubmitTab: false,
+    });
+  });
+
+  it('closes the tab after the final result, without focusing anything', async () => {
+    mockTab();
+    await handleSubmitRequest(submitMessage, ideSender, NOW);
+    vi.useFakeTimers({ now: NOW });
+    const remove = vi.spyOn(fakeBrowser.tabs, 'remove').mockResolvedValue();
+    const focus = vi.spyOn(fakeBrowser.windows, 'update');
+    const activate = vi.spyOn(fakeBrowser.tabs, 'update');
+    const judging = handleJudgeReport(
+      { type: 'cib:judge-report', row: row() },
+      tabSender,
+      NOW + 40_000,
+    );
+    await judging;
+    expect(
+      (await fakeBrowser.storage.session.get(submitTabKey(1000)))[submitTabKey(1000)],
+    ).toMatchObject({
+      state: 'judging',
+      sent: true,
+    });
+    const done = handleJudgeReport(
+      { type: 'cib:judge-report', row: row({ resultCode: 'ac', resultText: '맞았습니다!!' }) },
+      tabSender,
+      NOW + 50_000,
+    );
+    await vi.runAllTimersAsync();
+    await done;
+    vi.useRealTimers();
+    expect(remove).toHaveBeenCalledWith(SUBMIT_TAB);
+    expect(focus).not.toHaveBeenCalled();
+    expect(activate).not.toHaveBeenCalled();
+    expect(
+      (await fakeBrowser.storage.session.get(submitTabKey(1000)))[submitTabKey(1000)],
+    ).toMatchObject({
+      state: 'done',
     });
   });
 });
@@ -346,18 +343,18 @@ describe('language missing detour (#59)', () => {
   });
 
   it('keeps the code, tells the settings page why, and refills on return', async () => {
-    mockPopup();
+    mockTab();
     await handleSubmitRequest(submitMessage, ideSender, NOW);
     const query = { type: 'cib:pending-query', problemId: 1000 } as const;
-    const first = await handlePendingQuery(query, submitSender(POPUP_TAB), NOW + 1000);
+    const first = await handlePendingQuery(query, submitSender(SUBMIT_TAB), NOW + 1000);
     if (!first.pending) throw new Error('expected pending code');
 
     const missing = { type: 'cib:language-missing', pending: first.pending } as const;
     await expect(
-      handleLanguageMissing(missing, submitSender(POPUP_TAB), NOW + 2000),
+      handleLanguageMissing(missing, submitSender(SUBMIT_TAB), NOW + 2000),
     ).resolves.toEqual({ ok: true });
 
-    await expect(handleLanguageMissingQuery(settingsSender(POPUP_TAB))).resolves.toEqual({
+    await expect(handleLanguageMissingQuery(settingsSender(SUBMIT_TAB))).resolves.toEqual({
       info: { problemId: 1000, languageName: 'node.js' },
     });
     await expect(handleLanguageMissingQuery(settingsSender(999))).resolves.toEqual({
@@ -365,9 +362,9 @@ describe('language missing detour (#59)', () => {
     });
 
     // Back on the submit page: the code is handed out again and the detour is cleared.
-    const again = await handlePendingQuery(query, submitSender(POPUP_TAB), NOW + 60_000);
+    const again = await handlePendingQuery(query, submitSender(SUBMIT_TAB), NOW + 60_000);
     expect(again.pending?.code).toBe('console.log(1);');
-    await expect(handleLanguageMissingQuery(settingsSender(POPUP_TAB))).resolves.toEqual({
+    await expect(handleLanguageMissingQuery(settingsSender(SUBMIT_TAB))).resolves.toEqual({
       info: null,
     });
   });

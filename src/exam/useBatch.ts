@@ -1,17 +1,13 @@
 /**
  * The result page submits the saved answers after the exam (batch.ts, ADR-0005): one at a
- * time through the usual submit window (requestSubmit with autoSubmit), waiting until the
- * status page reports each one, or it fails, before the next. The queue lives in the exam
- * record, so this picks up where it left off after a reload.
+ * time through the usual submission (requestSubmit with autoSubmit), which runs in a
+ * background tab (shared/submit-tab.ts), waiting until the status page reports each one, or
+ * it fails, before the next. The queue lives in the exam record, so this picks up where it
+ * left off after a reload.
  */
 import { useEffect, useRef } from 'preact/hooks';
-import {
-  isJudgeResult,
-  isSubmitWindow,
-  judgeKey,
-  requestSubmit,
-  submitWindowKey,
-} from '@/shared/submission';
+import { isActiveTab, isSubmitTab, submitTabKey, type SubmitTab } from '@/shared/submit-tab';
+import { isJudgeResult, judgeKey, requestSubmit } from '@/shared/submission';
 import {
   activeEntry,
   claimEntry,
@@ -24,77 +20,79 @@ import {
 import { isOver, type Exam } from './model';
 import { loadExam, loadJudges, updateExam } from './storage';
 
-/** No report this long after the window opened: it probably waits for the user. */
-export const MANUAL_AFTER_MS = 20_000;
 /** Give up waiting for a report after this long. */
 export const GIVE_UP_MS = 10 * 60_000;
-/** After a report, wait this long at most for the window to close before the next one. */
-export const WINDOW_CLOSE_WAIT_MS = 90_000;
-/** Another page may have just claimed an entry and not opened its window yet. */
+/** After a report, wait this long at most for the tab to finish before the next one. */
+export const TAB_FINISH_WAIT_MS = 90_000;
+/** Another page may have just claimed an entry and not opened its tab yet. */
 const CLAIM_GRACE_MS = 15_000;
 
-export const CLOSED_REASON = '제출 창이 닫혀 제출하지 못했어요.';
+export const CLOSED_REASON = '제출 탭이 제출 전에 닫혀 제출하지 못했어요.';
 export const GAVE_UP_REASON =
   '10분 안에 제출 결과를 받지 못했어요. 백준 채점 현황을 확인하고 필요하면 다시 제출해 주세요.';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function windowState(problemId: number) {
-  const key = submitWindowKey(problemId);
+/** The problem's submission tab, if it belongs to the submission asked for at `since`. */
+async function tabState(problemId: number, since?: number): Promise<SubmitTab | undefined> {
+  const key = submitTabKey(problemId);
   const value = (await browser.storage.session.get(key))[key];
-  return isSubmitWindow(value) ? value : undefined;
+  if (!isSubmitTab(value) || value.problemId !== problemId) return undefined;
+  return since === undefined || value.since >= since - 5_000 ? value : undefined;
 }
 
-/** Brings the submit window of a problem to the front ('제출 창 보기'). */
-export async function focusSubmitWindow(problemId: number): Promise<boolean> {
-  const record = await windowState(problemId);
-  if (!record || record.state !== 'open') return false;
-  return browser.windows
-    .update(record.windowId, { focused: true })
-    .then(() => true)
-    .catch(() => false);
-}
-
+/** ok: Baekjoon has it (reported, or sent before its tab closed); otherwise why not. */
 type Report = { ok: true } | { ok: false; reason: string };
 
-/** Waits for the status page to report the submission sent at `since`, or for its failure. */
+/** Waits for the status page to report the submission asked for at `since`, or its failure. */
 function waitForReport(problemId: number, since: number, onManual: () => void): Promise<Report> {
   return new Promise((resolve) => {
     let settled = false;
+    let manual = false;
     const finish = (report: Report) => {
       if (settled) return;
       settled = true;
       browser.storage.onChanged.removeListener(listener);
-      clearTimeout(manual);
       clearTimeout(giveUp);
       resolve(report);
     };
-    const check = (judge: unknown, window: unknown) => {
+    const onJudge = (judge: unknown) => {
       if (isJudgeResult(judge) && judge.problemId === problemId && judge.updatedAt >= since) {
         finish({ ok: true });
-      } else if (isSubmitWindow(window) && window.state === 'closed' && window.updatedAt >= since) {
-        finish({ ok: false, reason: CLOSED_REASON });
       }
+    };
+    const onTab = (tab: unknown) => {
+      if (!isSubmitTab(tab) || tab.problemId !== problemId || tab.since < since - 5_000) return;
+      if (tab.state === 'needs-user' && !manual) {
+        manual = true;
+        onManual();
+      }
+      // Closed before the result: sent already means Baekjoon has it ('결과 다시 확인').
+      if (tab.state === 'closed')
+        finish(tab.sent ? { ok: true } : { ok: false, reason: CLOSED_REASON });
     };
     const listener = (changes: Record<string, { newValue?: unknown }>, area: string) => {
       const judge = changes[judgeKey(problemId)];
-      const window = changes[submitWindowKey(problemId)];
-      if (area === 'local' && judge) check(judge.newValue, undefined);
-      if (area === 'session' && window) check(undefined, window.newValue);
+      const tab = changes[submitTabKey(problemId)];
+      if (area === 'local' && judge) onJudge(judge.newValue);
+      if (area === 'session' && tab) onTab(tab.newValue);
     };
     browser.storage.onChanged.addListener(listener);
-    const manual = setTimeout(onManual, MANUAL_AFTER_MS);
     const giveUp = setTimeout(() => finish({ ok: false, reason: GAVE_UP_REASON }), GIVE_UP_MS);
-    void Promise.all([browser.storage.local.get(judgeKey(problemId)), windowState(problemId)]).then(
-      ([local, window]) => check(local[judgeKey(problemId)], window),
-    );
+    void Promise.all([
+      browser.storage.local.get(judgeKey(problemId)),
+      tabState(problemId, since),
+    ]).then(([local, tab]) => {
+      onJudge(local[judgeKey(problemId)]);
+      onTab(tab);
+    });
   });
 }
 
-/** Waits until the submit window of a problem is no longer open (judging done), or `ms`. */
-async function waitWindowClosed(problemId: number, ms: number) {
+/** Waits until the problem's submission tab is done or closed (one tab at a time), or `ms`. */
+async function waitTabFinished(problemId: number, ms: number) {
   const until = Date.now() + ms;
-  while (Date.now() < until && (await windowState(problemId))?.state === 'open') await sleep(500);
+  while (Date.now() < until && isActiveTab(await tabState(problemId))) await sleep(500);
 }
 
 export function useBatchSubmit(exam: Exam | undefined) {
@@ -162,8 +160,8 @@ async function settle(id: string, problemId: number, since: number) {
   });
   if (report.ok) {
     await updateExam(id, (e) => markSubmitted(e, problemId, Date.now()));
-    // One submit window at a time: let this one finish judging and close.
-    await waitWindowClosed(problemId, WINDOW_CLOSE_WAIT_MS);
+    // One submission tab at a time: let this one finish judging and close.
+    await waitTabFinished(problemId, TAB_FINISH_WAIT_MS);
   } else {
     await updateExam(id, (e) => markFailed(e, problemId, report.reason, Date.now()));
   }
@@ -171,25 +169,26 @@ async function settle(id: string, problemId: number, since: number) {
 
 /**
  * An entry already submitting: ours (wait for it), or left by a reload or another page
- * (resume: reported → submitted, window open → wait, otherwise failed, never sent again).
+ * (resume: reported or sent → submitted, tab still running → wait, otherwise failed, never
+ * sent again).
  */
 async function follow(exam: Exam, problemId: number, owner: string) {
   const entry = exam.submitQueue?.[problemId];
   const since = entry?.startedAt ?? entry?.updatedAt ?? Date.now();
   if (entry?.owner !== owner) {
     const judge = (await loadJudges([problemId])).get(problemId);
-    const window = await windowState(problemId);
-    const open = window?.state === 'open';
-    if (!open && !judge && Date.now() - since < CLAIM_GRACE_MS) {
+    const tab = await tabState(problemId, since);
+    const running = isActiveTab(tab);
+    if (!running && !judge && !tab && Date.now() - since < CLAIM_GRACE_MS) {
       await sleep(1000);
       return;
     }
     const resumed = await updateExam(exam.id, (e) =>
-      resumeEntry(e, problemId, judge, open, Date.now()),
+      resumeEntry(e, problemId, judge, running, Date.now(), tab?.sent === true),
     );
     const state = resumed?.submitQueue?.[problemId]?.state;
     if (state !== 'submitting' && state !== 'manual') {
-      if (state === 'submitted') await waitWindowClosed(problemId, WINDOW_CLOSE_WAIT_MS);
+      if (state === 'submitted') await waitTabFinished(problemId, TAB_FINISH_WAIT_MS);
       return;
     }
   }

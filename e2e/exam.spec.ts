@@ -212,7 +212,9 @@ test('results: late and stale judge results', async ({ page, extensionId }) => {
   await expect(rows.nth(0)).toContainText('틀렸습니다');
   await expect(rows.nth(0)).toContainText('Python 3');
   await expect(rows.nth(0)).toContainText('시작 후 0:12:00');
-  await expect(rows.nth(1)).toContainText('채점 중 (40%)');
+  // Judging was reported long ago and no tab follows it any more: offer to read it again.
+  await expect(rows.nth(1).getByTestId('result-text')).toHaveText('결과를 아직 못 받았어요');
+  await expect(rows.nth(1).getByRole('button', { name: '결과 다시 확인' })).toBeVisible();
   await expect(rows.nth(2)).toContainText('제출 안 함');
   await expect(page.getByTestId('result-score')).toContainText('0 / 3');
   await expect(page.getByTestId('result-time')).toContainText('49분');

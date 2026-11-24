@@ -19,7 +19,8 @@ import {
 } from '@/exam/batch';
 import { createExam, DEFAULT_DRAFT, examKey, isExam, judgeBelongs, type Exam } from '@/exam/model';
 import { CLOSED_REASON, drive } from '@/exam/useBatch';
-import { judgeKey, submitWindowKey, type JudgeResult } from '@/shared/submission';
+import { submitTabKey } from '@/shared/submit-tab';
+import { judgeKey, type JudgeResult } from '@/shared/submission';
 
 const MIN = 60_000;
 const NOW = 1_800_000_000_000;
@@ -124,7 +125,7 @@ describe('the submit queue after the end', () => {
     expect(nextPending(e)).toBe(2003);
     expect(batchProgress(e).label).toBe('제출 중 2/2');
     e = claimEntry(e, 2003, 'me', NOW + 34 * MIN);
-    e = markFailed(e, 2003, '제출 창이 닫혀 제출하지 못했어요.', NOW + 35 * MIN);
+    e = markFailed(e, 2003, CLOSED_REASON, NOW + 35 * MIN);
     expect(e.submitQueue?.[2003]).toMatchObject({ state: 'failed', reason: CLOSED_REASON });
     expect(batchProgress(e)).toMatchObject({ running: false, label: '제출 완료 1/2' });
 
@@ -153,8 +154,12 @@ describe('the submit queue after the end', () => {
     // An older result is not this submission's.
     const unknown = resumeEntry(e, 2001, judge(2001, NOW + 20 * MIN), false, NOW + 40 * MIN);
     expect(unknown.submitQueue?.[2001]).toMatchObject({ state: 'failed', reason: UNKNOWN_REASON });
-    // The window is still open: keep waiting.
+    // The submission tab still runs: keep waiting.
     expect(resumeEntry(e, 2001, undefined, true, NOW + 40 * MIN)).toBe(e);
+    // Its tab closed after the form was sent: Baekjoon has it, the result is to be rechecked.
+    expect(
+      resumeEntry(e, 2001, undefined, false, NOW + 40 * MIN, true).submitQueue?.[2001]?.state,
+    ).toBe('submitted');
     expect(resumeEntry(ended(), 2001, undefined, false, NOW)).toEqual(ended());
   });
 });
@@ -226,20 +231,27 @@ describe('the result page drives the queue', () => {
     expect(e.submitQueue?.[2003]?.state).toBe('submitted');
   });
 
-  it('fails an entry whose submit window was closed before a report', async () => {
+  /** The submission tab of a problem closes, after the form was sent or before. */
+  const closeTab = (problemId: number, sent: boolean) =>
+    setTimeout(
+      () =>
+        void fakeBrowser.storage.session.set({
+          [submitTabKey(problemId)]: {
+            problemId,
+            tabId: 5,
+            state: 'closed',
+            kind: 'submit',
+            ...(sent ? { sent: true } : {}),
+            since: Date.now() - 10,
+            updatedAt: Date.now(),
+          },
+        }),
+      20,
+    );
+
+  it('fails an entry whose tab closed before it was sent, and goes on', async () => {
     respond = async (problemId) => {
-      setTimeout(
-        () =>
-          void fakeBrowser.storage.session.set({
-            [submitWindowKey(problemId)]: {
-              problemId,
-              windowId: 5,
-              state: 'closed',
-              updatedAt: Date.now(),
-            },
-          }),
-        20,
-      );
+      closeTab(problemId, false);
       return { ok: true };
     };
     await seed(ended());
@@ -247,6 +259,68 @@ describe('the result page drives the queue', () => {
     const e = await stored();
     expect(e.submitQueue?.[2001]).toMatchObject({ state: 'failed', reason: CLOSED_REASON });
     expect(e.submitQueue?.[2003]).toMatchObject({ state: 'failed', reason: CLOSED_REASON });
+  });
+
+  it('counts an entry sent before its tab closed as submitted (result to recheck)', async () => {
+    respond = async (problemId) => {
+      closeTab(problemId, problemId === 2001);
+      return { ok: true };
+    };
+    await seed(ended());
+    await drive('abcdefgh12', 'me', () => true);
+    const e = await stored();
+    expect(e.submitQueue?.[2001]?.state).toBe('submitted');
+    expect(e.submitQueue?.[2003]).toMatchObject({ state: 'failed', reason: CLOSED_REASON });
+    expect(sent.map((x) => x.problemId)).toEqual([2001, 2003]);
+  });
+
+  it('marks an entry waiting for the user when auto-submit hands over', async () => {
+    respond = async (problemId) => {
+      setTimeout(
+        () =>
+          void fakeBrowser.storage.session.set({
+            [submitTabKey(problemId)]: {
+              problemId,
+              tabId: 5,
+              state: 'needs-user',
+              reason: 'check',
+              kind: 'submit',
+              since: Date.now() - 10,
+              updatedAt: Date.now(),
+            },
+          }),
+        20,
+      );
+      // The user handles it: the status page reports, the tab finishes.
+      setTimeout(() => {
+        void fakeBrowser.storage.local.set({
+          [judgeKey(problemId)]: judge(problemId, Date.now()),
+        });
+        void fakeBrowser.storage.session.set({
+          [submitTabKey(problemId)]: {
+            problemId,
+            tabId: 5,
+            state: 'done',
+            sent: true,
+            kind: 'submit',
+            since: Date.now() - 200,
+            updatedAt: Date.now(),
+          },
+        });
+      }, 150);
+      return { ok: true };
+    };
+    await seed(ended());
+    let manual = false;
+    const watcher = (changes: Record<string, { newValue?: unknown }>) => {
+      const exam = changes[examKey('abcdefgh12')]?.newValue as Exam | undefined;
+      if (exam?.submitQueue?.[2001]?.state === 'manual') manual = true;
+    };
+    fakeBrowser.storage.onChanged.addListener(watcher);
+    await drive('abcdefgh12', 'me', () => true);
+    fakeBrowser.storage.onChanged.removeListener(watcher);
+    expect(manual).toBe(true);
+    expect((await stored()).submitQueue?.[2001]?.state).toBe('submitted');
   });
 
   it('does not send again an entry left submitting by an earlier page', async () => {

@@ -78,8 +78,8 @@ export interface WatchQueryMessage {
 
 export interface WatchQueryResponse {
   watches: Watch[];
-  /** True when the asking page is inside the submit popup the extension opened (#47). */
-  inSubmitWindow?: boolean;
+  /** True when the asking page is the background tab of a submission (shared/submit-tab.ts). */
+  inSubmitTab?: boolean;
 }
 
 /** Status page content script → background. */
@@ -174,7 +174,7 @@ export function isWatchQueryResponse(v: unknown): v is WatchQueryResponse {
     isObject(v) &&
     Array.isArray(v.watches) &&
     v.watches.every((w) => isObject(w) && isProblemId(w.problemId) && isTimestamp(w.since)) &&
-    (v.inSubmitWindow === undefined || typeof v.inSubmitWindow === 'boolean')
+    (v.inSubmitTab === undefined || typeof v.inSubmitTab === 'boolean')
   );
 }
 
@@ -220,49 +220,8 @@ export const pendingKey = (problemId: number) => `cib:pending:${problemId}`;
 export const watchKey = (problemId: number) => `cib:watch:${problemId}`;
 /** `storage.local`: the latest judge result for a problem. */
 export const judgeKey = (problemId: number) => `judge:${problemId}`;
-/** `storage.session`: the popup window opened for submitting a problem (#35). */
-export const submitWindowKey = (problemId: number) => `cib:submit-window:${problemId}`;
 /** `storage.session`: a tab sent to the language settings because a language was missing. */
 export const languageMissingKey = (tabId: number) => `cib:language-missing:${tabId}`;
-
-export type SubmitWindowState = 'open' | 'done' | 'closed';
-
-export interface SubmitWindow {
-  problemId: number;
-  windowId: number;
-  /** The tab and window to bring back to the front after judging (the IDE's tab). */
-  returnTabId?: number;
-  returnWindowId?: number;
-  state: SubmitWindowState;
-  updatedAt: number;
-}
-
-export function isSubmitWindow(v: unknown): v is SubmitWindow {
-  if (typeof v !== 'object' || v === null) return false;
-  const w = v as Record<string, unknown>;
-  return (
-    typeof w.problemId === 'number' &&
-    typeof w.windowId === 'number' &&
-    (w.returnTabId === undefined || typeof w.returnTabId === 'number') &&
-    (w.returnWindowId === undefined || typeof w.returnWindowId === 'number') &&
-    (w.state === 'open' || w.state === 'done' || w.state === 'closed') &&
-    typeof w.updatedAt === 'number'
-  );
-}
-
-/** Calls `onChange` when the submit window for `problemId` changes state. */
-export function watchSubmitWindow(
-  problemId: number,
-  onChange: (state: SubmitWindowState) => void,
-): () => void {
-  const key = submitWindowKey(problemId);
-  const listener = (changes: Record<string, Browser.storage.StorageChange>, area: string) => {
-    const next = changes[key]?.newValue;
-    if (area === 'session' && isSubmitWindow(next)) onChange(next.state);
-  };
-  browser.storage.onChanged.addListener(listener);
-  return () => browser.storage.onChanged.removeListener(listener);
-}
 
 // ---------------------------------------------------------------------------
 // IDE API

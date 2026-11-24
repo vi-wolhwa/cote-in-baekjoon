@@ -1,23 +1,21 @@
 /**
  * Background side of the submission flow (ADR-0002). Runs in the service worker, keeps no
  * state in globals, and sends no requests to Baekjoon: it only opens the official submit
- * page for the user and relays data between extension pages and Baekjoon content scripts.
+ * page for the user, in a background tab (submit-tab-service.ts), and relays data between
+ * extension pages and Baekjoon content scripts.
  */
 import { BOJ_LANGUAGES } from '@/boj/languages';
 import { CLOCK_SKEW_MS, judgeStatusOf, type Watch } from '@/boj/status';
 import {
   isJudgeResult,
   isLanguageMissingQueryResponse,
-  isSubmitWindow,
   judgeKey,
   languageMissingKey,
   pendingKey,
-  submitWindowKey,
   watchKey,
   type LanguageMissingInfo,
   type LanguageMissingMessage,
   type LanguageMissingQueryResponse,
-  type SubmitWindow,
   type JudgeReportMessage,
   type JudgeResult,
   type PendingQueryMessage,
@@ -27,6 +25,10 @@ import {
   type SubmitResponse,
   type WatchQueryResponse,
 } from '@/shared/submission';
+import { bojPath, isExtensionPage, submitUrl } from './sender';
+import { isOwnSubmitTab, noteJudgeReport, openSubmitTab } from './submit-tab-service';
+
+export { bojPath, isExtensionPage, submitUrl };
 
 type Sender = Browser.runtime.MessageSender;
 
@@ -39,30 +41,6 @@ interface StoredPending extends PendingSubmission {
   createdAt: number;
   /** The tab opened for this submission; unset for the moment before the tab exists. */
   tabId?: number;
-}
-
-const BOJ_PAGE = /^https:\/\/(?:www\.)?acmicpc\.net(\/[^?#]*)?/;
-
-/** `acmicpc.net` is the canonical host: `www.acmicpc.net` redirects there. */
-export function submitUrl(problemId: number): string {
-  return `https://acmicpc.net/submit/${problemId}`;
-}
-
-/** The Baekjoon path (`/submit/1000`, `/status`) a content script message came from. */
-export function bojPath(sender: Sender): string | undefined {
-  if (sender.id !== browser.runtime.id || !sender.tab || !sender.url) return undefined;
-  const m = BOJ_PAGE.exec(sender.url);
-  return m ? (m[1] ?? '/') : undefined;
-}
-
-/** True for a page of this extension (the IDE frame), not a content script. */
-export function isExtensionPage(sender: Sender): boolean {
-  if (sender.id !== browser.runtime.id || !sender.url) return false;
-  try {
-    return /^(chrome|moz)-extension:$/.test(new URL(sender.url).protocol);
-  } catch {
-    return false;
-  }
 }
 
 export async function handleSubmitRequest(
@@ -90,12 +68,10 @@ export async function handleSubmitRequest(
   });
 
   try {
-    const tabId = await openSubmitWindow(message.problemId, sender, now);
-    if (tabId !== undefined) {
-      await browser.storage.session.set({
-        [pendingKey(message.problemId)]: { ...pending, tabId },
-      });
-    }
+    const tabId = await openSubmitTab(message.problemId, submitUrl(message.problemId), sender, now);
+    await browser.storage.session.set({
+      [pendingKey(message.problemId)]: { ...pending, tabId },
+    });
   } catch {
     await browser.storage.session.remove(pendingKey(message.problemId));
     return { ok: false, reason: '백준 제출 페이지를 열지 못했습니다.' };
@@ -181,27 +157,7 @@ export async function handleWatchQuery(
   if (!isStatusPath(bojPath(sender))) return { watches: [] };
   await removeExpired(now);
   const watches = await activeWatches(now);
-  const submitWindow = await openSubmitWindowFor(sender.tab?.windowId);
-  return { watches, inSubmitWindow: submitWindow !== undefined };
-}
-
-/** The submit popup this extension opened in `windowId` and is still waiting on, if any. */
-async function openSubmitWindowFor(
-  windowId: number | undefined,
-): Promise<SubmitWindow | undefined> {
-  if (windowId === undefined) return undefined;
-  const all = await browser.storage.session.get(null);
-  for (const [key, value] of Object.entries(all)) {
-    if (
-      key.startsWith('cib:submit-window:') &&
-      isSubmitWindow(value) &&
-      value.windowId === windowId &&
-      value.state === 'open'
-    ) {
-      return value;
-    }
-  }
-  return undefined;
+  return { watches, inSubmitTab: await isOwnSubmitTab(sender.tab?.id) };
 }
 
 export async function handleJudgeReport(
@@ -244,101 +200,8 @@ export async function handleJudgeReport(
     ...(row.timeMs !== undefined ? { timeMs: row.timeMs } : {}),
   };
   await browser.storage.local.set({ [key]: result });
-  if (status === 'done') await finishSubmitWindow(row.problemId, sender, now);
+  await noteJudgeReport(row.problemId, status, sender, now);
   return { ok: true };
-}
-
-/** Size of the submit popup; it sits over the right side (editor) of the IDE window. */
-const POPUP_WIDTH = 760;
-const POPUP_HEIGHT = 860;
-/** How long the final result stays visible in the popup before it closes (#59: faster). */
-export const CLOSE_DELAY_MS = 300;
-
-/**
- * Opens the official submit page in a small popup window over the IDE, so the user presses
- * Baekjoon's submit button and comes straight back (#35). Falls back to a tab where popup
- * windows are not available. Returns the id of the tab showing the submit page.
- */
-export async function openSubmitWindow(
-  problemId: number,
-  sender: Sender,
-  now = Date.now(),
-): Promise<number | undefined> {
-  const url = submitUrl(problemId);
-  if (!browser.windows?.create) {
-    const tab = await browser.tabs.create({ url, active: true });
-    return tab.id;
-  }
-  const bounds =
-    sender.tab?.windowId !== undefined
-      ? await browser.windows.get(sender.tab.windowId).catch(() => undefined)
-      : undefined;
-  const width = POPUP_WIDTH;
-  const height = Math.min(POPUP_HEIGHT, bounds?.height ?? POPUP_HEIGHT);
-  const position =
-    bounds?.left !== undefined && bounds.top !== undefined && bounds.width !== undefined
-      ? { left: bounds.left + Math.max(0, bounds.width - width - 24), top: bounds.top + 80 }
-      : {};
-  // Chrome rejects bounds it considers off-screen; retry without a position, then use a tab.
-  const win =
-    (await browser.windows
-      .create({ url, type: 'popup', focused: true, width, height, ...position })
-      .catch(() => undefined)) ??
-    (await browser.windows.create({ url, type: 'popup', focused: true }).catch(() => undefined));
-  if (win?.id === undefined) {
-    const tab = await browser.tabs.create({
-      url,
-      active: true,
-      ...(sender.tab ? { index: sender.tab.index + 1, openerTabId: sender.tab.id } : {}),
-    });
-    return tab.id;
-  }
-  const record: SubmitWindow = {
-    problemId,
-    windowId: win.id,
-    returnTabId: sender.tab?.id,
-    returnWindowId: sender.tab?.windowId,
-    state: 'open',
-    updatedAt: now,
-  };
-  await browser.storage.session.set({ [submitWindowKey(problemId)]: record });
-  return win.tabs?.[0]?.id;
-}
-
-/**
- * Judging finished in our popup: let the user see the result for a moment, close the popup
- * and bring the IDE back to the front. Results from other tabs or windows change nothing.
- */
-export async function finishSubmitWindow(
-  problemId: number,
-  sender: Sender,
-  now = Date.now(),
-  delayMs = CLOSE_DELAY_MS,
-): Promise<void> {
-  const key = submitWindowKey(problemId);
-  const record = (await browser.storage.session.get(key))[key];
-  if (!isSubmitWindow(record) || record.state !== 'open') return;
-  if (sender.tab?.windowId !== record.windowId) return;
-
-  await browser.storage.session.set({ [key]: { ...record, state: 'done', updatedAt: now } });
-  await new Promise((resolve) => setTimeout(resolve, delayMs));
-  await browser.windows.remove(record.windowId).catch(() => undefined);
-  if (record.returnWindowId !== undefined) {
-    await browser.windows.update(record.returnWindowId, { focused: true }).catch(() => undefined);
-  }
-  if (record.returnTabId !== undefined) {
-    await browser.tabs.update(record.returnTabId, { active: true }).catch(() => undefined);
-  }
-}
-
-/** The user closed a submit popup before judging finished. */
-export async function handleWindowRemoved(windowId: number, now = Date.now()): Promise<void> {
-  const all = await browser.storage.session.get(null);
-  for (const [key, value] of Object.entries(all)) {
-    if (!key.startsWith('cib:submit-window:') || !isSubmitWindow(value)) continue;
-    if (value.windowId !== windowId || value.state !== 'open') continue;
-    await browser.storage.session.set({ [key]: { ...value, state: 'closed', updatedAt: now } });
-  }
 }
 
 function isStatusPath(path: string | undefined): boolean {

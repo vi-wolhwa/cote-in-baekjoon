@@ -1,6 +1,6 @@
 /** Shared setup for the mock exam E2E tests: synthetic Baekjoon pages only. */
 import { readFileSync } from 'node:fs';
-import type { BrowserContext, Locator, Page } from '@playwright/test';
+import type { BrowserContext, Frame, Locator, Page } from '@playwright/test';
 import { expect } from './fixtures';
 
 declare const chrome: {
@@ -98,13 +98,41 @@ export function readCaptureTabs(context: BrowserContext, examPage: Page): number
   return read;
 }
 
-/** A submit window of the batch: load its pages like Baekjoon would, until it closes. */
-export async function handleSubmitWindow(popup: Page, problemId: number) {
-  await popup.goto(`https://acmicpc.net/submit/${problemId}`);
-  await expect(popup.getByText('잠시 뒤 자동으로 제출합니다')).toBeVisible();
-  const closed = popup.waitForEvent('close', { timeout: 15_000 });
-  await popup.goto(`https://acmicpc.net/status?from_mine=1&problem_id=${problemId}&user_id=tester`);
+/**
+ * A submission's background tab: load its pages like Baekjoon would, until it closes. Routes
+ * do not catch the first navigation of a tab the extension creates, so it is loaded again.
+ */
+export async function handleSubmitTab(tab: Page, problemId: number) {
+  await tab.goto(`https://acmicpc.net/submit/${problemId}`);
+  await expect(tab.getByText('잠시 뒤 자동으로 제출합니다')).toBeVisible();
+  const closed = tab.waitForEvent('close', { timeout: 15_000 });
+  await tab.goto(`https://acmicpc.net/status?from_mine=1&problem_id=${problemId}&user_id=tester`);
   await closed;
+}
+
+interface TabsApi {
+  chrome: {
+    tabs: { query(q: object): Promise<{ id?: number }[]> };
+    windows: { getAll(): Promise<unknown[]> };
+    storage: { session: { get(k: string): Promise<Record<string, unknown>> } };
+  };
+}
+
+/**
+ * Where the submission of `problemId` runs, seen from an extension page (`frame`): the number
+ * of windows and whether its tab is the active one. (Playwright reports every page as
+ * visible, so `document.visibilityState` cannot tell.)
+ */
+export async function submitTabInfo(frame: Page | Frame, problemId: number) {
+  return frame.evaluate(async (key) => {
+    const api = (globalThis as unknown as TabsApi).chrome;
+    const [active] = await api.tabs.query({ active: true, currentWindow: true });
+    const record = (await api.storage.session.get(key))[key] as { tabId?: number } | undefined;
+    return {
+      windows: (await api.windows.getAll()).length,
+      active: record?.tabId !== undefined && active?.id === record.tabId,
+    };
+  }, `cib:submit-tab:${problemId}`);
 }
 
 export async function box(locator: Locator) {

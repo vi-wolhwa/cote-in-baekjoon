@@ -5,8 +5,13 @@ import {
   handlePendingQuery,
   handleSubmitRequest,
   handleWatchQuery,
-  handleWindowRemoved,
 } from '@/boj/submission-service';
+import {
+  handleRecheck,
+  handleSubmitProgress,
+  handleSubmitTabRemoved,
+} from '@/boj/submit-tab-service';
+import { isRecheckMessage, isSubmitProgressMessage } from '@/shared/submit-tab';
 import {
   handleCaptureCancel,
   handleCaptureQuery,
@@ -32,13 +37,12 @@ import {
 } from '@/shared/submission';
 
 export default defineBackground(() => {
-  browser.windows?.onRemoved.addListener((windowId) => {
-    handleWindowRemoved(windowId).catch((error: unknown) =>
-      console.error('[cib] window cleanup failed', error),
-    );
-  });
-  // A mock exam's background tab closed before its problem was read (ADR-0005).
+  // A background tab closed early: a submission (ADR-0002) or a mock exam problem being
+  // read (ADR-0005) did not finish.
   browser.tabs.onRemoved.addListener((tabId) => {
+    handleSubmitTabRemoved(tabId).catch((error: unknown) =>
+      console.error('[cib] submit tab cleanup failed', error),
+    );
     handleCaptureTabRemoved(tabId).catch((error: unknown) =>
       console.error('[cib] capture cleanup failed', error),
     );
@@ -62,6 +66,8 @@ function route(message: unknown, sender: Browser.runtime.MessageSender): Promise
   if (isLanguageMissingMessage(message)) return handleLanguageMissing(message, sender);
   if (isLanguageMissingQuery(message)) return handleLanguageMissingQuery(sender);
   if (isOpenExamSetupMessage(message)) return handleOpenExamSetup(message, sender);
+  if (isSubmitProgressMessage(message)) return handleSubmitProgress(message, sender);
+  if (isRecheckMessage(message)) return handleRecheck(message, sender);
   if (isCaptureRequestMessage(message)) return handleCaptureRequest(message, sender);
   if (isCaptureCancelMessage(message)) return handleCaptureCancel(message, sender);
   if (isCaptureQueryMessage(message)) return handleCaptureQuery(sender);

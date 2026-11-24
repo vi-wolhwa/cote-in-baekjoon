@@ -83,7 +83,8 @@ export default defineContentScript({
     const limit = setTimeout(stop, OBSERVE_LIMIT_MS);
     ctx.onInvalidated(stop);
 
-    if (response.inSubmitWindow) notice = showJudgingNotice(document);
+    // Our background submission tab: in case the user looks at it ('직접 확인').
+    if (response.inSubmitTab) notice = showJudgingNotice(document);
     poller.start();
     if (poller.isStopped) return stop();
     log('채점 결과를 기다립니다.');

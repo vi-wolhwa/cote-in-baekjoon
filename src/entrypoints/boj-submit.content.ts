@@ -23,6 +23,7 @@ import {
 } from '@/boj/submit-fill';
 import { findBlockedPatterns } from '@/boj/waf';
 import { rememberHandle } from '@/shared/handle';
+import type { NeedsUserReason, SubmitProgressMessage } from '@/shared/submit-tab';
 import {
   isPendingQueryResponse,
   type LanguageMissingMessage,
@@ -54,8 +55,17 @@ export default defineContentScript({
     const fillProblem = diagnoseSubmitFill(result);
     if (fillProblem) reportLayoutProblem(fillProblem, pending.problemId);
     const blockedPatterns = findBlockedPatterns(pending.code);
+    // However the form goes out (auto or by the user's own click), Baekjoon has it now.
+    document.addEventListener('submit', () => report(pending.problemId, 'sent'), true);
+    let reason: NeedsUserReason = 'cancelled';
     if (!pending.autoSubmit) log('자동 제출이 꺼져 있어 직접 제출을 안내합니다.');
-    else if (await tryAutoSubmit(result, blockedPatterns, pending.problemId)) return;
+    else {
+      const handover = await tryAutoSubmit(result, blockedPatterns, pending.problemId);
+      if (!handover) return;
+      reason = handover;
+    }
+    // The submission tab is in the background: the IDE says the user has to look.
+    report(pending.problemId, 'needs-user', reason);
 
     const copied = result?.code === 'ok' ? false : await copyText(pending.code);
     showSubmitBanner(document, {
@@ -77,52 +87,68 @@ const SUBMIT_BUTTON_WAIT_MS = 10_000;
  * Auto-submit (#41, opted in by the user in the IDE): presses Baekjoon's own submit button
  * once the form is fully filled. Falls back to the manual banner when anything is off:
  * the fill was incomplete, the code has strings the firewall rejects, the page shows a
- * human check, the button is missing, or the user cancels.
+ * human check, the button is missing, or the user cancels. Human checks are never
+ * bypassed. Returns why it handed over to the user, or undefined once it pressed the button.
  */
 async function tryAutoSubmit(
   result: FillResult | undefined,
   blockedPatterns: string[],
   problemId: number,
-): Promise<boolean> {
+): Promise<NeedsUserReason | undefined> {
   if (result?.code !== 'ok' || result.language !== 'ok') {
     log('언어나 코드를 다 채우지 못해 자동 제출하지 않습니다.');
-    return false;
+    return 'fill';
   }
   if (blockedPatterns.length > 0) {
     log(
       `방화벽에 막힐 수 있는 문자열이 있어 자동 제출하지 않습니다: ${blockedPatterns.join(', ')}`,
     );
-    return false;
+    return 'firewall';
   }
   if (hasInteractiveChallenge(document)) {
     log('사람이 직접 풀어야 하는 보안 확인이 있어 자동 제출하지 않습니다.');
-    return false;
+    return 'check';
   }
   // Baekjoon shows the real button only once its reCAPTCHA v3 token is ready (#45).
   const submit = await waitForSubmitButton(document, SUBMIT_BUTTON_WAIT_MS);
   if (!submit) {
     log('제출 버튼이 준비되지 않아 자동 제출하지 않습니다.');
     // A human check can appear while waiting; only a missing button is a layout problem.
-    if (!hasInteractiveChallenge(document)) reportLayoutProblem(diagnoseSubmitButton(), problemId);
-    return false;
+    if (!hasInteractiveChallenge(document)) {
+      reportLayoutProblem(diagnoseSubmitButton(), problemId);
+      return 'button';
+    }
+    return 'check';
   }
   if (!(await showAutoSubmitCountdown(document, AUTO_SUBMIT_DELAY_MS))) {
     log('사용자가 자동 제출을 취소했습니다.');
-    return false;
+    return 'cancelled';
   }
   if (!isClickable(submit) || hasInteractiveChallenge(document)) {
     log('카운트다운 중 페이지가 바뀌어 자동 제출하지 않습니다.');
-    return false;
+    return hasInteractiveChallenge(document) ? 'check' : 'button';
   }
   log('제출 버튼을 누릅니다.');
   submit.click();
-  return true;
+  return undefined;
+}
+
+/** Tells the background how the submission tab is doing (shared/submit-tab.ts). */
+function report(problemId: number, state: 'needs-user' | 'sent', reason?: NeedsUserReason) {
+  const message: SubmitProgressMessage = {
+    type: 'cib:submit-progress',
+    problemId,
+    state,
+    ...(reason ? { reason } : {}),
+  };
+  browser.runtime.sendMessage(message).catch(() => undefined);
 }
 
 async function goToLanguageSettings(pending: PendingSubmission): Promise<boolean> {
   const message: LanguageMissingMessage = { type: 'cib:language-missing', pending };
   const reply: unknown = await browser.runtime.sendMessage(message).catch(() => undefined);
   if (!(reply as { ok?: boolean } | undefined)?.ok) return false;
+  report(pending.problemId, 'needs-user', 'language');
   log(`${pending.languageName}이(가) 백준 언어 목록에 없어 언어 설정 페이지로 이동합니다.`);
   location.assign(findLanguageSettingsUrl(document));
   return true;
