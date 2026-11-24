@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.13.0...v0.14.0) (2026-11-24)
+
+
+### 기능
+
+* **formats:** 상위 1만 문제 중 3,214문제 형식 추가(설명만 있는 문제 포함) ([#157](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/157)) ([d553e52](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/d553e52a2f7573247b93bbe8f243f954d9f9e05d))
+* **solution:** 실수 반환값에 허용 오차(tol) — 오차를 허용하는 문제도 풀이 함수로 ([#159](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/159)) ([566ede0](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/566ede0dd965fa9d7ccb5b094bf9f980d68b92b2))
+
 ## [0.13.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.12.0...v0.13.0) (2026-11-24)
 
 
