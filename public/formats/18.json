@@ -5,6 +5,7 @@
 "18004":{"v":1,"params":[{"name":"a","type":"int"},{"name":"b","type":"int"}],"lines":[["a","b"]],"cases":null,"ret":{"type":"int"}},
 "18005":{"v":1,"params":[{"name":"n","type":"int"}],"lines":[["n"]],"cases":null,"ret":{"type":"int"}},
 "18007":{"v":1,"params":[{"name":"s","type":"string"}],"lines":[["s"]],"cases":null,"ret":{"type":"long"}},
+"18009":{"v":1,"params":[{"name":"n","type":"int"},{"name":"m","type":"int"},{"name":"props","type":"string[][]","cols":2},{"name":"artwork","type":"string[]","len":"m"}],"lines":[["n","m"],{"repeat":"n","of":"props"},["artwork"]],"cases":{"count":"T"},"ret":{"type":"int[]","sep":" ","label":"Data Set {i}:\n","blank":true}},
 "18015":{"v":1,"params":[{"name":"n","type":"int"},{"name":"b","type":"int"}],"lines":[["n","b"]],"cases":null,"ret":{"type":"int"}},
 "18017":{"v":1,"params":[{"name":"a","type":"double"},{"name":"b","type":"double"}],"lines":[["a","b"]],"cases":null,"ret":{"type":"double","digits":12,"tol":1e-9}},
 "18018":{"v":1,"params":[{"name":"prev","type":"string"},{"name":"n","type":"int"},{"name":"names","type":"string[]"}],"lines":[["prev"],["n"],{"repeat":"n","of":"names"}],"cases":null,"ret":{"type":"string"}},
