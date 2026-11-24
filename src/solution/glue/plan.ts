@@ -26,7 +26,7 @@ export type Scalar = 'int' | 'long' | 'double' | 'string';
 export type CountRef =
   | { kind: 'num'; value: number }
   | { kind: 'ref'; v: number; plus: number }
-  | { kind: 'mul'; a: number; b: number };
+  | { kind: 'mul' | 'add'; a: number; b: number };
 
 export type Step =
   | { op: 'nl' }
@@ -36,8 +36,10 @@ export type Step =
   | { op: 'array'; v: number; t: Scalar; n: CountRef }
   /** Tokens of the rest of the current line. */
   | { op: 'rest'; v: number; t: Scalar }
-  /** int[][]: n rows; with cols, n×cols tokens, else one line per row. */
-  | { op: 'grid'; v: number; n: CountRef; cols?: CountRef }
+  /** 2D arrays: n rows; with cols, n×cols tokens, else one line per row. */
+  | { op: 'grid'; v: number; t: Scalar; n: CountRef; cols?: CountRef }
+  /** line[]: n whole lines. */
+  | { op: 'lines'; v: number; n: CountRef }
   /** char[][]: n row tokens. */
   | { op: 'chars'; v: number; n: CountRef };
 
@@ -58,7 +60,11 @@ export function makePlan(format: Format): Plan {
     if (parsed.kind === 'num') return parsed;
     if (parsed.kind === 'ref')
       return { kind: 'ref', v: index.get(parsed.name) as number, plus: parsed.plus };
-    return { kind: 'mul', a: index.get(parsed.a) as number, b: index.get(parsed.b) as number };
+    return {
+      kind: parsed.kind,
+      a: index.get(parsed.a) as number,
+      b: index.get(parsed.b) as number,
+    };
   };
   const steps: Step[] = [];
   for (const spec of format.lines) {
@@ -69,10 +75,13 @@ export function makePlan(format: Format): Plan {
         steps.push({ op: 'array', v, t: elementType(p.type), n: ref(spec.repeat) });
       } else if (p.type === 'char[][]') {
         steps.push({ op: 'chars', v, n: ref(spec.repeat) });
+      } else if (p.type === 'line[]') {
+        steps.push({ op: 'lines', v, n: ref(spec.repeat) });
       } else {
         steps.push({
           op: 'grid',
           v,
+          t: elementType(p.type),
           n: ref(spec.repeat),
           ...(p.cols !== undefined ? { cols: ref(p.cols) } : {}),
         });
@@ -111,7 +120,7 @@ export function makePlan(format: Format): Plan {
 
 /** Steps that need line boundaries; without them Python can use its fast token path. */
 export function needsLines(plan: Plan): boolean {
-  return plan.steps.some((s) => s.op === 'nl' || (s.op === 'grid' && !s.cols));
+  return plan.steps.some((s) => s.op === 'nl' || s.op === 'lines' || (s.op === 'grid' && !s.cols));
 }
 
 /** A string literal usable in JavaScript, Python, C++ and Java source. */
@@ -127,5 +136,5 @@ export function renderCount(c: CountRef, variable: (v: number) => string): strin
     if (c.plus === 0) return base;
     return `${base} ${c.plus > 0 ? '+' : '-'} ${Math.abs(c.plus)}`;
   }
-  return `${variable(c.a)} * ${variable(c.b)}`;
+  return `${variable(c.a)} ${c.kind === 'add' ? '+' : '*'} ${variable(c.b)}`;
 }

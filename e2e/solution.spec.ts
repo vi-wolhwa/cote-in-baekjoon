@@ -120,7 +120,7 @@ test('editing the format validates it against the samples, and saving makes it t
   await expect(page.locator('.cm-content')).toContainText('function solution(x, b) {');
 
   // A parameter added on its own line does not fit the one-line samples; deleting it does.
-  await page.getByRole('button', { name: '+ 매개변수 추가' }).click();
+  await page.getByRole('button', { name: '매개변수 추가' }).click();
   await expect(page.getByRole('textbox', { name: '3번째 매개변수 이름' })).toHaveValue('n');
   await expect(page.getByTestId('format-errors')).toBeVisible();
   await page.getByRole('combobox', { name: '3번째 매개변수 읽는 방법' }).selectOption('same');

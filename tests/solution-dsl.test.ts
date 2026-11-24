@@ -49,7 +49,7 @@ describe('checkFormat', () => {
       },
       '"v"는 1',
     ],
-    [{ v: 1, params: [], lines: [['a']], cases: null, ret: { type: 'int' } }, '하나 이상'],
+    [{ v: 1, params: [], lines: [['a']], cases: null, ret: { type: 'int' } }, '없는 파라미터'],
     [
       {
         v: 1,
@@ -147,7 +147,7 @@ describe('checkFormat', () => {
         cases: null,
         ret: { type: 'int' },
       },
-      'repeat 줄로만',
+      '여러 줄로만',
     ],
     [
       {

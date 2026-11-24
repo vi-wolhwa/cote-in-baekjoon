@@ -21,6 +21,7 @@ import {
   tableErrors,
   toTable,
 } from '@/solution/table';
+import { validateFormat } from '@/solution/validate';
 import { issueUrl } from '@/shared/report';
 
 const f = (x: unknown): Format => {
@@ -85,8 +86,8 @@ describe('table model', () => {
     expect(t.rows.map((r) => r.name)).toEqual(['n', 'm', 'arr']);
     t = removeRow(t, 1);
     expect(sameFormat(f(fromTable(t)), ARRAY)).toBe(true);
-    // The last parameter cannot be removed.
-    expect(removeRow(removeRow(t, 1), 0).rows).toHaveLength(1);
+    // Every parameter can be removed: a problem without input.
+    expect(removeRow(removeRow(t, 1), 0).rows).toHaveLength(0);
   });
 
   it('renames a parameter with the counts that refer to it', () => {
@@ -150,5 +151,98 @@ describe('format report link', () => {
     expect(f(JSON.parse(url.searchParams.get('io_format') ?? ''))).toEqual(ARRAY);
     // GitHub answers 406 Not Acceptable to a "format" query parameter.
     expect(url.searchParams.has('format')).toBe(false);
+  });
+});
+
+describe('formats beyond one value per token', () => {
+  const ok = (format: unknown, input: string, output: string) =>
+    validateFormat(format, [{ input, output }]);
+
+  it('reads a first line with spaces whole', () => {
+    const line = {
+      v: 1,
+      params: [
+        { name: 's', type: 'line' },
+        { name: 'k', type: 'int' },
+      ],
+      lines: [['s'], ['k']],
+      cases: null,
+      ret: { type: 'string' },
+    };
+    expect(ok(line, 'hello big world\n3\n', 'world').ok).toBe(true);
+  });
+
+  it('reads two blocks whose sizes come from the first line', () => {
+    const blocks = {
+      v: 1,
+      params: [
+        { name: 'a', type: 'int' },
+        { name: 'b', type: 'int' },
+        { name: 'edges', type: 'int[][]', cols: 2 },
+        { name: 'qs', type: 'int[]' },
+      ],
+      lines: [['a', 'b'], { repeat: 'a', of: 'edges' }, { repeat: 'b', of: 'qs' }],
+      cases: null,
+      ret: { type: 'int[]', sep: '\n' },
+    };
+    expect(ok(blocks, '2 3\n1 2\n2 3\n1\n2\n3\n', '1\n1\n0').ok).toBe(true);
+    const shown = toTable(f(blocks));
+    expect(rowPositions(shown)).toEqual(['1번째 줄', '1번째 줄', '2번째 줄부터 a줄', '그다음 b줄']);
+  });
+
+  it('reads n+m lines, whole lines, rows of words and doubles', () => {
+    const stack = {
+      v: 1,
+      params: [
+        { name: 'n', type: 'int' },
+        { name: 'm', type: 'int' },
+        { name: 'cmds', type: 'line[]' },
+        { name: 'people', type: 'string[][]' },
+        { name: 'w', type: 'double[]', len: 2 },
+      ],
+      lines: [['n', 'm'], { repeat: 'n+m', of: 'cmds' }, { repeat: 'm', of: 'people' }, ['w']],
+      cases: null,
+      ret: { type: 'line[]' },
+    };
+    const input = '1 1\npush 1\ntop\nJoe 16 34\n0.5 2\n';
+    expect(ok(stack, input, '1\n  1').ok).toBe(true);
+    // A command line is one element even with spaces in it.
+    expect(
+      ok(
+        {
+          ...stack,
+          params: stack.params.map((p) => (p.name === 'cmds' ? { ...p, type: 'string[]' } : p)),
+        },
+        input,
+        '1',
+      ).ok,
+    ).toBe(false);
+  });
+
+  it('handles problems without input and keeps leading spaces of returned lines', () => {
+    const art = { v: 1, params: [], lines: [], cases: null, ret: { type: 'line[]' } };
+    expect(ok(art, '', '  *\n ***\n*****').ok).toBe(true);
+    expect(ok(art, '3\n', '*').ok).toBe(false);
+    expect(checkFormat({ ...art, cases: { until: 'EOF' } }).ok).toBe(false);
+    expect(signature(f(art))).toBe('solution() → line[]');
+    const empty = removeRow(
+      toTable(f({ ...art, params: [{ name: 'n', type: 'int' }], lines: [['n']] })),
+      0,
+    );
+    expect(fromTable(empty)).toMatchObject({ params: [], lines: [] });
+  });
+
+  it('reads line[] and 2D arrays only over several lines', () => {
+    const t = setRow(toTable(ARRAY), 1, { type: 'line[]' });
+    expect(modeOptions(t, 1)).toEqual(['repeat']);
+    expect(t.rows[1]).toMatchObject({ mode: 'repeat', count: 'n' });
+    const plain = {
+      v: 1,
+      params: [{ name: 's', type: 'line[]' }],
+      lines: [['s']],
+      cases: null,
+      ret: { type: 'int' },
+    };
+    expect(checkFormat(plain)).toMatchObject({ ok: false });
   });
 });

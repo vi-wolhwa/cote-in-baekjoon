@@ -18,9 +18,21 @@ export const CPP_TYPES: Record<ParamType | RetType, string> = {
   bool: 'bool',
   'int[]': 'vector<int>',
   'long[]': 'vector<long long>',
+  'double[]': 'vector<double>',
   'string[]': 'vector<string>',
+  'line[]': 'vector<string>',
   'int[][]': 'vector<vector<int>>',
+  'long[][]': 'vector<vector<long long>>',
+  'double[][]': 'vector<vector<double>>',
+  'string[][]': 'vector<vector<string>>',
   'char[][]': 'vector<string>',
+};
+
+const ELEMENT: Record<Scalar, string> = {
+  int: 'int',
+  long: 'long long',
+  double: 'double',
+  string: 'std::string',
 };
 
 const RUNTIME = `static std::string __cib_d;
@@ -140,8 +152,10 @@ function step(s: Step): string {
       return `${v}.assign(${count(s.n)}, {}); for (auto& __cib_x : ${v}) __cib_x = __cib_tok();`;
     case 'grid':
       return s.cols
-        ? `${v}.assign(${count(s.n)}, std::vector<int>(${count(s.cols)})); for (auto& __cib_r : ${v}) for (auto& __cib_x : __cib_r) __cib_x = __cib_int(__cib_tok());`
-        : `${v}.assign(${count(s.n)}, {}); for (auto& __cib_r : ${v}) { __cib_nl(); for (const auto& __cib_x : __cib_rest()) __cib_r.push_back(__cib_int(__cib_x)); }`;
+        ? `${v}.assign(${count(s.n)}, std::vector<${ELEMENT[s.t]}>(${count(s.cols)})); for (auto& __cib_r : ${v}) for (auto& __cib_x : __cib_r) __cib_x = ${CONVERT[s.t]}(__cib_tok());`
+        : `${v}.assign(${count(s.n)}, {}); for (auto& __cib_r : ${v}) { __cib_nl(); for (const auto& __cib_x : __cib_rest()) __cib_r.push_back(${CONVERT[s.t]}(__cib_x)); }`;
+    case 'lines':
+      return `${v}.assign(${count(s.n)}, {}); for (auto& __cib_x : ${v}) { __cib_nl(); __cib_x = __cib_line(); }`;
   }
 }
 
@@ -155,6 +169,7 @@ function printer(ret: RetSpec): string {
     case 'int[]':
     case 'long[]':
     case 'string[]':
+    case 'line[]':
       return `__cib_join(__cib_o, __cib_r, ${sep});`;
     case 'int[][]':
     case 'char[][]':

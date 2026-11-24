@@ -8,6 +8,7 @@ import {
   evalCount,
   isArrayType,
   isGridType,
+  isLinesType,
   isRepeat,
   parseCount,
   sentinelOf,
@@ -170,6 +171,8 @@ export function readInput(format: Format, text: string): ReadResult {
   }
 
   function readRow(p: Param, line: Line, env: Map<string, number>): Value {
+    // line[]: the whole line, spaces kept (outer spaces trimmed, like `line`).
+    if (isLinesType(p.type)) return line.text.trim();
     if (isArrayType(p.type)) {
       if (line.tokens.length !== 1) {
         throw new ReadError(`${line.no}번째 줄에는 '${p.name}'의 값 하나만 있어야 해요`);
@@ -234,7 +237,15 @@ export function writeInput(format: Format, cases: Values[]): WriteResult {
                 typeof row === 'string' ? row.length : Array.isArray(row) ? row.length : -1;
               expect(p.cols, len, `'${p.name}'의 행`);
             }
-            if (typeof row === 'string' && !isToken(row)) {
+            if (isLinesType(p.type)) {
+              if (typeof row !== 'string' || /[\r\n]/.test(row) || row.trim() === '') {
+                throw new ReadError(`'${p.name}'의 원소는 비어 있지 않은 한 줄 문자열이어야 해요`);
+              }
+              out.push(row);
+              continue;
+            }
+            const cells = Array.isArray(row) ? row : [row];
+            if (cells.some((x) => typeof x === 'string' && !isToken(x))) {
               throw new ReadError(`'${p.name}'의 문자열에는 공백을 넣을 수 없어요`);
             }
             out.push(tokenText(row));

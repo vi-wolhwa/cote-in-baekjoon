@@ -228,7 +228,21 @@
   cursor: default;
 }
 .format-add {
-  margin: 2px 0;
+  width: 9em;
+  height: 22px;
+  padding: 0;
+  border: 1px dashed var(--select-border);
+  border-radius: 4px;
+  background: none;
+  color: var(--out-text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.format-add:hover:not(:disabled) {
+  color: var(--text-strong);
+  border-color: var(--text-strong);
 }
 .format-add:disabled {
   opacity: 0.5;

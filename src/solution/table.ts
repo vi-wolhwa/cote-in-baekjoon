@@ -11,6 +11,7 @@ import {
   isArrayType,
   isGridType,
   isRepeat,
+  isRepeatOnly,
   isValidName,
   MAX_PARAMS,
   type Cases,
@@ -106,7 +107,7 @@ export function tableErrors(table: FormatTable): string[] {
 export function modeOptions(table: FormatTable, index: number): RowMode[] {
   const row = table.rows[index];
   if (!row) return [];
-  if (isGridType(row.type)) return ['repeat'];
+  if (isRepeatOnly(row.type)) return ['repeat'];
   const prev = table.rows[index - 1];
   const canShare = prev !== undefined && prev.mode !== 'repeat' && prev.type !== 'line';
   const out: RowMode[] = ['new'];
@@ -131,7 +132,7 @@ export function setRow(table: FormatTable, index: number, patch: Partial<ParamRo
   if (!old) return table;
   const row = { ...old, ...patch };
   if (patch.type !== undefined && patch.type !== old.type) {
-    if (!isArrayType(row.type) && !isGridType(row.type)) row.count = '';
+    if (!isArrayType(row.type) && !isRepeatOnly(row.type)) row.count = '';
     if (!isGridType(row.type)) row.cols = '';
   }
   const rows = table.rows.map((r, i) => (i === index ? row : r));
@@ -164,8 +165,8 @@ export function addRow(table: FormatTable): FormatTable {
   return { ...table, rows: [...table.rows, row] };
 }
 
+/** Removing every row leaves a problem without input: solution(). */
 export function removeRow(table: FormatTable, index: number): FormatTable {
-  if (table.rows.length <= 1) return table;
   return normalize({ ...table, rows: table.rows.filter((_, i) => i !== index) });
 }
 

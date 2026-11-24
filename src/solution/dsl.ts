@@ -15,8 +15,13 @@ export const PARAM_TYPES = [
   'line',
   'int[]',
   'long[]',
+  'double[]',
   'string[]',
+  'line[]',
   'int[][]',
+  'long[][]',
+  'double[][]',
+  'string[][]',
   'char[][]',
 ] as const;
 export type ParamType = (typeof PARAM_TYPES)[number];
@@ -30,24 +35,25 @@ export const RET_TYPES = [
   'int[]',
   'long[]',
   'string[]',
+  'line[]',
   'int[][]',
   'char[][]',
 ] as const;
 export type RetType = (typeof RET_TYPES)[number];
 
-/** A count: a parameter name, a number, `name±k` or `name*name`. */
+/** A count: a parameter name, a number, `name±k`, `name*name` or `name+name`. */
 export type Count = string | number;
 
 export interface Param {
   name: string;
   type: ParamType;
-  /** 1D arrays: number of elements (omitted: the rest of the line). */
+  /** 1D token arrays: number of elements (omitted: the rest of the line). */
   len?: Count;
   /** 2D arrays: number of columns (omitted: every token of the row's line). */
   cols?: Count;
 }
 
-/** Several lines, one element (or row) of `of` per line. */
+/** Several lines, one element (a whole line for `line[]`, a row for 2D arrays) per line. */
 export interface RepeatLine {
   repeat: Count;
   of: string;
@@ -97,11 +103,23 @@ const RESERVED = new Set(
 );
 
 export const SCALAR_TYPES: readonly ParamType[] = ['int', 'long', 'double', 'string'];
-export const ARRAY_TYPES: readonly ParamType[] = ['int[]', 'long[]', 'string[]'];
-export const GRID_TYPES: readonly ParamType[] = ['int[][]', 'char[][]'];
+/** 1D arrays of tokens: on one line (with a length or to the end), or one token per line. */
+export const ARRAY_TYPES: readonly ParamType[] = ['int[]', 'long[]', 'double[]', 'string[]'];
+/** 2D arrays: one row per line. `char[][]` rows are one token without spaces. */
+export const GRID_TYPES: readonly ParamType[] = [
+  'int[][]',
+  'long[][]',
+  'double[][]',
+  'string[][]',
+  'char[][]',
+];
 
 export const isArrayType = (t: ParamType) => ARRAY_TYPES.includes(t);
 export const isGridType = (t: ParamType) => GRID_TYPES.includes(t);
+/** `line[]`: several whole lines, spaces kept. */
+export const isLinesType = (t: ParamType) => t === 'line[]';
+/** Types read only over several lines (a repeat line). */
+export const isRepeatOnly = (t: ParamType) => isGridType(t) || isLinesType(t);
 export const isIntegerType = (t: ParamType) => t === 'int' || t === 'long';
 
 export function isValidName(name: string): boolean {
@@ -116,7 +134,8 @@ export function isValidName(name: string): boolean {
 export type ParsedCount =
   | { kind: 'num'; value: number }
   | { kind: 'ref'; name: string; plus: number }
-  | { kind: 'mul'; a: string; b: string };
+  | { kind: 'mul'; a: string; b: string }
+  | { kind: 'add'; a: string; b: string };
 
 /** Parses a count expression; undefined when it is not one. */
 export function parseCount(c: Count): ParsedCount | undefined {
@@ -131,14 +150,16 @@ export function parseCount(c: Count): ParsedCount | undefined {
     const k = ref[3] ? Number(ref[3]) : 0;
     return { kind: 'ref', name: ref[1] as string, plus: ref[2] === '-' ? -k : k };
   }
-  const mul = /^([a-z_]\w*)\*([a-z_]\w*)$/.exec(s);
-  if (mul) return { kind: 'mul', a: mul[1] as string, b: mul[2] as string };
+  const mul = /^([a-z_]\w*)([*+])([a-z_]\w*)$/.exec(s);
+  if (mul) {
+    return { kind: mul[2] === '*' ? 'mul' : 'add', a: mul[1] as string, b: mul[3] as string };
+  }
   return undefined;
 }
 
 export function countRefs(c: ParsedCount): string[] {
   if (c.kind === 'ref') return [c.name];
-  if (c.kind === 'mul') return [c.a, c.b];
+  if (c.kind === 'mul' || c.kind === 'add') return [c.a, c.b];
   return [];
 }
 
@@ -147,6 +168,7 @@ export function evalCount(c: ParsedCount, env: ReadonlyMap<string, number>): num
   const get = (name: string) => env.get(name) ?? Number.NaN;
   if (c.kind === 'num') return c.value;
   if (c.kind === 'ref') return get(c.name) + c.plus;
+  if (c.kind === 'add') return get(c.a) + get(c.b);
   return get(c.a) * get(c.b);
 }
 
@@ -157,7 +179,7 @@ export function countText(c: ParsedCount): string {
     if (c.plus === 0) return c.name;
     return `${c.name}${c.plus > 0 ? '+' : '-'}${Math.abs(c.plus)}`;
   }
-  return `${c.a}*${c.b}`;
+  return `${c.a}${c.kind === 'add' ? '+' : '*'}${c.b}`;
 }
 
 export function isRepeat(line: LineSpec): line is RepeatLine {
@@ -184,6 +206,7 @@ export function checkFormat(value: unknown): CheckResult {
   const byName = new Map(params.map((p) => [p.name, p]));
   const lines = parseLines(value.lines, byName, fail);
   const cases = parseCases(value.cases, byName, fail);
+  if (params.length === 0 && cases) fail('입력이 없는 형식에는 입력 반복을 쓸 수 없어요.');
   const ret = parseRet(value.ret, fail);
   if (errors.length || !lines || cases === undefined || !ret) {
     return { ok: false, errors: errors.length ? errors : ['형식을 읽지 못했어요.'] };
@@ -192,8 +215,9 @@ export function checkFormat(value: unknown): CheckResult {
 }
 
 function parseParams(raw: unknown, fail: (e: string) => void): Param[] {
-  if (!Array.isArray(raw) || raw.length === 0) {
-    fail('"params"에 파라미터가 하나 이상 있어야 해요.');
+  // No parameters: a problem without input (solution()).
+  if (!Array.isArray(raw)) {
+    fail('"params"는 매개변수 배열이어야 해요.');
     return [];
   }
   if (raw.length > MAX_PARAMS) fail(`파라미터는 ${MAX_PARAMS}개까지 쓸 수 있어요.`);
@@ -240,7 +264,7 @@ function parseLines(
   byName: Map<string, Param>,
   fail: (e: string) => void,
 ): LineSpec[] | undefined {
-  if (!Array.isArray(raw) || raw.length === 0) {
+  if (!Array.isArray(raw) || (raw.length === 0 && byName.size > 0)) {
     fail('"lines"에 읽을 줄이 하나 이상 있어야 해요.');
     return undefined;
   }
@@ -268,8 +292,8 @@ function parseLines(
           continue;
         }
         if (read.has(p.name)) fail(`'${p.name}'을(를) 두 번 읽어요.`);
-        if (isGridType(p.type)) {
-          fail(`2차원 배열 '${p.name}'은(는) repeat 줄로만 읽을 수 있어요.`);
+        if (isRepeatOnly(p.type)) {
+          fail(`'${p.name}'(${p.type})은(는) 여러 줄로만 읽을 수 있어요.`);
         }
         if (p.type === 'line' && line.length > 1) {
           fail(`'${p.name}'(line)은 한 줄을 통째로 읽어서 혼자 있어야 해요.`);
@@ -293,8 +317,8 @@ function parseLines(
       continue;
     }
     if (read.has(p.name)) fail(`'${p.name}'을(를) 두 번 읽어요.`);
-    if (!isArrayType(p.type) && !isGridType(p.type)) {
-      fail(`repeat 줄로는 배열만 읽을 수 있어요. '${p.name}'은(는) ${p.type}이에요.`);
+    if (!isArrayType(p.type) && !isRepeatOnly(p.type)) {
+      fail(`여러 줄로는 배열만 읽을 수 있어요. '${p.name}'은(는) ${p.type}이에요.`);
     }
     const repeat = line.repeat;
     if (typeof repeat !== 'string' && typeof repeat !== 'number') {
@@ -346,7 +370,9 @@ function parseRet(raw: unknown, fail: (e: string) => void): RetSpec | undefined 
   const array = type.endsWith('[]');
   if (raw.sep !== undefined) {
     if (!array) fail('구분자(sep)는 배열 반환값에만 써요.');
-    else if (raw.sep !== ' ' && raw.sep !== '\n' && raw.sep !== '') {
+    else if (type === 'line[]' && raw.sep !== '\n') {
+      fail('line[] 반환값은 원소마다 한 줄씩 출력해요.');
+    } else if (raw.sep !== ' ' && raw.sep !== '\n' && raw.sep !== '') {
       fail('구분자(sep)는 공백(" "), 줄바꿈("\\n"), 없음("") 중 하나예요.');
     } else if (raw.sep === '\n' && type.endsWith('[][]')) {
       fail('2차원 배열의 구분자는 열 사이 구분자라 공백이나 없음만 쓸 수 있어요.');
@@ -381,6 +407,7 @@ function parseRet(raw: unknown, fail: (e: string) => void): RetSpec | undefined 
 
 /** The separator a return value uses when its format leaves it out. */
 export function retSep(ret: RetSpec): string {
+  if (ret.type === 'line[]') return '\n';
   if (ret.sep !== undefined) return ret.sep;
   return ret.type === 'char[][]' ? '' : ' ';
 }
