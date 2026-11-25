@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.24.0...v1.0.0) (2026-11-25)
+
+
+### 기타
+
+* 웹스토어 첫 공개 버전을 1.0.0으로 (ADR-0016) ([#222](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/222)) ([95e8ae8](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/95e8ae847a5363c57d0f8b2e3ec9db481b716299))
+
 ## [0.24.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.23.0...v0.24.0) (2026-11-25)
 
 
