@@ -11,6 +11,7 @@ import { createBackup, summarizeBackup } from '@/shared/backup';
 import { HANDLE_KEY, isHandle } from '@/shared/handle';
 import type { OpenIdeMessage } from '@/shared/messages';
 import { describeBrowser, issueUrl } from '@/shared/report';
+import { isUpdateNotice, releaseUrl, UPDATE_NOTICE_KEY } from '@/shared/update-notice';
 import { BackupTab } from './BackupTab';
 import { ExamTab } from './ExamTab';
 import { HelpTab } from './HelpTab';
@@ -69,9 +70,18 @@ export function App() {
   const version = browser.runtime.getManifest().version;
   const now = useMemo(() => Date.now(), [loaded]);
 
+  const [noticeClosed, setNoticeClosed] = useState(false);
+
   useEffect(() => {
     load().then(setLoaded, () => setLoaded({ items: {} }));
+    // The update badge (ADR-0014) has done its job once the popup is open.
+    void browser.action.setBadgeText({ text: '' }).catch(() => undefined);
   }, []);
+  const notice = noticeClosed ? undefined : loaded?.items[UPDATE_NOTICE_KEY];
+  const closeNotice = () => {
+    setNoticeClosed(true);
+    void browser.storage.local.remove(UPDATE_NOTICE_KEY).catch(() => undefined);
+  };
 
   const data = useMemo(() => {
     const items = loaded?.items ?? {};
@@ -113,6 +123,18 @@ export function App() {
         <h1 class="app-name">코테 in 백준</h1>
         <span class="version">v{version}</span>
       </header>
+
+      {isUpdateNotice(notice) && (
+        <div class="update-notice" role="status">
+          <span>v{notice.to}로 업데이트되었습니다.</span>
+          <button type="button" class="link" onClick={() => void openTab(releaseUrl(notice.to))}>
+            변경 내용
+          </button>
+          <button type="button" class="close" aria-label="알림 닫기" onClick={closeNotice}>
+            ×
+          </button>
+        </div>
+      )}
 
       <div class="content" role="tabpanel" aria-label={TABS.find((t) => t.id === tab)?.label}>
         {!loaded ? (

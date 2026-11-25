@@ -3,6 +3,7 @@ import { askCapture, captureProblem } from '@/boj/exam-capture';
 import { insertOpenButton } from '@/boj/open-button';
 import '@/boj/open-button.css';
 import { showDiagnosisNotice } from '@/boj/diagnosis-notice';
+import { ensureExtension, RELOAD_PROMPT, watchExtension } from '@/boj/extension-alive';
 import { parseProblem, parseProblemId } from '@/boj/problem';
 import { PRACTICE_HASH } from '@/exam/routes';
 import { rememberHandle } from '@/shared/handle';
@@ -49,6 +50,8 @@ export default defineContentScript({
 
 function openIde() {
   if (document.getElementById(OVERLAY_ID)) return;
+  // This tab was open before an extension update (ADR-0014): the IDE page cannot load.
+  if (!ensureExtension()) return;
   const problem = parseProblem(document, location.href);
   if (!problem) {
     if (!reportLayoutProblem()) {
@@ -81,17 +84,27 @@ function openIde() {
     const message: ProblemMessage = { type: 'cib:problem', problem };
     frame.contentWindow?.postMessage(message, ideOrigin);
   };
+  const close = () => {
+    stopWatch();
+    window.removeEventListener('message', onMessage);
+    frame.remove();
+    document.documentElement.style.overflow = previousOverflow;
+  };
   const onMessage = (event: MessageEvent) => {
     if (event.source !== frame.contentWindow) return;
     if (isReadyMessage(event.data)) {
       sendProblem();
     } else if (isCloseMessage(event.data)) {
-      window.removeEventListener('message', onMessage);
-      frame.remove();
-      document.documentElement.style.overflow = previousOverflow;
+      close();
     }
   };
   window.addEventListener('message', onMessage);
+  // An update installed while the IDE is open leaves an empty frame over the page (ADR-0014):
+  // take it away and offer a reload.
+  const stopWatch = watchExtension(() => {
+    close();
+    if (confirm(RELOAD_PROMPT)) location.reload();
+  });
 
   document.documentElement.style.overflow = 'hidden';
   document.body.append(frame);
@@ -100,7 +113,7 @@ function openIde() {
 /** '모의시험' (#102): the background opens the setup page with this problem included. */
 function openExamSetup() {
   const problemId = parseProblemId(location.href);
-  if (problemId === undefined) return;
+  if (problemId === undefined || !ensureExtension()) return;
   const message: OpenExamSetupMessage = { type: 'cib:open-exam-setup', problemId };
   browser.runtime.sendMessage(message).catch(() => {
     alert('확장 프로그램과 연결하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.');

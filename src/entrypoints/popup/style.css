@@ -31,6 +31,38 @@ body {
   font-size: 11px;
 }
 
+/* '새 버전' notice after a store update (ADR-0014). */
+.update-notice {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--strong);
+  font-size: 12px;
+}
+.update-notice span {
+  flex: 1;
+}
+.update-notice button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.update-notice .link {
+  text-decoration: underline;
+}
+.update-notice .close {
+  font-size: 15px;
+  line-height: 1;
+}
+
 .content {
   flex: 1;
   overflow-y: auto;

@@ -49,12 +49,21 @@ import {
 } from '@/shared/status-page';
 
 import { cleanupStorage } from '@/shared/storage-cleanup';
+import { noticeFor, UPDATE_NOTICE_KEY } from '@/shared/update-notice';
 
 export default defineBackground(() => {
   // Old submission records and expired drafts (ADR-0012 개정 3): on install, update and start.
   const cleanup = () =>
     void cleanupStorage().catch((error: unknown) => console.error('[cib] cleanup failed', error));
   browser.runtime.onInstalled.addListener(cleanup);
+  // A store update (ADR-0014): the popup says which version arrived; the badge points to it.
+  browser.runtime.onInstalled.addListener((details) => {
+    const notice = noticeFor(details, browser.runtime.getManifest().version);
+    if (!notice) return;
+    void browser.storage.local.set({ [UPDATE_NOTICE_KEY]: notice });
+    void browser.action.setBadgeBackgroundColor({ color: '#3396F4' });
+    void browser.action.setBadgeText({ text: 'N' });
+  });
   browser.runtime.onStartup.addListener(cleanup);
   // A background tab closed early: a submission (ADR-0002) or a mock exam problem being
   // read (ADR-0005) or a status page being read (ADR-0012) did not finish.
