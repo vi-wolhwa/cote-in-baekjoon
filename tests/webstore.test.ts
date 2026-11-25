@@ -1,6 +1,14 @@
 /** Chrome Web Store upload script (scripts/store/webstore.ts, #88, ADR-0013). */
 import { describe, expect, it } from 'vitest';
-import { accessToken, parseArgs, publish, readConfig, upload } from '../scripts/store/webstore.ts';
+import {
+  accessToken,
+  describeStatus,
+  fetchStatus,
+  parseArgs,
+  publish,
+  readConfig,
+  upload,
+} from '../scripts/store/webstore.ts';
 
 const ID = 'abcdefghijklmnopabcdefghijklmnop';
 const ENV = {
@@ -47,6 +55,40 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['a.zip', '--force'])).toThrow('--force');
     expect(() => parseArgs(['a.zip', '--publish', '--staged'])).toThrow();
     expect(() => parseArgs([])).toThrow('zip');
+  });
+
+  it('reads --status without a zip', () => {
+    expect(parseArgs(['--status'])).toEqual({ zip: '', mode: 'status' });
+    expect(() => parseArgs(['--status', 'a.zip'])).toThrow('--status');
+  });
+});
+
+describe('status', () => {
+  it('fetches the item status and describes each revision', async () => {
+    const { f, calls } = fakeFetch([
+      [
+        200,
+        {
+          publishedItemRevisionStatus: {
+            state: 'PUBLISHED',
+            distributionChannels: [{ crxVersion: '1.0.0' }],
+          },
+          submittedItemRevisionStatus: {
+            state: 'PENDING_REVIEW',
+            distributionChannels: [{ crxVersion: '1.1.0' }],
+          },
+        },
+      ],
+    ]);
+    const data = await fetchStatus(cfg, 'tok', f);
+    expect(calls[0]?.url).toBe(
+      `https://chromewebstore.googleapis.com/v2/publishers/pub-1/items/${ID}:fetchStatus`,
+    );
+    expect(describeStatus(data)).toEqual([
+      '게시된 버전: PUBLISHED (1.0.0)',
+      '제출된 버전: PENDING_REVIEW (1.1.0)',
+    ]);
+    expect(describeStatus({})).toEqual(['게시된 버전: 없음', '제출된 버전: 없음']);
   });
 });
 
