@@ -1,5 +1,5 @@
 /**
- * Chrome Web Store screenshots (#66, #202), 1280×800, and the 440×280 promo tile, from the
+ * Chrome Web Store screenshots (#66, #202), 1280×800 from a 1600×1000 viewport, and the 440×280 promo tile, from the
  * built extension and synthetic pages only: the example problem (scripts/store/problem.html),
  * a made-up mock exam and made-up submission lists. Nothing is sent to Baekjoon.
  *
@@ -18,11 +18,14 @@ declare const chrome: { storage: { local: { set(items: object): Promise<void> } 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const EXTENSION = path.join(ROOT, '.output', 'chrome-mv3');
 const STORE = path.join(ROOT, 'docs', 'store');
-const OUT = path.join(STORE, 'screenshots');
+const OUT = process.env.STORE_OUT ?? path.join(STORE, 'screenshots');
 const BOJ = 'https://acmicpc.net';
 const PROBLEM_ID = 99999;
 const USER = 'user01';
-const SIZE = { width: 1280, height: 800 };
+// The store takes 1280×800 images. A 1600-wide CSS viewport is scaled down into them, so panes
+// get more room at a slightly smaller text size.
+const CSS_WIDTH = Number(process.env.STORE_CSS_WIDTH ?? 1600);
+const SIZE = { width: CSS_WIDTH, height: (CSS_WIDTH * 800) / 1280 };
 const MIN = 60_000;
 
 const PYTHON = `import sys
@@ -213,6 +216,7 @@ mkdirSync(OUT, { recursive: true });
 const context = await chromium.launchPersistentContext('', {
   channel: process.env.PW_CHANNEL ?? 'chromium',
   viewport: SIZE,
+  deviceScaleFactor: 1280 / CSS_WIDTH,
   args: [
     `--disable-extensions-except=${EXTENSION}`,
     `--load-extension=${EXTENSION}`,
@@ -376,7 +380,7 @@ try {
   // Promo tile.
   await page.setViewportSize({ width: 440, height: 280 });
   await page.goto(pathToFileURL(path.join(import.meta.dirname, 'promo.html')).href);
-  await page.screenshot({ path: path.join(STORE, 'promo-440x280.png') });
+  await page.screenshot({ path: path.join(STORE, 'promo-440x280.png'), scale: 'css' });
   console.log('promo-440x280.png');
 } finally {
   await context.close();
