@@ -8,7 +8,6 @@ import {
   SUBMIT_LANGUAGES,
 } from '@/boj/languages';
 import { findBlockedPatterns } from '@/boj/waf';
-import { isBackupKey } from '@/shared/backup';
 import {
   isLanguageId,
   LANGUAGE_GROUPS,
@@ -103,11 +102,6 @@ describe('language registry', () => {
     expect(groups.get('java')).toEqual(['java8', 'java11']);
     expect(groups.get('c')).toEqual(['c99', 'c11']);
     expect([...groups.values()].filter((ids) => ids.length > 1)).toHaveLength(4);
-    // Backups keep the code of every language, in both modes.
-    for (const group of groups.keys()) {
-      expect(isBackupKey(`code:1000:${group}`), group).toBe(true);
-      expect(isBackupKey(`code:1000:${group}:fn`), group).toBe(true);
-    }
   });
 
   it('keeps the M1 storage key for JavaScript', () => {

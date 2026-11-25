@@ -47,7 +47,8 @@ export default defineConfig({
     name: '코딩테스트 in 백준',
     description:
       '백준 문제를 기업 코딩테스트와 같은 풀이 화면에서 풀 수 있게 해 주는 확장 프로그램',
-    // unlimitedStorage lifts the 10 MB storage.local quota so code for thousands of problems fits.
+    // unlimitedStorage lifts the 10 MB storage.local quota: mock exam records keep up to 8
+    // problem statements each and pile up over time (ADR-0015).
     // activeTab lets the toolbar popup read the active tab's URL when the user opens it (#79).
     permissions: ['storage', 'unlimitedStorage', 'activeTab'],
     // solved.ac picks exam problems; asked for on the first '시험 시작' (ADR-0005).

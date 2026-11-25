@@ -73,10 +73,10 @@ describe('HelpPage', () => {
   it('fills the search from a chip, and the same chip clears it', () => {
     const { root, input } = mount();
     const chip = [...root.querySelectorAll<HTMLButtonElement>('.chip')].find(
-      (c) => c.textContent === '코드 백업',
+      (c) => c.textContent === '코드 사라짐',
     );
     act(() => chip?.click());
-    expect(input.value).toBe('코드 백업');
+    expect(input.value).toBe('코드 사라짐');
     expect(chip?.getAttribute('aria-pressed')).toBe('true');
     expect(sectionIds(root)[0]).toBe('code-lost');
     act(() => chip?.click());

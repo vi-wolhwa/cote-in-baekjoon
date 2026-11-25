@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { loadTheme, saveTheme } from '@/ide/storage';
 import { ideReportUrl } from '@/ide/report-link';
-import { isBackupKey, parseBackup } from '@/shared/backup';
 import { DEFAULT_THEME, isTheme, THEME_KEY, toTheme } from '@/shared/theme';
 
 describe('theme values', () => {
@@ -36,28 +35,6 @@ describe('theme storage', () => {
   it('ignores a broken stored value', async () => {
     await fakeBrowser.storage.local.set({ 'ui:theme': 'neon' });
     expect(await loadTheme()).toBe('dark');
-  });
-});
-
-describe('theme in backups', () => {
-  const backup = (items: Record<string, unknown>) =>
-    JSON.stringify({ format: 'cote-in-baekjoon-backup', version: 1, items });
-
-  it('backs up and restores ui:theme', () => {
-    expect(isBackupKey('ui:theme')).toBe(true);
-    expect(parseBackup(backup({ 'ui:theme': 'light' }))).toMatchObject({
-      ok: true,
-      items: { 'ui:theme': 'light' },
-      skipped: 0,
-    });
-  });
-
-  it('drops an invalid theme', () => {
-    expect(parseBackup(backup({ 'ui:theme': 'neon' }))).toMatchObject({
-      ok: true,
-      items: {},
-      skipped: 1,
-    });
   });
 });
 

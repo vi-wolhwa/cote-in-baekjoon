@@ -37,14 +37,6 @@ export const ExamIcon = (p: Props) => (
   </Icon>
 );
 
-export const BackupIcon = (p: Props) => (
-  <Icon {...p}>
-    <path d="M12 3v12" />
-    <path d="M7 10l5 5 5-5" />
-    <path d="M4 17v3h16v-3" />
-  </Icon>
-);
-
 export const HelpIcon = (p: Props) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="9" />

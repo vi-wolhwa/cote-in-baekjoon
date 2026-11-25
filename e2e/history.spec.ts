@@ -270,6 +270,9 @@ test('the split snaps to the width where every column fits', async ({ page, cont
   const ide = await openIde(page);
   answerTabs(context, [MINE, `${MINE}&top=6990`, `${BOJ}/problem/status/1000`]);
   await ide.getByRole('tab', { name: '제출 기록' }).click();
+  // Tabs are answered in the order they open: let 내 제출 read both of its pages first, or
+  // the 맞힌 사람 tab can get 내 제출's second page.
+  await expect(ide.getByTestId('mine-status-row')).toHaveCount(6);
   await ide.getByRole('tab', { name: '맞힌 사람' }).click();
   await expect(ide.getByTestId('accepted-status-row')).toHaveCount(2);
 

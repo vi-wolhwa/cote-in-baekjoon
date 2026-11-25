@@ -30,12 +30,11 @@ test('shows the right sidebar under the top bar, 64px wide', async ({ page, exte
   const top = page.getByRole('navigation', { name: '경로' });
   await expect(top.getByRole('link', { name: '도움말' })).toBeVisible();
   await expect(top.getByRole('link', { name: '문제 신고' })).toBeVisible();
-  await expect(top.getByRole('button', { name: '백업과 복원' })).toBeVisible();
   await expect(page.getByRole('link', { name: '오픈소스 라이선스' })).toHaveCount(0);
   const order = await top
     .locator('.topbar-links > *')
     .evaluateAll((els) => els.map((e) => e.textContent?.trim()));
-  expect(order).toEqual(['도움말', '문제 신고', '백업과 복원']);
+  expect(order).toEqual(['도움말', '문제 신고']);
   // The title bar, workspace and button bar end where the sidebar starts.
   const titlebar = await page.locator('.titlebar').boundingBox();
   expect((titlebar?.x ?? 0) + (titlebar?.width ?? 0)).toBe(1024 - 64);

@@ -2,8 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
-// The backup test counts stored settings: keep the solution switch at its default so the
-// fixture writes nothing to storage.
+// Keep the solution switch at its default so the fixture writes nothing to storage.
 test.use({ solutionMode: true });
 
 interface Tab {
@@ -176,43 +175,6 @@ async function storage(context: BrowserContext, extensionId: string) {
   await reader.close();
   return items;
 }
-
-test('backup: summary and export from the popup', async ({ page, extensionId }) => {
-  await openPopup(page, extensionId);
-  await seed(page);
-  await page.getByRole('tab', { name: '백업' }).click();
-  await expect(page.getByTestId('backup-summary')).toContainText('문제4개');
-  await expect(page.getByTestId('backup-summary')).toContainText('코드1개');
-  await expect(page.getByTestId('backup-summary')).toContainText('채점 결과3개');
-  await expect(page.getByTestId('backup-summary')).toContainText('설정1개');
-
-  const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: '파일로 내보내기' }).click();
-  const download = await downloading;
-  expect(download.suggestedFilename()).toMatch(/^코딩테스트-in-백준-백업-\d{4}-\d\d-\d\d\.json$/);
-  const backup = JSON.parse(readFileSync(await download.path(), 'utf8')) as {
-    items: Record<string, unknown>;
-  };
-  expect(Object.keys(backup.items).sort()).toEqual([
-    'code:1000:cpp',
-    'judge:1000',
-    'judge:1001',
-    'judge:2557',
-    'meta:1000',
-    'meta:1001',
-    'meta:1008',
-    'ui:keymap',
-  ]);
-  await expect(page.getByRole('status')).toContainText('내보냈습니다');
-});
-
-test('backup: import opens the options page', async ({ page, context, extensionId }) => {
-  await openPopup(page, extensionId);
-  await page.getByRole('tab', { name: '백업' }).click();
-  const opened = context.waitForEvent('page');
-  await page.getByRole('button', { name: '가져오기' }).click();
-  await expect(await opened).toHaveURL(`chrome-extension://${extensionId}/options.html`);
-});
 
 test('help: report link, questions and the help page', async ({ page, context, extensionId }) => {
   await openPopup(page, extensionId);

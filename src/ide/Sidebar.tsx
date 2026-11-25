@@ -1,7 +1,7 @@
 /**
  * Right sidebar (docs/design/ide-spec.md §10): tools for the problem on screen. The theme
  * switch first (one click, no dialog: it was the only setting), then a divider and the
- * timer. Extension-wide links (도움말, 문제 신고, 백업과 복원) live in the top bar.
+ * timer. Extension-wide links (도움말, 문제 신고) live in the top bar.
  */
 import type { Theme } from '@/shared/theme';
 import { MoonIcon, SunIcon } from './icons';

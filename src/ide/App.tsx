@@ -274,13 +274,6 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
           <a class="link-button" href={reportUrl} target="_blank" rel="noopener noreferrer">
             문제 신고
           </a>
-          <button
-            type="button"
-            class="link-button"
-            onClick={() => void browser.runtime.openOptionsPage()}
-          >
-            백업과 복원
-          </button>
           {embedded && (
             <button
               type="button"

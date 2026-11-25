@@ -149,8 +149,7 @@ export function saveMeta(problemId: number, title: string, language: LanguageId,
 }
 
 /**
- * Stopwatch/timer per problem (`timer:{id}`). Transient, so backups leave it out
- * (src/shared/backup.ts only takes allowlisted keys). The demo problem (id 0) is not stored.
+ * Stopwatch/timer per problem (`timer:{id}`). The demo problem (id 0) is not stored.
  */
 export async function loadTimer(problemId: number): Promise<TimerState | undefined> {
   if (problemId <= 0) return undefined;

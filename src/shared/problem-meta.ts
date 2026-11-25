@@ -1,7 +1,7 @@
 /**
  * What the toolbar popup shows about a problem the user opened in the IDE (#79): its
  * title, the language picked last, and when it was opened. Kept under `meta:{id}` in
- * `storage.local` and included in backups.
+ * `storage.local`.
  *
  * The title comes from the Baekjoon page, so it is untrusted text: it is only ever shown
  * as text, never as HTML.

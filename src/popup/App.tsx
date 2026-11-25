@@ -1,5 +1,5 @@
 /**
- * Toolbar popup (#79): the problem in the active tab, recent problems, backup and help.
+ * Toolbar popup (#79): the problem in the active tab, recent problems, mock exams and help.
  * Reads the active tab's URL through `activeTab`, granted when the user opens the popup.
  */
 import { useEffect, useMemo, useState } from 'preact/hooks';
@@ -7,16 +7,14 @@ import { DRAFT_KEY, parseDraft, type ExamDraft } from '@/exam/model';
 import { pastExams, runningExamProblems, type PastExam } from '@/exam/results';
 import { examPagePath } from '@/exam/routes';
 import { readExams, readJudges, saveDraft } from '@/exam/storage';
-import { createBackup, summarizeBackup } from '@/shared/backup';
 import { HANDLE_KEY, isHandle } from '@/shared/handle';
 import type { OpenIdeMessage } from '@/shared/messages';
 import { describeBrowser, issueUrl } from '@/shared/report';
 import { isUpdateNotice, releaseUrl, UPDATE_NOTICE_KEY } from '@/shared/update-notice';
-import { BackupTab } from './BackupTab';
 import { ExamTab } from './ExamTab';
 import { HelpTab } from './HelpTab';
 import { HomeTab } from './HomeTab';
-import { BackupIcon, ExamIcon, HelpIcon, HomeIcon } from './icons';
+import { ExamIcon, HelpIcon, HomeIcon } from './icons';
 import {
   bugReportUrl,
   computeStats,
@@ -26,12 +24,11 @@ import {
   recentProblems,
 } from './model';
 
-type Tab = 'home' | 'exam' | 'backup' | 'help';
+type Tab = 'home' | 'exam' | 'help';
 
 const TABS: { id: Tab; label: string; icon: typeof HomeIcon }[] = [
   { id: 'home', label: '홈', icon: HomeIcon },
   { id: 'exam', label: '모의 시험', icon: ExamIcon },
-  { id: 'backup', label: '백업', icon: BackupIcon },
   { id: 'help', label: '도움말', icon: HelpIcon },
 ];
 
@@ -170,11 +167,6 @@ export function App() {
                 ),
               )
             }
-          />
-        ) : tab === 'backup' ? (
-          <BackupTab
-            summary={summarizeBackup(createBackup(loaded.items).items)}
-            onImport={() => void browser.runtime.openOptionsPage().then(() => window.close())}
           />
         ) : (
           <HelpTab
