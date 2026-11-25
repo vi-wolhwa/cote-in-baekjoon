@@ -136,6 +136,13 @@ test('reads 내 제출 to fill the view and opens your code from Baekjoon into t
   await expect(detail.locator('.cm-content')).toContainText('scanf("%d %d", &a, &b);');
   expect(read).toContain('/source/7003');
   await detail.getByRole('button', { name: '편집기로 불러오기' }).click();
+  // Always asked first; here the editor's language changes too.
+  const dialog = ide.getByRole('dialog', { name: '코드 불러오기' });
+  await expect(dialog).toContainText('편집기 언어를 Python 3(으)로 바꾸고');
+  await dialog.getByRole('button', { name: '취소' }).click();
+  await expect(ide.getByRole('combobox', { name: '언어' }).first()).toHaveValue('javascript');
+  await detail.getByRole('button', { name: '편집기로 불러오기' }).click();
+  await dialog.getByRole('button', { name: '불러오기' }).click();
   await expect(ide.locator('.code-section .cm-content')).toContainText('scanf');
   await expect(ide.getByRole('combobox', { name: '언어' }).first()).toHaveValue('python3');
   await expect(ide.getByText('제출 기록의 코드를 불러왔습니다.')).toBeVisible();
@@ -221,11 +228,11 @@ test('숏코딩 filters by language, the editor’s own language first', async (
   const filter = ide.getByRole('combobox', { name: '언어' }).last();
   // '모든 언어', the editor's language as Baekjoon names it, then A to Z.
   const options = await filter.locator('option').allTextContents();
-  expect(options.slice(0, 3)).toEqual(['모든 언어', '현재 언어 (node.js)', 'C']);
+  expect(options.slice(0, 3)).toEqual(['모든 언어', '현재 언어', 'C']);
   expect(options.indexOf('Java 8')).toBeLessThan(options.indexOf('Java 11'));
   expect(options.indexOf('Kotlin (JVM)')).toBeLessThan(options.indexOf('node.js'));
 
-  await filter.selectOption({ label: '현재 언어 (node.js)' });
+  await filter.selectOption({ label: '현재 언어' });
   await expect.poll(() => read).toContain('/short/status/1000/17/1');
   await filter.selectOption({ label: 'C++' });
   await expect.poll(() => read).toContain('/short/status/1000/1001/1');
@@ -236,6 +243,10 @@ test('숏코딩 filters by language, the editor’s own language first', async (
   const detail = ide.getByTestId('history-detail');
   await expect(detail.locator('.cm-content')).toContainText('printf');
   await detail.getByRole('button', { name: '편집기로 불러오기' }).click();
+  await ide
+    .getByRole('dialog', { name: '코드 불러오기' })
+    .getByRole('button', { name: '불러오기' })
+    .click();
   await expect(ide.locator('.code-section .cm-content')).toContainText('scanf');
   await expect(ide.getByRole('combobox', { name: '언어' }).first()).toHaveValue('cpp14');
 });

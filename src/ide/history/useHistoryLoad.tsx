@@ -1,14 +1,13 @@
 /**
  * '편집기로 불러오기' (ADR-0012): puts a submission's code from Baekjoon into the editor, in
- * its language. Baekjoon keeps whole programs, so the code goes in as standard I/O. Asks
- * first when that would replace code the user wrote.
+ * its language. Baekjoon keeps whole programs, so the code goes in as standard I/O. Always
+ * asks first, since the editor's code is replaced.
  */
 import { useState } from 'preact/hooks';
 import type { SubmitLanguage } from '@/boj/languages';
 import { languageInfo, type LanguageId } from '@/shared/languages';
 import type { EditorHandle } from '../editor';
 import { Modal } from '../Modal';
-import * as store from '../storage';
 import type { Solution } from '../useSolution';
 
 interface Deps {
@@ -37,15 +36,6 @@ export function useHistoryLoad(deps: Deps) {
 
   const planFor = (entry: LoadableCode): Plan => ({ entry, fn: false, code: entry.code });
 
-  /** The code loading would replace: the editor's, or what is saved for that language and mode. */
-  const replaced = async ({ entry, fn }: Plan): Promise<string | undefined> => {
-    const { sol } = deps;
-    if (sol.group(entry.language, fn) === sol.group(deps.language.current)) {
-      return deps.editor.current?.getCode();
-    }
-    return store.loadCode(deps.problemId, sol.group(entry.language, fn), store.DRAFT_TTL_MS);
-  };
-
   const apply = async ({ entry, fn, code }: Plan) => {
     setAsking(undefined);
     if (fn !== deps.sol.fn) await deps.sol.setMode(fn);
@@ -55,18 +45,8 @@ export function useHistoryLoad(deps: Deps) {
     deps.onLoaded();
   };
 
-  const load = async (entry: LoadableCode) => {
-    const plan = planFor(entry);
-    const current = await replaced(plan);
-    const starter = deps.sol.starter(entry.language, plan.fn);
-    const untouched =
-      current === undefined ||
-      current.trim() === '' ||
-      current === starter ||
-      current === plan.code;
-    if (untouched) await apply(plan);
-    else setAsking(plan);
-  };
+  // Always asks first: the editor's code is replaced (product owner, 2026-11-25).
+  const load = (entry: LoadableCode) => setAsking(planFor(entry));
 
   const dialog = asking && (
     <Modal
@@ -84,11 +64,13 @@ export function useHistoryLoad(deps: Deps) {
       }
     >
       <p>
-        편집기의 {languageInfo(asking.entry.language).label} 코드를 이 제출의 코드로 바꿉니다. 지금
-        작성한 코드는 사라집니다. 불러오시겠습니까?
+        {asking.entry.language === deps.language.current
+          ? '편집기의 코드를 이 제출의 코드로 바꿉니다.'
+          : `편집기 언어를 ${languageInfo(asking.entry.language).label}(으)로 바꾸고 이 제출의 코드를 넣습니다.`}{' '}
+        작성 중인 내용은 사라집니다. 불러오시겠습니까?
       </p>
     </Modal>
   );
 
-  return { load: (entry: LoadableCode) => void load(entry), dialog };
+  return { load, dialog };
 }

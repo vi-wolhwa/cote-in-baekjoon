@@ -33,7 +33,9 @@ describe('Baekjoon language names', () => {
   it('map to the extension language and its colours', () => {
     expect(submitLanguageOfName('node.js')).toBe('javascript');
     expect(submitLanguageOfName('C++17')).toBe('cpp17');
-    expect(submitLanguageOfName('C++17 (Clang)')).toBeUndefined();
+    expect(submitLanguageOfName('C++17 (Clang)')).toBe('cpp17');
+    expect(submitLanguageOfName('Java 15')).toBe('java11');
+    expect(submitLanguageOfName('Golfscript')).toBeUndefined();
     expect(syntaxOfName('C++17 (Clang)')).toBe('cpp');
     expect(syntaxOfName('C99')).toBe('c');
     expect(syntaxOfName('PyPy3')).toBe('python');

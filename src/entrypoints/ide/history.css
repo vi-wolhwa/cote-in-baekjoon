@@ -93,11 +93,10 @@
   align-items: center;
   gap: 4px;
 }
-/* As wide as the chosen language plus the arrow; long names end with an ellipsis. */
+/* One width whatever is chosen: the longest option ("Kotlin (JVM)") plus the arrow. */
 .history-filter {
   height: 30px;
-  min-width: 120px;
-  max-width: 220px;
+  width: 116px;
   padding: 0 6px 0 10px;
   text-overflow: ellipsis;
   border: 1px solid var(--select-border);
@@ -163,7 +162,7 @@
 }
 /*
  * Columns are as wide as their longest value (widths include the cell padding): a 20-letter
- * id is cut with an ellipsis, the language fits "Java 8 (OpenJDK)", memory "999,999KB" (then
+ * id is cut with an ellipsis, the language fits "Kotlin (JVM)", memory "999,999KB" (then
  * MB), time "99,999ms", code length "9,999B" (then KB), the time ago "11개월 전". The spacer
  * after the language takes any extra width, so wider panes open space between who and the
  * numbers, not inside the numbers. 12px between columns keeps neighbours apart.
@@ -209,17 +208,18 @@
   color: var(--out-hint);
 }
 .status-table .col-rank {
-  width: 56px;
+  width: 46px;
+  padding-left: 0;
   color: var(--out-hint);
 }
 .status-table .col-user {
-  width: 112px;
+  width: 100px;
 }
 .status-table .col-result {
   width: 76px;
 }
 .status-table .col-lang {
-  width: 120px;
+  width: 88px;
 }
 .status-table .col-gap {
   width: auto;
@@ -239,8 +239,8 @@
   color: var(--out-hint);
 }
 .status-table .col-open {
-  width: 40px;
-  padding: 0 6px 0 10px;
+  width: 44px;
+  padding: 0 6px 0 14px;
   text-align: right;
 }
 .status-table tbody tr.is-open {
@@ -281,67 +281,59 @@
 /*
  * Narrow panes: the spacer goes first (it is only extra width), then each view hides what it
  * needs least, one column at a time, and finally narrows the id and language.
- *   내 제출   result 76 · language 120 · time 74 · memory 86 · length 60 · ago 66 · code 40 = 522
- *   맞힌 사람 rank 56 · id 112 · language 120 · time 74 · memory 86 · length 60 · ago 66 · code 40 = 614
+ *   내 제출   result 76 · language 88 · time 74 · memory 86 · length 60 · ago 66 · code 44 = 494
+ *   맞힌 사람 rank 46 · id 100 · language 88 · time 74 · memory 86 · length 60 · ago 66 · code 44 = 564
  *   숏코딩   the same columns as 맞힌 사람, but code length matters most and time least.
  */
-@container (max-width: 521px) {
+@container (max-width: 493px) {
   [data-view='mine'] .col-length {
     display: none;
   }
 }
-@container (max-width: 461px) {
+@container (max-width: 433px) {
   [data-view='mine'] .col-at {
     display: none;
   }
 }
-@container (max-width: 395px) {
+@container (max-width: 367px) {
   [data-view='mine'] .col-memory {
     display: none;
   }
 }
-@container (max-width: 613px) {
+@container (max-width: 563px) {
   [data-view='accepted'] .col-length,
   [data-view='short'] .col-at {
     display: none;
   }
 }
-@container (max-width: 553px) {
+@container (max-width: 503px) {
   [data-view='accepted'] .col-at {
     display: none;
   }
 }
-@container (max-width: 547px) {
+@container (max-width: 497px) {
   [data-view='short'] .col-memory {
     display: none;
   }
 }
-@container (max-width: 487px) {
+@container (max-width: 437px) {
   [data-view='accepted'] .col-memory {
     display: none;
   }
 }
-@container (max-width: 461px) {
+@container (max-width: 411px) {
   [data-view='short'] .col-time {
     display: none;
   }
 }
-@container (max-width: 401px) {
+@container (max-width: 351px) {
   [data-view='accepted'] .col-rank {
     display: none;
   }
 }
-@container (max-width: 387px) {
+@container (max-width: 337px) {
   [data-view='short'] .col-rank {
     display: none;
-  }
-}
-@container (max-width: 375px) {
-  .status-table .col-user {
-    width: 96px;
-  }
-  .status-table .col-lang {
-    width: 100px;
   }
 }
 /* The narrowest pane (320px): what is left still fits without cutting the code badge. */
@@ -353,7 +345,7 @@
     width: 84px;
   }
   .status-table .col-lang {
-    width: 92px;
+    width: 84px;
   }
   .status-table .col-time {
     width: 66px;
