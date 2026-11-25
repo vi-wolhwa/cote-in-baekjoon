@@ -4,7 +4,10 @@
  * starts by hand after the product owner approves the release (#206).
  *
  *   node scripts/store/webstore.ts <zip> [--publish | --staged]
+ *   node scripts/store/webstore.ts --status
  *
+ * `--status` only checks the credentials and prints the item's published and submitted
+ * versions; it uploads nothing, so it also works while a version is in review.
  * Without a flag the package only becomes the item's draft. `--publish` submits it for review
  * and publishes it when approved; `--staged` submits it and waits for a manual publish in the
  * dashboard after approval. The API cannot create items, so the first version is uploaded in
@@ -37,6 +40,7 @@ export interface StoreConfig {
 }
 
 export type PublishMode = 'draft' | 'publish' | 'staged';
+export type Mode = PublishMode | 'status';
 
 type Fetch = typeof fetch;
 
@@ -57,12 +61,16 @@ export function readConfig(env: Record<string, string | undefined>): StoreConfig
   };
 }
 
-export function parseArgs(argv: string[]): { zip: string; mode: PublishMode } {
+export function parseArgs(argv: string[]): { zip: string; mode: Mode } {
   const flags = argv.filter((a) => a.startsWith('--'));
   const files = argv.filter((a) => !a.startsWith('--'));
-  const unknown = flags.filter((f) => f !== '--publish' && f !== '--staged');
+  const unknown = flags.filter((f) => !['--publish', '--staged', '--status'].includes(f));
   if (unknown.length > 0) throw new Error(`알 수 없는 옵션: ${unknown.join(' ')}`);
-  if (flags.length > 1) throw new Error('--publish와 --staged 중 하나만 씁니다');
+  if (flags.length > 1) throw new Error('--publish, --staged, --status 중 하나만 씁니다');
+  if (flags[0] === '--status') {
+    if (files.length > 0) throw new Error('--status에는 zip 파일을 넘기지 않습니다');
+    return { zip: '', mode: 'status' };
+  }
   if (files.length !== 1 || !files[0]?.endsWith('.zip'))
     throw new Error('zip 파일 하나를 넘겨야 합니다');
   const mode: PublishMode =
@@ -152,10 +160,44 @@ export async function publish(
   return { state: String(data.state ?? ''), warnings };
 }
 
+export async function fetchStatus(
+  cfg: StoreConfig,
+  token: string,
+  f: Fetch = fetch,
+): Promise<Record<string, unknown>> {
+  return json(
+    await f(`${API}/v2/${itemPath(cfg)}:fetchStatus`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+    '상태 확인',
+  );
+}
+
+/** One line per revision in a fetchStatus response: state and crx versions. */
+export function describeStatus(data: Record<string, unknown>): string[] {
+  type Revision = { state?: unknown; distributionChannels?: { crxVersion?: unknown }[] };
+  const line = (label: string, rev: Revision | undefined) => {
+    if (!rev) return `${label}: 없음`;
+    const versions = (rev.distributionChannels ?? [])
+      .map((c) => c.crxVersion)
+      .filter((v): v is string => typeof v === 'string');
+    return `${label}: ${String(rev.state ?? '?')}${versions.length ? ` (${versions.join(', ')})` : ''}`;
+  };
+  return [
+    line('게시된 버전', data.publishedItemRevisionStatus as Revision | undefined),
+    line('제출된 버전', data.submittedItemRevisionStatus as Revision | undefined),
+  ];
+}
+
 async function main(): Promise<void> {
   const { zip, mode } = parseArgs(process.argv.slice(2));
   const cfg = readConfig(process.env);
   const token = await accessToken(cfg);
+  if (mode === 'status') {
+    console.log('자격 증명 확인 완료');
+    for (const l of describeStatus(await fetchStatus(cfg, token))) console.log(l);
+    return;
+  }
   const version = await upload(cfg, token, await readFile(zip));
   console.log(`업로드 완료: ${path.basename(zip)}${version ? ` (버전 ${version})` : ''}`);
   if (mode === 'draft') {

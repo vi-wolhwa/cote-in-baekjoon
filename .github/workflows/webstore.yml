@@ -10,10 +10,10 @@ on:
         required: false
         default: ''
       mode:
-        description: 'draft: 초안만 / staged: 심사 후 수동 게시 / publish: 심사 후 바로 게시'
+        description: 'status: 자격 증명과 게시 상태만 확인 / draft: 초안만 / staged: 심사 후 수동 게시 / publish: 심사 후 바로 게시'
         type: choice
-        options: [draft, staged, publish]
-        default: draft
+        options: [status, draft, staged, publish]
+        default: status
 
 permissions:
   contents: read
@@ -34,6 +34,7 @@ jobs:
         with:
           node-version: 24
       - name: 릴리스 zip 내려받기
+        if: inputs.mode != 'status'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
@@ -51,6 +52,7 @@ jobs:
           CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
           MODE: ${{ inputs.mode }}
         run: |
+          if [ "$MODE" = "status" ]; then node scripts/store/webstore.ts --status; exit; fi
           FLAG=""
           if [ "$MODE" != "draft" ]; then FLAG="--$MODE"; fi
           node scripts/store/webstore.ts dist/*-chrome.zip $FLAG
