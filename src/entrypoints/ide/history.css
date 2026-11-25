@@ -19,6 +19,7 @@
   --seg-active: #3a4d63;
   --row-hover: #34495e;
   --chip-alpha: 16%;
+  --open-alpha: 30%;
   --result-pass: #3ecf8e;
   --result-error: #f5b83d;
 }
@@ -27,6 +28,7 @@
   --seg-active: #ffffff;
   --row-hover: #e8f0fa;
   --chip-alpha: 12%;
+  --open-alpha: 14%;
   --result-pass: #12875a;
   --result-error: #a15c00;
 }
@@ -91,10 +93,13 @@
   align-items: center;
   gap: 4px;
 }
+/* As wide as the chosen language plus the arrow; long names end with an ellipsis. */
 .history-filter {
   height: 30px;
-  max-width: 140px;
-  padding: 0 8px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 0 6px 0 10px;
+  text-overflow: ellipsis;
   border: 1px solid var(--select-border);
   border-radius: 6px;
   background: var(--select-bg);
@@ -156,14 +161,25 @@
   margin: 0;
   text-align: center;
 }
+/*
+ * Columns are as wide as their longest value (widths include the cell padding): a 20-letter
+ * id is cut with an ellipsis, the language fits "Java 8 (OpenJDK)", memory "999,999KB" (then
+ * MB), time "99,999ms", code length "9,999B" (then KB), the time ago "11개월 전". The spacer
+ * after the language takes any extra width, so wider panes open space between who and the
+ * numbers, not inside the numbers. 12px between columns keeps neighbours apart.
+ */
 .status-table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
+.status-table th,
+.status-table td {
+  box-sizing: border-box;
+  padding: 0 6px;
+}
 .status-table th {
   height: 32px;
-  padding: 0 8px;
   border-bottom: 1px solid var(--line);
   color: var(--out-hint);
   font: 600 12px var(--font-ui);
@@ -172,7 +188,6 @@
 }
 .status-table td {
   height: 36px;
-  padding: 0 8px;
   overflow: hidden;
   border-bottom: 1px solid var(--line);
   color: var(--text);
@@ -186,7 +201,7 @@
   font-variant-numeric: tabular-nums;
 }
 .status-table .unit {
-  margin-left: 3px;
+  margin-left: 2px;
   color: var(--out-hint);
   font-size: 11px;
 }
@@ -194,35 +209,38 @@
   color: var(--out-hint);
 }
 .status-table .col-rank {
-  width: 44px;
+  width: 56px;
   color: var(--out-hint);
 }
 .status-table .col-user {
   width: 112px;
 }
 .status-table .col-result {
-  width: 98px;
-}
-.status-table .col-lang {
-  width: 96px;
-}
-.status-table .col-memory {
-  width: 78px;
-}
-.status-table .col-time {
-  width: 56px;
-}
-.status-table .col-length {
   width: 76px;
 }
-/* The submission time takes what the others leave, so "3개월 전" is never cut. */
+.status-table .col-lang {
+  width: 120px;
+}
+.status-table .col-gap {
+  width: auto;
+  padding: 0;
+}
+.status-table .col-time {
+  width: 74px;
+}
+.status-table .col-memory {
+  width: 86px;
+}
+.status-table .col-length {
+  width: 60px;
+}
 .status-table .col-at {
-  min-width: 72px;
+  width: 66px;
   color: var(--out-hint);
 }
 .status-table .col-open {
-  width: 34px;
-  padding: 0 6px 0 0;
+  width: 40px;
+  padding: 0 6px 0 10px;
   text-align: right;
 }
 .status-table tbody tr.is-open {
@@ -236,7 +254,7 @@
   outline: 2px solid var(--blue);
   outline-offset: -2px;
 }
-/* Whether the code can be opened: a tinted badge stands out from the row, a lock does not. */
+/* Whether the code can be opened: a blue badge with </>, or a yellow one with a lock. */
 .row-open,
 .row-locked {
   display: inline-flex;
@@ -248,7 +266,7 @@
   vertical-align: middle;
 }
 .row-open {
-  background: color-mix(in srgb, var(--link) 18%, transparent);
+  background: color-mix(in srgb, var(--link) var(--open-alpha), transparent);
   color: var(--link);
 }
 .status-table tbody tr.is-open:hover .row-open {
@@ -256,24 +274,89 @@
   color: #ffffff;
 }
 .row-locked {
-  background: color-mix(in srgb, var(--out-hint) 12%, transparent);
-  color: var(--out-hint);
+  background: color-mix(in srgb, var(--result-error) 16%, transparent);
+  color: var(--result-error);
 }
-/* Narrow panes keep the columns people look at first. */
-@container (max-width: 600px) {
-  .status-table .col-length {
+
+/*
+ * Narrow panes: the spacer goes first (it is only extra width), then each view hides what it
+ * needs least, one column at a time, and finally narrows the id and language.
+ *   내 제출   result 76 · language 120 · time 74 · memory 86 · length 60 · ago 66 · code 40 = 522
+ *   맞힌 사람 rank 56 · id 112 · language 120 · time 74 · memory 86 · length 60 · ago 66 · code 40 = 614
+ *   숏코딩   the same columns as 맞힌 사람, but code length matters most and time least.
+ */
+@container (max-width: 521px) {
+  [data-view='mine'] .col-length {
     display: none;
   }
 }
-@container (max-width: 500px) {
-  .status-table .col-memory {
+@container (max-width: 461px) {
+  [data-view='mine'] .col-at {
     display: none;
   }
 }
-@container (max-width: 420px) {
-  .status-table .col-time,
-  .status-table .col-at {
+@container (max-width: 395px) {
+  [data-view='mine'] .col-memory {
     display: none;
+  }
+}
+@container (max-width: 613px) {
+  [data-view='accepted'] .col-length,
+  [data-view='short'] .col-at {
+    display: none;
+  }
+}
+@container (max-width: 553px) {
+  [data-view='accepted'] .col-at {
+    display: none;
+  }
+}
+@container (max-width: 547px) {
+  [data-view='short'] .col-memory {
+    display: none;
+  }
+}
+@container (max-width: 487px) {
+  [data-view='accepted'] .col-memory {
+    display: none;
+  }
+}
+@container (max-width: 461px) {
+  [data-view='short'] .col-time {
+    display: none;
+  }
+}
+@container (max-width: 401px) {
+  [data-view='accepted'] .col-rank {
+    display: none;
+  }
+}
+@container (max-width: 387px) {
+  [data-view='short'] .col-rank {
+    display: none;
+  }
+}
+@container (max-width: 375px) {
+  .status-table .col-user {
+    width: 96px;
+  }
+  .status-table .col-lang {
+    width: 100px;
+  }
+}
+/* The narrowest pane (320px): what is left still fits without cutting the code badge. */
+@container (max-width: 335px) {
+  .status-table .col-result {
+    width: 72px;
+  }
+  .status-table .col-user {
+    width: 84px;
+  }
+  .status-table .col-lang {
+    width: 92px;
+  }
+  .status-table .col-time {
+    width: 66px;
   }
 }
 

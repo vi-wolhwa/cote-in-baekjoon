@@ -21,3 +21,24 @@ export function relativeTime(at: number, now: number): string {
   if (months < 12) return `${months}개월 전`;
   return `${Math.floor(days / 365)}년 전`;
 }
+
+/** A number and its unit, as a table cell shows them. */
+export type Measure = [value: string, unit: string];
+
+/** Memory up to 999,999 KB, then whole MB (Baekjoon reports KB). */
+export function memoryMeasure(kb: number): Measure {
+  return kb < 1_000_000
+    ? [kb.toLocaleString(), 'KB']
+    : [Math.round(kb / 1024).toLocaleString(), 'MB'];
+}
+
+/** Code length up to 9,999 B, then KB (one decimal under 100 KB), so at most four digits. */
+export function lengthMeasure(bytes: number): Measure {
+  if (bytes < 10_000) return [bytes.toLocaleString(), 'B'];
+  const kb = bytes / 1024;
+  return [kb < 100 ? kb.toFixed(1) : Math.round(kb).toLocaleString(), 'KB'];
+}
+
+export function timeMeasure(ms: number): Measure {
+  return [ms.toLocaleString(), 'ms'];
+}

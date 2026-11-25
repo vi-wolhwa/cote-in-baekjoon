@@ -105,3 +105,14 @@ describe('submission times', () => {
     expect(fullTime(new Date(2026, 10, 25, 14, 3, 5).getTime())).toBe('2026년 11월 25일 14:03:05');
   });
 });
+
+describe('table numbers', () => {
+  it('keep memory under seven digits and code length under five', async () => {
+    const { lengthMeasure, memoryMeasure } = await import('@/ide/history/format');
+    expect(memoryMeasure(999_999)).toEqual(['999,999', 'KB']);
+    expect(memoryMeasure(2_048_000)).toEqual(['2,000', 'MB']);
+    expect(lengthMeasure(9_999)).toEqual(['9,999', 'B']);
+    expect(lengthMeasure(12_800)).toEqual(['12.5', 'KB']);
+    expect(lengthMeasure(500_000)).toEqual(['488', 'KB']);
+  });
+});
