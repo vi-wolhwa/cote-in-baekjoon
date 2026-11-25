@@ -13,7 +13,10 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-declare const chrome: { storage: { local: { set(items: object): Promise<void> } } };
+declare const chrome: {
+  storage: { local: { set(items: object): Promise<void> } };
+  tabs: { query(info: object): Promise<{ id: number; url: string }[]> };
+};
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const EXTENSION = path.join(ROOT, '.output', 'chrome-mv3');
