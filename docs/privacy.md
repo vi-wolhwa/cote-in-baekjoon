@@ -3,7 +3,7 @@
 코딩테스트 in 백준(이하 "확장 프로그램")의 개인정보 처리 방식입니다.
 
 - 시행일: 2026-11-25
-- 문의: GitHub 저장소의 이슈
+- 문의: https://github.com/vi-wolhwa/cote-in-baekjoon/issues
 
 ## 1. 수집하는 개인정보
 
