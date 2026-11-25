@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.2](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.1...v0.21.2) (2026-11-25)
+
+
+### 버그 수정
+
+* **history:** 표 열을 값 길이에 맞추고 반응형으로 — 빈칸 열, 보기별 숨김 순서, 단위 줄이기, 공개 배지 대비 ([#189](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/189)) ([c1e5b93](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/c1e5b936c388664118d9d7507202d1f5e907b48e))
+
 ## [0.21.1](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.0...v0.21.1) (2026-11-24)
 
 
