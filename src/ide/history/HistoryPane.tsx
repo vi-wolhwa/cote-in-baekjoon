@@ -32,12 +32,17 @@ const VIEWS: { id: View; label: string }[] = [
   { id: 'short', label: '숏코딩' },
 ];
 
+/**
+ * Who and how on the left, the measured values on the right; the spacer between them takes
+ * any extra width. Narrow panes hide columns per view (history.css), least needed first.
+ */
 const COLUMNS_OF: Record<View, Column[]> = {
   mine: [
     COLUMNS.result,
     COLUMNS.language,
-    COLUMNS.memory,
+    COLUMNS.gap,
     COLUMNS.time,
+    COLUMNS.memory,
     COLUMNS.length,
     COLUMNS.at,
   ],
@@ -46,18 +51,21 @@ const COLUMNS_OF: Record<View, Column[]> = {
     COLUMNS.rank,
     COLUMNS.user,
     COLUMNS.language,
+    COLUMNS.gap,
     COLUMNS.time,
     COLUMNS.memory,
     COLUMNS.length,
     COLUMNS.at,
   ],
+  // Shortest first, so code length leads.
   short: [
     COLUMNS.rank,
     COLUMNS.user,
     COLUMNS.language,
+    COLUMNS.gap,
     COLUMNS.length,
-    COLUMNS.memory,
     COLUMNS.time,
+    COLUMNS.memory,
     COLUMNS.at,
   ],
 };
@@ -225,6 +233,7 @@ export function HistoryPane({ problemId, language, theme, onLoad }: Props) {
           <section
             key={id}
             class="history-panel"
+            data-view={id}
             role="tabpanel"
             aria-label={label}
             hidden={view !== id}

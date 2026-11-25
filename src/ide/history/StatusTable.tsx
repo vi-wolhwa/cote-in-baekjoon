@@ -8,7 +8,14 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { ChevronIcon, CodeIcon, LockIcon } from '../icons';
 import { Spinner } from '../submit';
-import { fullTime, relativeTime } from './format';
+import {
+  fullTime,
+  lengthMeasure,
+  memoryMeasure,
+  relativeTime,
+  timeMeasure,
+  type Measure,
+} from './format';
 import type { RecordRow } from './merge';
 import { ResultChip } from './result';
 import { userUrl } from '@/shared/status-page';
@@ -207,15 +214,16 @@ export function StatusTable(props: Props) {
 // ---------------------------------------------------------------------------
 // Cells
 
-const num = (v: number | undefined, unit: string) =>
-  v !== undefined ? (
+const measure = (v: number | undefined, as: (n: number) => Measure) => {
+  if (v === undefined) return <span class="muted">—</span>;
+  const [value, unit] = as(v);
+  return (
     <>
-      {v.toLocaleString()}
+      {value}
       <span class="unit">{unit}</span>
     </>
-  ) : (
-    <span class="muted">—</span>
   );
+};
 
 export const COLUMNS = {
   result: {
@@ -228,9 +236,17 @@ export const COLUMNS = {
     cls: 'col-lang',
     cell: (r) => <span title={r.language}>{r.language}</span>,
   },
-  memory: { label: '메모리', cls: 'col-num col-memory', cell: (r) => num(r.memoryKb, 'KB') },
-  time: { label: '시간', cls: 'col-num col-time', cell: (r) => num(r.timeMs, 'ms') },
-  length: { label: '코드 길이', cls: 'col-num col-length', cell: (r) => num(r.codeLength, 'B') },
+  memory: {
+    label: '메모리',
+    cls: 'col-num col-memory',
+    cell: (r) => measure(r.memoryKb, memoryMeasure),
+  },
+  time: { label: '시간', cls: 'col-num col-time', cell: (r) => measure(r.timeMs, timeMeasure) },
+  length: {
+    label: '코드 길이',
+    cls: 'col-num col-length',
+    cell: (r) => measure(r.codeLength, lengthMeasure),
+  },
   at: {
     label: '제출',
     // Right like the numbers: what is measured sits on the right, who and how on the left.
@@ -259,5 +275,7 @@ export const COLUMNS = {
       </a>
     ),
   },
-  rank: { label: '순위', cls: 'col-num col-rank', cell: (r) => r.rank ?? '' },
+  rank: { label: '순위', cls: 'col-num col-rank', cell: (r) => r.rank?.toLocaleString() ?? '' },
+  /** Empty: takes the width the others leave, between who and the numbers. */
+  gap: { label: '', cls: 'col-gap', cell: () => null },
 } satisfies Record<string, Column>;

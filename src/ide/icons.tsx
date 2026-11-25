@@ -5,7 +5,16 @@
  */
 import type { ComponentChildren } from 'preact';
 
-function Icon({ size = 20, children }: { size?: number; children: ComponentChildren }) {
+function Icon({
+  size = 20,
+  weight = 1.6,
+  children,
+}: {
+  size?: number;
+  /** Stroke width; small icons need a little more to stay legible. */
+  weight?: number;
+  children: ComponentChildren;
+}) {
   return (
     <svg
       class="icon"
@@ -14,7 +23,7 @@ function Icon({ size = 20, children }: { size?: number; children: ComponentChild
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="1.6"
+      stroke-width={weight}
       stroke-linecap="round"
       stroke-linejoin="round"
       aria-hidden="true"
@@ -107,7 +116,7 @@ export const ChevronIcon = ({ size = 16, left = false }: { size?: number; left?:
 
 /** A source the viewer cannot open. */
 export const LockIcon = ({ size = 14 }: { size?: number }) => (
-  <Icon size={size}>
+  <Icon size={size} weight={2}>
     <rect x="5" y="11" width="14" height="9" rx="2" />
     <path d="M8 11V8a4 4 0 0 1 8 0v3" />
   </Icon>
@@ -115,7 +124,7 @@ export const LockIcon = ({ size = 14 }: { size?: number }) => (
 
 /** A source the viewer can open. */
 export const CodeIcon = ({ size = 14 }: { size?: number }) => (
-  <Icon size={size}>
+  <Icon size={size} weight={2.2}>
     <path d="M9 7l-5 5 5 5M15 7l5 5-5 5" />
   </Icon>
 );
