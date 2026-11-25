@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.23.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.22.0...v0.23.0) (2026-11-25)
+
+
+### 기능
+
+* 확장 업데이트 대응 — 끊긴 백준 탭에서 새로고침 안내, 새 버전 알림 ([#204](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/204)) ([#210](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/210)) ([1911dc9](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/1911dc9802a33096902343e2e0c9e9a45777625d))
+
+
+### 버그 수정
+
+* **backup:** 옛 백업의 제출 기록(history:*)을 읽지 못한 항목으로 세지 않음 ([#209](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/209)) ([#211](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/211)) ([b9c9466](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/b9c9466157e65552911d2e8ba9d565652ff145e1))
+
 ## [0.22.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.4...v0.22.0) (2026-11-25)
 
 
