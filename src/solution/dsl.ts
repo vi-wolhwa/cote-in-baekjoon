@@ -3,7 +3,7 @@
  *
  * A format says how standard input becomes the parameters of `solution(...)` and how its
  * return value becomes standard output. Formats come from untrusted places (user edits,
- * pasted JSON, backups, bundled data), so `checkFormat` validates every field before use.
+ * pasted JSON, bundled data), so `checkFormat` validates every field before use.
  * Kept free of extension APIs so it can be unit tested. The return value lives in ret.ts,
  * counts in count.ts, end lines in end.ts and the checks of `lines` in dsl-lines.ts.
  */

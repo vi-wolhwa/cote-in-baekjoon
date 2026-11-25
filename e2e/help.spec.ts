@@ -22,8 +22,8 @@ test('help: search, keyword chips, empty state and ?q= links', async ({ page, ex
   await page.keyboard.press('/');
   await expect(search).toBeFocused();
 
-  await page.getByRole('button', { name: '코드 백업' }).click();
-  await expect(search).toHaveValue('코드 백업');
+  await page.getByRole('button', { name: '코드 사라짐' }).click();
+  await expect(search).toHaveValue('코드 사라짐');
   await expect(sections.first()).toHaveId('code-lost');
 
   await search.fill('블록체인');

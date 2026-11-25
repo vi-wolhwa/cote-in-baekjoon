@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest';
 import type { Problem } from '@/boj/problem';
 import { saveAnswer, answerDiffers } from '@/exam/batch';
 import { isAnswer } from '@/exam/answers';
-import { isBackupKey, isValidEntry } from '@/shared/backup';
 import { emptyRow, rowToSample, sampleToRow, RET_CELL } from '@/solution/cases';
 import { checkFormat, type Format } from '@/solution/dsl';
 import { clearBundledCache, loadBundledFormat, pickBundled, shardPath } from '@/solution/bundled';
@@ -167,14 +166,9 @@ describe('resolveFormat', () => {
 });
 
 describe('storage', () => {
-  it('backs up solution code, formats and the switch, and checks formats', () => {
-    expect(isBackupKey('code:1000:python:fn')).toBe(true);
-    expect(isBackupKey('code:1000:python:xx')).toBe(false);
-    expect(isBackupKey('format:1000')).toBe(true);
-    expect(isValidEntry('format:1000', AB_JSON)).toBe(true);
-    expect(isValidEntry('format:1000', { v: 1, params: [] })).toBe(false);
-    expect(isValidEntry('ui:solution', false)).toBe(true);
-    expect(isValidEntry('ui:solution', 'yes')).toBe(false);
+  it('checks stored formats', () => {
+    expect(checkFormat(AB_JSON).ok).toBe(true);
+    expect(checkFormat({ v: 1, params: [] }).ok).toBe(false);
   });
 });
 

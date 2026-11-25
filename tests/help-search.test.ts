@@ -79,7 +79,7 @@ describe('searchHelp', () => {
     for (const word of HELP_SUGGESTIONS) expect(ids(word), word).not.toEqual([]);
     expect(ids('자동 제출')[0]).toBe('auto-submit');
     expect(ids('채점 결과')[0]).toBe('judge-result');
-    expect(ids('코드 백업')[0]).toBe('code-lost');
+    expect(ids('코드 사라짐')[0]).toBe('code-lost');
     expect(ids('언어 추가')[0]).toBe('auto-submit');
   });
 });

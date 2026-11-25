@@ -1,7 +1,6 @@
 /**
  * '새 버전' notice after a store update (ADR-0014). The background stores it when the browser
- * installs a newer version; the toolbar popup shows it until the user closes it. Not part of
- * backups.
+ * installs a newer version; the toolbar popup shows it until the user closes it.
  */
 import { REPO_URL } from './report';
 

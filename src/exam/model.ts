@@ -5,7 +5,7 @@
  * - `exam:{id}`: one exam: its conditions, problems (with the statement once fetched), start
  *   time, duration, end, flags and the last submission per problem.
  *
- * Stored values are untrusted (older versions, backups, hand edits): everything read back is
+ * Stored values are untrusted (older versions, hand edits): everything read back is
  * checked with parseDraft() / isExam().
  */
 import type { Problem } from '@/boj/problem';

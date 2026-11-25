@@ -10,8 +10,8 @@
 |---|---|---|---|
 | `code:{문제}:{언어}` | 작성 중인 코드 | `chrome.storage.local` | 입력을 멈추고 0.4초 뒤 |
 | `code:{문제}:{언어}:fn` | solution 함수 모드의 코드(ADR-0006). 표준 입출력 코드와 따로 둔다 | `chrome.storage.local` | 입력을 멈추고 0.4초 뒤 |
-| `format:{문제}` | 사용자가 저장한 입출력 형식(DSL v1 JSON, 백업에 포함) | `chrome.storage.local` | 형식 카드에서 저장할 때 |
-| `ui:solution` | solution 함수 켜기/끄기(기본 켬, 백업에 포함) | `chrome.storage.local` | 스위치를 바꿀 때 |
+| `format:{문제}` | 사용자가 저장한 입출력 형식(DSL v1 JSON) | `chrome.storage.local` | 형식 카드에서 저장할 때 |
+| `ui:solution` | solution 함수 켜기/끄기(기본 켬) | `chrome.storage.local` | 스위치를 바꿀 때 |
 | `cases:{문제}` | 직접 추가한 테스트 케이스(solution 함수 모드도 표준 입출력으로 저장) | `chrome.storage.local` | 대화상자에서 확인을 누를 때 |
 | `judge:{문제}` | 마지막 채점 결과 1건 | `chrome.storage.local` | 채점 결과를 읽을 때 |
 | `ui:keymap`, `ui:split` | 키맵, 패널 크기 | `chrome.storage.local` | 바꿀 때 |
@@ -54,6 +54,6 @@
 
 ## 4. 남은 위험과 후속 작업
 
-- **확장을 삭제하면 모든 코드가 사라진다.** 옵션 페이지(풀이 화면 상단 "백업과 복원")에서 코드, 테스트 케이스, 채점 결과, 설정을 JSON 파일로 내보내고 가져올 수 있다(#42). 가져올 때 합치기(지금 데이터 유지, 없는 것만 추가)와 덮어쓰기 중에서 고른다. 파일은 신뢰하지 않는 입력으로 보고 키와 값을 모두 검사한다(`src/shared/backup.ts`).
+- **확장을 삭제하면 저장 데이터가 모두 사라진다.** 백업·복원(#42)은 코드가 임시 저장(3시간 복원, 2일 정리)으로 바뀐 뒤 지킬 것이 거의 없어 0.24.0에서 없앴다(ADR-0015). 제출한 코드는 백준 '내 제출'에서 다시 불러온다.
 - **동기화는 하지 않는다.** `chrome.storage.sync`는 전체 100KB 한도라 코드 저장에 맞지 않는다. 여러 기기 간 동기화가 필요하면 별도 방식(예: GitHub Gist)을 검토해야 한다.
 - 언어가 늘면(M2) `code:{문제}:{언어}`가 언어별로 따로 저장된다. 용량 계산은 언어 수만큼 늘어나지만 `unlimitedStorage`로 감당된다.

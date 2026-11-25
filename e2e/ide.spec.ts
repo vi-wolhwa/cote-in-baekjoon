@@ -137,7 +137,7 @@ test('opens the IDE overlay from a Baekjoon problem page', async ({ context, pag
   const topLinks = await ide
     .locator('.topbar-links > *')
     .evaluateAll((els) => els.map((e) => e.textContent?.trim()));
-  expect(topLinks).toEqual(['도움말', '문제 신고', '백업과 복원', '돌아가기']);
+  expect(topLinks).toEqual(['도움말', '문제 신고', '돌아가기']);
   await back.click();
   await expect(page.locator('#cib-ide-overlay')).toHaveCount(0);
 });

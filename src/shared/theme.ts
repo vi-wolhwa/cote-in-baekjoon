@@ -1,6 +1,6 @@
 /**
  * IDE color theme (settings dialog in the right sidebar). Kept under `ui:theme` in
- * `storage.local` and included in backups.
+ * `storage.local`.
  */
 export type Theme = 'dark' | 'light';
 

@@ -110,7 +110,6 @@ try {
   );
   let [worker] = context.serviceWorkers();
   worker ??= await context.waitForEvent('serviceworker');
-  const extensionId = new URL(worker.url()).host;
   const page = context.pages()[0] ?? (await context.newPage());
 
   // 1. Python: every sample passes.
@@ -132,11 +131,6 @@ try {
   ide = await openIde(page);
   await runAndWait(ide);
   await shot(page, '3-java-compile-error');
-
-  // 4. Backup and restore.
-  await page.goto(`chrome-extension://${extensionId}/options.html`);
-  await page.getByTestId('current').waitFor();
-  await shot(page, '4-backup');
 } finally {
   await context.close();
 }

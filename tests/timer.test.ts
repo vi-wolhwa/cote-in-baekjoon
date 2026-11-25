@@ -200,9 +200,4 @@ describe('stored timer', () => {
       durationMs: 60 * MIN,
     });
   });
-
-  it('is left out of backups', async () => {
-    const { isBackupKey } = await import('@/shared/backup');
-    expect(isBackupKey(timerKey(1000))).toBe(false);
-  });
 });
