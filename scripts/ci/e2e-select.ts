@@ -23,7 +23,7 @@ export const RULES: [RegExp, Target][] = [
   [/^docs\//, NONE],
   [/^[^/]+\.md$/, NONE],
   [/^\.github\/ISSUE_TEMPLATE\//, NONE],
-  [/^\.github\/workflows\/(native-glue|release|build-teavm-javac)\.yml$/, NONE],
+  [/^\.github\/workflows\/(native-glue|release|build-teavm-javac|webstore)\.yml$/, NONE],
   [/^tests\//, NONE],
   [/^scripts\/(formats|help-md)/, NONE],
   [/^\.claude\//, NONE],

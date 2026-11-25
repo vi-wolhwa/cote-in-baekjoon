@@ -1,0 +1,56 @@
+# 릴리스 zip을 크롬 웹스토어에 올린다 (#88, ADR-0013).
+# 손으로만 실행한다: 첫 게시와 각 게시는 제품 책임자 승인(#44) 뒤에 한다.
+name: 웹스토어 업로드
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 올릴 릴리스 태그 (비우면 최신 릴리스)
+        required: false
+        default: ''
+      mode:
+        description: 'draft: 초안만 / staged: 심사 후 수동 게시 / publish: 심사 후 바로 게시'
+        type: choice
+        options: [draft, staged, publish]
+        default: draft
+
+permissions:
+  contents: read
+
+concurrency:
+  group: webstore
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    name: 크롬 웹스토어
+    runs-on: ubuntu-latest
+    # 저장소 설정 → Environments에서 승인자를 지정하면 실행 전에 한 번 더 승인을 받는다.
+    environment: chrome-web-store
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: 릴리스 zip 내려받기
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p dist
+          if [ -z "$TAG" ]; then TAG=$(gh release view --json tagName --jq .tagName); fi
+          echo "태그: $TAG"
+          gh release download "$TAG" --pattern '*-chrome.zip' --dir dist
+      - name: 업로드
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          FLAG=""
+          if [ "$MODE" != "draft" ]; then FLAG="--$MODE"; fi
+          node scripts/store/webstore.ts dist/*-chrome.zip $FLAG
