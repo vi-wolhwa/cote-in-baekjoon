@@ -271,7 +271,8 @@ test('the split snaps to the width where every column fits', async ({ page, cont
   answerTabs(context, [MINE, `${MINE}&top=6990`, `${BOJ}/problem/status/1000`]);
   await ide.getByRole('tab', { name: '제출 기록' }).click();
   await ide.getByRole('tab', { name: '맞힌 사람' }).click();
-  await expect(ide.getByTestId('accepted-status-row')).toHaveCount(2);
+  // Three pages read one at a time, at least 1 s apart (ADR-0012): slow CI needs more than 5 s.
+  await expect(ide.getByTestId('accepted-status-row')).toHaveCount(2, { timeout: 15_000 });
 
   const split = await ide.locator('.workspace > .split').boundingBox();
   const gutter = await ide.locator('.split-gutter-horizontal').first().boundingBox();
