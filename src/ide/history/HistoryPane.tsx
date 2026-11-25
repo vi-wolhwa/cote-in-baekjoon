@@ -10,7 +10,6 @@
  * can be shown opens SourceView, which reads the code from Baekjoon.
  */
 import { useEffect, useState } from 'preact/hooks';
-import { BOJ_LANGUAGES } from '@/boj/languages';
 import { loadHandle } from '@/shared/handle';
 import { languageInfo, type LanguageId } from '@/shared/languages';
 import { LANGUAGE_FILTERS, pageUrl, type ListQuery } from '@/shared/status-page';
@@ -120,8 +119,6 @@ export function HistoryPane({ problemId, language, theme, onLoad }: Props) {
 
   // Baekjoon judges the editor's language under its own id (JavaScript is node.js, …).
   const current = languageInfo(language);
-  const currentName =
-    BOJ_LANGUAGES[current.id as keyof typeof BOJ_LANGUAGES]?.name ?? current.label;
   const languageIdOf = (f: Filter): { languageId?: number } =>
     f === 'all' ? {} : { languageId: f === 'current' ? current.bojId : f };
 
@@ -195,7 +192,7 @@ export function HistoryPane({ problemId, language, theme, onLoad }: Props) {
               }}
             >
               <option value="all">모든 언어</option>
-              <option value="current">현재 언어 ({currentName})</option>
+              <option value="current">현재 언어</option>
               {SORTED_FILTERS.map((l) => (
                 <option key={l.id} value={String(l.id)}>
                   {l.name}

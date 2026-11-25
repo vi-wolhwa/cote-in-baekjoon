@@ -5,10 +5,31 @@
 import { BOJ_LANGUAGES, type SubmitLanguage } from '@/boj/languages';
 import type { SyntaxId } from '@/shared/languages';
 
-/** The extension language Baekjoon calls `name` ("C++17" → cpp17), if there is one. */
+/**
+ * The nearest extension language for the other Baekjoon names of a family: another
+ * compiler or standard of C, C++ or Java, or another Rust edition. Checked in order.
+ */
+const FAMILY: [RegExp, SubmitLanguage][] = [
+  [/^C\+\+(14|11|98)\b/, 'cpp14'],
+  [/^C\+\+(20|23|26)\b/, 'cpp20'],
+  [/^C\+\+/, 'cpp17'],
+  [/^C(99|90)\b/, 'c99'],
+  [/^C(11|2x)\b/, 'c11'],
+  [/^Java 8\b/, 'java8'],
+  [/^Java/, 'java11'],
+  [/^Rust/, 'rust'],
+  [/^Go\b/, 'go'],
+  [/^Python 3/, 'python3'],
+];
+
+/**
+ * The extension language for Baekjoon's name `name` ("C++17" → cpp17, "C++17 (Clang)" →
+ * cpp17, "Java 15" → java11), if the extension has one of its family.
+ */
 export function submitLanguageOfName(name: string): SubmitLanguage | undefined {
   const entry = Object.entries(BOJ_LANGUAGES).find(([, l]) => l.name === name);
-  return entry?.[0] as SubmitLanguage | undefined;
+  if (entry) return entry[0] as SubmitLanguage;
+  return FAMILY.find(([pattern]) => pattern.test(name))?.[1];
 }
 
 const SYNTAX_BY_NAME: [RegExp, SyntaxId][] = [
