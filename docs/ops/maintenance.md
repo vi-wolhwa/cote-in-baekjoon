@@ -25,8 +25,9 @@
 ## 3. 업데이트
 
 **버전과 릴리스** (`.github/CONTRIBUTING.md` 5장)
-- Conventional Commits → release-please가 릴리스 PR을 만든다. 0.x 동안 기능은 마이너, 수정은 패치.
+- Conventional Commits → release-please가 릴리스 PR을 만든다. 기능은 마이너, 수정은 패치, 사용자가 하던 일이 안 되는 변경은 메이저.
 - 릴리스 PR을 병합하면 GitHub 릴리스와 크롬·엣지 zip이 만들어진다.
+- 1.0.0부터는 릴리스를 묶는다: 버전 마일스톤이 끝나면(최소 1주 간격) 릴리스하고, S1·S2만 바로 패치한다(ADR-0016).
 
 **웹스토어 배포** (게시 후)
 - 릴리스 zip을 웹스토어에 올린다. Actions → **웹스토어 업로드** 워크플로를 손으로 실행한다(태그, 모드 `draft`/`staged`/`publish`). Chrome Web Store API v2, 자격 증명은 `chrome-web-store` 환경의 비밀값(ADR-0013, #88). 첫 버전은 대시보드에서 올린다.

@@ -71,9 +71,13 @@ Closes #이슈번호
 
 ## 5. 버전과 릴리스
 
-- [SemVer](https://semver.org/lang/ko/)를 따른다. 웹스토어 첫 게시(M3) 전까지는 `0.x.y`이다.
-- 커밋 기록으로 CHANGELOG와 버전을 자동으로 만든다. 도구는 CI 설정 때 정한다.
-- 릴리스 태그는 `vX.Y.Z`다. 태그가 생기면 CI가 확장 zip을 빌드해 GitHub Release에 첨부한다.
+자세한 규칙과 근거는 [ADR-0016](../docs/adr/0016-versioning-and-releases.md).
+
+- [SemVer](https://semver.org/lang/ko/)를 사용자 관점으로 따른다. 메이저는 하던 일이 안 되거나 데이터를 잃는 변경(`!`), 마이너는 새 기능(`feat`), 패치는 수정·성능(`fix`, `perf`)이다. `refactor`·`test`·`ci`·`docs`·`chore`는 버전을 올리지 않는다.
+- release-please가 커밋 기록으로 릴리스 PR(CHANGELOG, 버전)을 만든다. 릴리스 PR을 병합하면 태그 `vX.Y.Z`, GitHub 릴리스, 확장 zip이 생긴다.
+- **웹스토어 첫 공개 전(0.x)**: PR을 병합할 때마다 릴리스 PR도 병합한다.
+- **1.0.0부터**: 릴리스 PR은 쌓아 두고, 버전 마일스톤(`v1.1` …)이 끝나면 병합한다(최소 1주 간격). S1·S2 사고만 바로 패치를 낸다. main은 늘 릴리스할 수 있어야 한다.
+- 릴리스한 뒤 '웹스토어 업로드' 워크플로로 올린다(ADR-0013).
 
 ## 6. 이슈와 라벨
 
@@ -84,7 +88,7 @@ Closes #이슈번호
 | 우선순위 | `priority:p0`(즉시), `priority:p1`(이번 마일스톤), `priority:p2`(여유 있을 때) |
 | 상태 | `status:blocked`, `status:needs-decision`(제품 책임자 결정 필요) |
 
-마일스톤은 [로드맵](../docs/roadmap.md)의 M0~M6을 그대로 쓴다.
+마일스톤은 1.0.0까지 [로드맵](../docs/roadmap.md)의 기능 마일스톤(M0~M7, 웹스토어 출시)을 쓰고, 1.0.0부터는 버전 마일스톤 `v1.1`, `v1.2` …를 쓴다(ADR-0016). PR 하나는 이슈 하나, 논리적 변경 하나다.
 
 ## 7. 문서
 
