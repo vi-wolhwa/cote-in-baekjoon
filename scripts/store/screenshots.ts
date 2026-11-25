@@ -37,21 +37,6 @@ for x in a[1:]:
     best = max(best, cur)
 print(best)`;
 
-const CPP = `#include <bits/stdc++.h>
-using namespace std;
-int main() {
-    int n;
-    cin >> n;
-    vector<int> a(n);
-    for (auto& x : a) cin >> x;
-    int best = 0, cur = 0;  // 모두 음수일 때를 놓쳤다
-    for (int x : a) {
-        cur = max(0, cur + x);
-        best = max(best, cur);
-    }
-    cout << best << '\\n';
-}`;
-
 const SOLUTION = `def solution(n, a):
     best = cur = a[0]
     for x in a[1:]:
@@ -246,6 +231,42 @@ try {
   const page = context.pages()[0] ?? (await context.newPage());
   await setStorage(worker, { 'ui:theme': 'dark', 'ui:solution': false });
 
+  // 2. The problem page with the buttons the extension adds (taken first, before the IDE opens).
+  await page.goto(`${BOJ}/problem/${PROBLEM_ID}`);
+  await page.getByRole('button', { name: '코딩테스트' }).waitFor();
+  await page.evaluate(() => {
+    // The real site typesets math; here a few simple TeX forms become HTML.
+    const tex = (t: string) =>
+      t
+        .replace(/\\max_\{([^}]*)\}/g, 'max<sub>$1</sub>')
+        .replace(/\\sum_\{([^}]*)\}\^\{([^}]*)\}/g, 'Σ<sub>$1</sub><sup>$2</sup>')
+        .replace(/\\le/g, '≤')
+        .replace(/\\ldots/g, '…')
+        .replace(/\\,/g, ' ')
+        .replace(/([a-zA-Z])_([a-zA-Z0-9])/g, '$1<sub>$2</sub>');
+    for (const p of document.querySelectorAll('section p')) {
+      p.innerHTML = p.innerHTML.replace(
+        /\\\((.*?)\\\)/g,
+        (_, m: string) => `<i style="font-family: 'Times New Roman', serif">${tex(m)}</i>`,
+      );
+    }
+    // A callout around the added buttons, its note in the room above the menu.
+    const menu = document.querySelector<HTMLElement>('.problem-menu');
+    const open = document.getElementById('cib-open-ide');
+    const exam = document.getElementById('cib-open-exam');
+    if (!menu || !open || !exam) throw new Error('problem menu buttons missing');
+    menu.style.marginTop = '76px';
+    const first = open.getBoundingClientRect();
+    const last = exam.getBoundingClientRect();
+    const ring = document.createElement('div');
+    ring.style.cssText = `position:absolute;left:${first.left - 8}px;top:${first.top - 8}px;width:${last.right - first.left + 16}px;height:${first.height + 16}px;border:3px solid #f59e0b;border-radius:10px;pointer-events:none`;
+    const note = document.createElement('div');
+    note.textContent = '문제 페이지에 생기는 버튼으로 바로 시작합니다';
+    note.style.cssText = `position:absolute;left:${first.left - 8}px;top:${first.top - 58}px;padding:8px 14px;border-radius:8px;background:#f59e0b;color:#1f2933;font:600 15px 'Malgun Gothic',sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.15)`;
+    document.body.append(ring, note);
+  });
+  await shot(page, '2-entry');
+
   // 1. Python: every example passes. A shorter editor leaves room for the results.
   await setStorage(worker, { 'ui:split': { horizontal: 40, vertical: 48 } });
   await saveCode(worker, 'python', 'python3', PYTHON);
@@ -253,14 +274,6 @@ try {
   await runAndWait(ide);
   await ide.getByTestId('summary').scrollIntoViewIfNeeded();
   await shot(page, '1-solve');
-
-  // 2. C++: one example fails, expected and actual side by side.
-  await setStorage(worker, { 'ui:split': { horizontal: 40, vertical: 60 } });
-  await saveCode(worker, 'cpp', 'cpp17', CPP);
-  ide = await openIde(page);
-  await runAndWait(ide);
-  await ide.getByTestId('case').nth(1).scrollIntoViewIfNeeded();
-  await shot(page, '2-wrong-answer');
 
   // 3. Solution function: the examples read as '입출력 예'.
   await setStorage(worker, { 'ui:solution': true, 'ui:split': { horizontal: 40, vertical: 48 } });

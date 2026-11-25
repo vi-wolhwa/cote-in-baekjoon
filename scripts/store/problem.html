@@ -5,71 +5,223 @@
   <head>
     <meta charset="utf-8" />
     <title>예시 문제</title>
+    <!-- Neutral Bootstrap-3-like look for the entry screenshot (0-entry): no site logo or
+         brand colors. The IDE overlay covers the page in the other screenshots. -->
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          14px/1.6 'Malgun Gothic',
+          'Noto Sans KR',
+          sans-serif;
+        color: #333;
+        background: #fff;
+      }
+      .topbar {
+        height: 52px;
+        border-bottom: 1px solid #e5e5e5;
+        background: #f8f8f8;
+      }
+      .wrap {
+        width: 1140px;
+        margin: 0 auto;
+      }
+      .loginbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 16px;
+        margin: 0;
+        padding: 15px 0;
+        list-style: none;
+      }
+      .loginbar a {
+        color: #555;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .problem-menu {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        margin: 28px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .problem-menu > li > a {
+        display: block;
+        margin-right: 4px;
+        padding: 10px 15px;
+        border-radius: 4px;
+        color: #337ab7;
+        font-size: 13px;
+        text-decoration: none;
+      }
+      .problem-menu > li.active > a {
+        background: #337ab7;
+        color: #fff;
+      }
+      .page-header {
+        margin: 20px 0 16px;
+        padding-bottom: 9px;
+        border-bottom: 1px solid #eee;
+      }
+      .page-header h1 {
+        margin: 0;
+        font-size: 30px;
+        font-weight: 500;
+      }
+      #problem-info {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+      #problem-info th,
+      #problem-info td {
+        padding: 8px;
+        border-top: 1px solid #ddd;
+      }
+      #problem-info th {
+        border-bottom: 2px solid #ddd;
+      }
+      section h2 {
+        margin: 24px 0 8px;
+        padding-bottom: 6px;
+        border-bottom: 3px solid #337ab7;
+        display: inline-block;
+        font-size: 20px;
+        font-weight: 500;
+      }
+      section p {
+        margin: 0 0 10px;
+      }
+      .samples {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 30px;
+      }
+      .sampledata {
+        margin: 0 0 10px;
+        padding: 9px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #f5f5f5;
+        font:
+          13px/1.4 Consolas,
+          monospace;
+      }
+    </style>
   </head>
-  <body style="font-family: sans-serif; padding: 24px">
-    <ul class="loginbar">
-      <li><a href="/user/user01" class="username">user01</a></li>
-    </ul>
-    <div class="page-header">
-      <h1><span id="problem_title">산책로의 전망 구간</span></h1>
+  <body>
+    <div class="topbar">
+      <div class="wrap">
+        <ul class="loginbar">
+          <li><a href="/user/user01" class="username">user01</a></li>
+          <li><a href="/logout">로그아웃</a></li>
+        </ul>
+      </div>
     </div>
-    <table id="problem-info">
-      <thead>
-        <tr>
-          <th>시간 제한</th>
-          <th>메모리 제한</th>
-          <th>제출</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>1 초</td>
-          <td>256 MB</td>
-          <td>0</td>
-        </tr>
-      </tbody>
-    </table>
-    <section id="description">
-      <div id="problem_description">
-        <p>
-          산책로에 지점이 \(N\)개 있고, \(i\)번째 지점의 전망 점수는 \(a_i\)다. 점수는 음수일 수도
-          있다.
-        </p>
-        <p>
-          연속한 지점들로 이루어진 구간 하나를 골라 그 점수의 합을 최대로 하려고 한다. 구간에는
-          지점이 적어도 하나 있어야 한다. 가장 큰 합 \(\max_{l \le r} \sum_{i=l}^{r} a_i\)를 구하라.
-        </p>
+    <div class="wrap">
+      <ul class="nav nav-pills problem-menu">
+        <li class="active"><a href="/problem/99999">99999번</a></li>
+        <li><a href="/submit/99999">제출</a></li>
+        <li><a href="/problem/status/99999">맞힌 사람</a></li>
+        <li><a href="/short/status/99999">숏코딩</a></li>
+        <li><a href="/status?problem_id=99999">채점 현황</a></li>
+        <li><a href="/board/search/all/problem/99999">질문 게시판</a></li>
+      </ul>
+      <div class="page-header">
+        <h1><span id="problem_title">산책로의 전망 구간</span></h1>
       </div>
-    </section>
-    <section id="input">
-      <div id="problem_input">
-        <p>첫째 줄에 \(N\) \((1 \le N \le 100\,000)\)이 주어진다.</p>
-        <p>둘째 줄에 \(a_1, a_2, \ldots, a_N\) \((-1\,000 \le a_i \le 1\,000)\)이 주어진다.</p>
-      </div>
-    </section>
-    <section id="output">
-      <div id="problem_output"><p>가장 큰 구간 합을 출력한다.</p></div>
-    </section>
-    <pre class="sampledata" id="sample-input-1">
+      <table id="problem-info">
+        <thead>
+          <tr>
+            <th>시간 제한</th>
+            <th>메모리 제한</th>
+            <th>제출</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1 초</td>
+            <td>256 MB</td>
+            <td>0</td>
+          </tr>
+        </tbody>
+      </table>
+      <section id="description">
+        <h2>문제</h2>
+        <div id="problem_description">
+          <p>
+            산책로에 지점이 \(N\)개 있고, \(i\)번째 지점의 전망 점수는 \(a_i\)다. 점수는 음수일 수도
+            있다.
+          </p>
+          <p>
+            연속한 지점들로 이루어진 구간 하나를 골라 그 점수의 합을 최대로 하려고 한다. 구간에는
+            지점이 적어도 하나 있어야 한다. 가장 큰 합 \(\max_{l \le r} \sum_{i=l}^{r} a_i\)를
+            구하라.
+          </p>
+        </div>
+      </section>
+      <section id="input">
+        <h2>입력</h2>
+        <div id="problem_input">
+          <p>첫째 줄에 \(N\) \((1 \le N \le 100\,000)\)이 주어진다.</p>
+          <p>둘째 줄에 \(a_1, a_2, \ldots, a_N\) \((-1\,000 \le a_i \le 1\,000)\)이 주어진다.</p>
+        </div>
+      </section>
+      <section id="output">
+        <h2>출력</h2>
+        <div id="problem_output"><p>가장 큰 구간 합을 출력한다.</p></div>
+      </section>
+      <div class="samples">
+        <section>
+          <h2>예제 입력 1</h2>
+          <pre class="sampledata" id="sample-input-1">
 5
 3 -4 5 -1 2
 </pre>
-    <pre class="sampledata" id="sample-output-1">
+        </section>
+        <section>
+          <h2>예제 출력 1</h2>
+          <pre class="sampledata" id="sample-output-1">
 6
 </pre>
-    <pre class="sampledata" id="sample-input-2">
+        </section>
+      </div>
+      <div class="samples">
+        <section>
+          <h2>예제 입력 2</h2>
+          <pre class="sampledata" id="sample-input-2">
 3
 -2 -7 -1
 </pre>
-    <pre class="sampledata" id="sample-output-2">
+        </section>
+        <section>
+          <h2>예제 출력 2</h2>
+          <pre class="sampledata" id="sample-output-2">
 -1
 </pre>
-    <pre class="sampledata" id="sample-input-3">
+        </section>
+      </div>
+      <div class="samples">
+        <section>
+          <h2>예제 입력 3</h2>
+          <pre class="sampledata" id="sample-input-3">
 6
 1 2 -10 4 4 -1
 </pre>
-    <pre class="sampledata" id="sample-output-3">
+        </section>
+        <section>
+          <h2>예제 출력 3</h2>
+          <pre class="sampledata" id="sample-output-3">
 8
 </pre>
+        </section>
+      </div>
+    </div>
   </body>
 </html>
