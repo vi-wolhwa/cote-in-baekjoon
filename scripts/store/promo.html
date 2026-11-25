@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- Chrome Web Store small promo tile (440×280), rendered by screenshots.ts.
+     Colors from src/shared/app-theme.css; the only image is the extension icon. -->
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>프로모션 타일</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 440px;
+        height: 280px;
+        overflow: hidden;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: radial-gradient(circle at 50% 30%, #1a2632 0%, #0f1923 70%);
+        color: #c9d4de;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          'Noto Sans KR',
+          'Apple SD Gothic Neo',
+          '맑은 고딕',
+          sans-serif;
+        word-break: keep-all;
+      }
+      img {
+        width: 88px;
+        height: 88px;
+      }
+      h1 {
+        margin: 0;
+        color: #ffffff;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      h1 span {
+        color: #5aa2ff;
+      }
+      p {
+        margin: 0;
+        color: #9fb3c5;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <img src="../../public/icon/128.png" alt="" />
+    <h1>코딩테스트 <span>in</span> 백준</h1>
+    <p>백준 문제를 코딩테스트 화면처럼</p>
+  </body>
+</html>
