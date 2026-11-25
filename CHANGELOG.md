@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.3](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.2...v0.21.3) (2026-11-25)
+
+
+### 버그 수정
+
+* **history:** 열 폭을 더 줄이고 필터 폭 고정, 편집기로 불러오기는 늘 확인 후 다른 언어도 계열로 ([#191](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/191)) ([a28b1f5](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/a28b1f5fa4ce0b46cbaad04ecc26e3c2cc29547d))
+
 ## [0.21.2](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.1...v0.21.2) (2026-11-25)
 
 
