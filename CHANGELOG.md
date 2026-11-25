@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.4](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.3...v0.21.4) (2026-11-25)
+
+
+### 버그 수정
+
+* **history:** 빈칸 열이 0px까지 줄고 나서야 열을 숨김, 시간 열 59px·왼쪽 여백 없음, '길이' 머리글 ([#193](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/193)) ([45156a9](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/45156a9c95694e47c3e4e1e7402267c217ba0a6f))
+
 ## [0.21.3](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.2...v0.21.3) (2026-11-25)
 
 
