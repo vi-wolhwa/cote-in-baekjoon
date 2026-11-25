@@ -30,7 +30,6 @@ export const RULES: [RegExp, Target][] = [
   [/^LICENSE|^THIRD_PARTY/, NONE],
   [/^third_party\/licenses\//, NONE],
   [/^\.github\/(CONTRIBUTING\.md|pull_request_template\.md|dependabot\.yml)$/, NONE],
-  [/^\.claude-flow\//, NONE],
   [/^scripts\/(store|teavm-classlib|render-icons)/, NONE],
   // Icons and release config: the check job builds and lists licenses; no E2E behavior.
   [/^(public\/icon|assets)\//, NONE],

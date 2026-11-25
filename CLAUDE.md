@@ -30,8 +30,8 @@
 - Big features: plan → spec/ADR → one implementation pass
 - Subagents only for parallel independent work or wide reading (read-only ones on a
   cheaper model); independent tasks in separate sessions and worktrees
-- Use Claude Code's native agents, worktrees, memory and skills; ruflo keeps only the
-  pre-bash safety hook and the session-end cost log
+- Use Claude Code's native agents, worktrees, memory, skills and permission rules; no
+  agent framework on top (ruflo was removed, ADR-0017)
 
 ## Project: 코딩테스트 in 백준 (Chrome Extension)
 

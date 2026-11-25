@@ -1,14 +1,11 @@
 .output/
 .wxt/
 .claude/
-.claude-flow/
-.swarm/
 node_modules/
 package-lock.json
 playwright-report/
 test-results/
 *.md
-.mcp.json
 tests/fixtures/
 .github/ISSUE_TEMPLATE/
 .release-please-manifest.json

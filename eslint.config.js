@@ -10,7 +10,6 @@ export default tseslint.config(
       '.wxt/',
       'node_modules/',
       '.claude/',
-      '.claude-flow/',
       // Local, gitignored format-data cache (scratch scripts of review sessions).
       'data/',
       'playwright-report/',
