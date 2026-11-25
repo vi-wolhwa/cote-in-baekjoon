@@ -22,6 +22,12 @@ import { userUrl } from '@/shared/status-page';
 
 /** Row and header heights in pixels; history.css sets the same. */
 export const ROW_PX = 36;
+
+/**
+ * The narrowest problem pane that shows every column of 맞힌 사람 and 숏코딩: their columns
+ * (549px, history.css) plus the tab's side padding (2 × 16px). The split snaps to it.
+ */
+export const FULL_TABLE_PANE_PX = 549 + 2 * 16;
 const HEAD_PX = 32;
 
 export interface Column {

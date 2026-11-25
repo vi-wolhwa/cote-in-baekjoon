@@ -535,3 +535,22 @@ textarea {
   overflow-x: auto;
   overflow-y: hidden;
 }
+
+/* A drag resting on the recommended size (SplitPane snapFirstPx): blue handle and a label. */
+.split-gutter[data-snapped]::after {
+  background: var(--blue);
+}
+.split-snap-label {
+  position: absolute;
+  top: calc(50% + 24px);
+  left: 50%;
+  z-index: 1;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--blue);
+  color: #ffffff;
+  font: 600 12px/18px var(--font-ui);
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}

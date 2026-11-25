@@ -264,3 +264,31 @@ test('says why 내 제출 is empty when the Baekjoon id is unknown', async ({ pa
   await expect(ide.getByTestId('accepted-status-row')).toHaveCount(2);
   expect(read).toEqual(['/problem/status/1000']);
 });
+
+test('the split snaps to the width where every column fits', async ({ page, context }) => {
+  await serveProblem(context);
+  const ide = await openIde(page);
+  answerTabs(context, [MINE, `${MINE}&top=6990`, `${BOJ}/problem/status/1000`]);
+  await ide.getByRole('tab', { name: '제출 기록' }).click();
+  await ide.getByRole('tab', { name: '맞힌 사람' }).click();
+  await expect(ide.getByTestId('accepted-status-row')).toHaveCount(2);
+
+  const split = await ide.locator('.workspace > .split').boundingBox();
+  const gutter = await ide.locator('.split-gutter-horizontal').first().boundingBox();
+  if (!split || !gutter) throw new Error('no split');
+  await page.mouse.move(gutter.x + gutter.width / 2, gutter.y + gutter.height / 2);
+  await page.mouse.down();
+  // 8px past the recommended width: close enough to snap.
+  await page.mouse.move(split.x + 581 + 8, gutter.y + gutter.height / 2, { steps: 5 });
+  await expect(ide.locator('.split-snap-label')).toHaveText('권장 너비');
+  await page.mouse.up();
+  await expect(ide.locator('.split-snap-label')).toHaveCount(0);
+
+  const pane = await ide.locator('.workspace > .split > .split-pane').first().boundingBox();
+  expect(Math.round(pane?.width ?? 0)).toBe(581);
+  // Every column shows, and the spacer is down to nothing.
+  const table = ide.getByTestId('accepted-status');
+  await expect(table.locator('th.col-length')).toBeVisible();
+  await expect(table.locator('th.col-rank')).toBeVisible();
+  expect(Math.round((await table.locator('th.col-gap').boundingBox())?.width ?? -1)).toBe(0);
+});
