@@ -72,7 +72,7 @@
     "ruflo-mods@ruflo": false,
     "ruflo-swarm@ruflo": false,
     "ruflo-console@ruflo": false,
-    "ruflo-protector@ruflo": true
+    "ruflo-protector@ruflo": false
   },
   "extraKnownMarketplaces": {
     "ruflo": {
