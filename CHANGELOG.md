@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.24.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.23.0...v0.24.0) (2026-11-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* 백업 파일 내보내기·가져오기가 없어진다.
+
+### 기능
+
+* 백업과 복원 제거 — 코드 임시 저장으로 지킬 것이 없어짐 ([#209](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/209)) ([#214](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/214)) ([247e1f2](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/247e1f2e2d09b25011dc9ed6f4c17c3cec5dd0c4))
+
 ## [0.23.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.22.0...v0.23.0) (2026-11-25)
 
 
