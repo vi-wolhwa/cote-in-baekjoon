@@ -72,7 +72,7 @@ const SETTINGS: Record<string, (v: unknown) => boolean> = {
 /** Keys older versions wrote; a backup that has them restores without them, silently. */
 const RETIRED_KEYS = new Set(['ui:auto-submit']);
 /** The submission history (`history:{id}`) is read from Baekjoon since ADR-0012 개정 3. */
-const RETIRED_KEY = /^history:d+$/;
+const RETIRED_KEY = /^history:\d+$/;
 
 /**
  * True for keys that belong in a backup. Session-only and internal keys are left out, and so
