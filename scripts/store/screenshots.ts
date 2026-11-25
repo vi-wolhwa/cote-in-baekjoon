@@ -234,7 +234,44 @@ try {
   // 2. The problem page with the buttons the extension adds (taken first, before the IDE opens).
   await page.goto(`${BOJ}/problem/${PROBLEM_ID}`);
   await page.getByRole('button', { name: '코딩테스트' }).waitFor();
-  await page.evaluate(() => {
+  // The toolbar popup over this page: its tab query is stubbed to this problem, and a few
+  // made-up recent problems fill its lists (src/popup/model.ts).
+  const now = Date.now();
+  const recent: [number, string, 'ac' | 'wa', string][] = [
+    [99998, '두 정류장 사이', 'ac', '맞았습니다!!'],
+    [99997, '격자 위의 로봇', 'wa', '틀렸습니다'],
+    [99996, '괄호 균형 맞추기', 'ac', '맞았습니다!!'],
+  ];
+  await setStorage(worker, {
+    [`meta:${PROBLEM_ID}`]: { title: '산책로의 전망 구간', language: 'python3', openedAt: now },
+    ...Object.fromEntries(
+      recent.flatMap(([id, title, code, text], i) => [
+        [`meta:${id}`, { title, language: 'python3', openedAt: now - (i + 1) * 3_600_000 }],
+        [
+          `judge:${id}`,
+          {
+            problemId: id,
+            status: 'done',
+            resultText: text,
+            resultCode: code,
+            updatedAt: now - (i + 1) * 3_600_000,
+          },
+        ],
+      ]),
+    ),
+  });
+  const popup = await context.newPage();
+  await popup.setViewportSize({ width: 300, height: 100 });
+  await popup.addInitScript((url) => {
+    chrome.tabs.query = (() => Promise.resolve([{ id: 1, url }])) as typeof chrome.tabs.query;
+  }, `${BOJ}/problem/${PROBLEM_ID}`);
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.getByText('지금 보는 문제').waitFor();
+  await popup.waitForTimeout(300);
+  const popupPng = (await popup.screenshot({ fullPage: true })).toString('base64');
+  await popup.close();
+  await page.bringToFront();
+  await page.evaluate((png) => {
     // The real site typesets math; here a few simple TeX forms become HTML.
     const tex = (t: string) =>
       t
@@ -263,8 +300,16 @@ try {
     const note = document.createElement('div');
     note.textContent = '문제 페이지에 생기는 버튼으로 바로 시작합니다';
     note.style.cssText = `position:absolute;left:${first.left - 8}px;top:${first.top - 58}px;padding:8px 14px;border-radius:8px;background:#f59e0b;color:#1f2933;font:600 15px 'Malgun Gothic',sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.15)`;
-    document.body.append(ring, note);
-  });
+    // The popup as the browser shows it under the toolbar icon, with its own note.
+    const img = document.createElement('img');
+    img.src = `data:image/png;base64,${png}`;
+    img.style.cssText =
+      'position:absolute;right:24px;top:8px;width:300px;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.28)';
+    const popNote = document.createElement('div');
+    popNote.textContent = '툴바 아이콘을 눌러도 시작할 수 있습니다';
+    popNote.style.cssText = `${note.style.cssText};left:auto;right:340px;top:236px`;
+    document.body.append(ring, note, img, popNote);
+  }, popupPng);
   await shot(page, '2-entry');
 
   // 1. Python: every example passes. A shorter editor leaves room for the results.
@@ -287,7 +332,7 @@ try {
   await shot(page, '3-solution');
 
   // 4. Mock exam: problem rail and remaining time. Statements are in the record already.
-  const now = Date.now();
+
   await setStorage(worker, {
     'ui:solution': false,
     'exam:storeexam0001': examRecord(now),
