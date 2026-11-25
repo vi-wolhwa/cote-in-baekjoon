@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.4...v0.22.0) (2026-11-25)
+
+
+### 기능
+
+* **ide:** 문제 영역을 끌 때 제출 기록 표가 모두 보이는 폭(581px)에 붙기, 숏코딩 열 순서를 맞힌 사람과 같게 ([#195](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/195)) ([8ccfcd8](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/8ccfcd88db40ad9e6b168ece08315c4d2a552afc))
+
 ## [0.21.4](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.21.3...v0.21.4) (2026-11-25)
 
 
