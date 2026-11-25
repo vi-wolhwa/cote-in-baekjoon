@@ -2,11 +2,11 @@
 
 - 상태: 채택
 - 날짜: 2026-11-25
-- 관련: #88, #44(배포 게이트), `docs/ops/maintenance.md` 3장
+- 관련: #88, #206(배포 게이트, #44를 대신함), `docs/ops/maintenance.md` 3장
 
 ## 배경
 
-릴리스마다 zip을 개발자 대시보드에 손으로 올리면 빠뜨리거나 다른 zip을 올리기 쉽다. #88은 릴리스 zip을 Chrome Web Store API로 올리는 단계를 만든다. 다만 게시는 제품 책임자 승인(#44) 뒤에만 한다.
+릴리스마다 zip을 개발자 대시보드에 손으로 올리면 빠뜨리거나 다른 zip을 올리기 쉽다. #88은 릴리스 zip을 Chrome Web Store API로 올리는 단계를 만든다. 다만 게시는 제품 책임자 승인(#206) 뒤에만 한다.
 
 Chrome Web Store API v1.1은 2026-10-15에 지원이 끝났고, v2(`chromewebstore.googleapis.com/v2/publishers/{게시자}/items/{확장}`)만 쓸 수 있다. API는 새 항목을 만들지 못하므로 첫 버전은 대시보드에서 올린다.
 
