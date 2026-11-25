@@ -243,7 +243,7 @@ export const COLUMNS = {
   },
   time: { label: '시간', cls: 'col-num col-time', cell: (r) => measure(r.timeMs, timeMeasure) },
   length: {
-    label: '코드 길이',
+    label: '길이',
     cls: 'col-num col-length',
     cell: (r) => measure(r.codeLength, lengthMeasure),
   },

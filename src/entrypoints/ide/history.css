@@ -163,7 +163,7 @@
 /*
  * Columns are as wide as their longest value (widths include the cell padding): a 20-letter
  * id is cut with an ellipsis, the language fits "Kotlin (JVM)", memory "999,999KB" (then
- * MB), time "99,999ms", code length "9,999B" (then KB), the time ago "11개월 전". The spacer
+ * MB), time "9,999ms" (no left padding), code length "9,999B" (then KB), the time ago "11개월 전". The spacer
  * after the language takes any extra width, so wider panes open space between who and the
  * numbers, not inside the numbers. 12px between columns keeps neighbours apart.
  */
@@ -226,7 +226,8 @@
   padding: 0;
 }
 .status-table .col-time {
-  width: 74px;
+  width: 59px;
+  padding-left: 0;
 }
 .status-table .col-memory {
   width: 86px;
@@ -279,76 +280,83 @@
 }
 
 /*
- * Narrow panes: the spacer goes first (it is only extra width), then each view hides what it
- * needs least, one column at a time, and finally narrows the id and language.
- *   내 제출   result 76 · language 88 · time 74 · memory 86 · length 60 · ago 66 · code 44 = 494
- *   맞힌 사람 rank 46 · id 100 · language 88 · time 74 · memory 86 · length 60 · ago 66 · code 44 = 564
+ * Narrow panes: the spacer shrinks to 0 first (it is only extra width); a column is hidden
+ * only when the visible columns no longer fit, one at a time, least needed first; last, the
+ * id and language narrow. Thresholds are the measured sums of the visible columns:
+ *   내 제출   result 76 · language 88 · time 59 · memory 86 · length 60 · ago 66 · code 44 = 479
+ *   맞힌 사람 rank 46 · id 100 · language 88 · time 59 · memory 86 · length 60 · ago 66 · code 44 = 549
  *   숏코딩   the same columns as 맞힌 사람, but code length matters most and time least.
  */
-@container (max-width: 493px) {
+@container (width < 479px) {
   [data-view='mine'] .col-length {
     display: none;
   }
 }
-@container (max-width: 433px) {
+@container (width < 419px) {
   [data-view='mine'] .col-at {
     display: none;
   }
 }
-@container (max-width: 367px) {
+@container (width < 353px) {
   [data-view='mine'] .col-memory {
     display: none;
   }
 }
-@container (max-width: 563px) {
+@container (width < 267px) {
+  [data-view='mine'] .col-result {
+    width: 72px;
+  }
+  [data-view='mine'] .col-lang {
+    width: 84px;
+  }
+}
+@container (width < 549px) {
   [data-view='accepted'] .col-length,
   [data-view='short'] .col-at {
     display: none;
   }
 }
-@container (max-width: 503px) {
+@container (width < 489px) {
   [data-view='accepted'] .col-at {
     display: none;
   }
 }
-@container (max-width: 497px) {
+@container (width < 483px) {
   [data-view='short'] .col-memory {
     display: none;
   }
 }
-@container (max-width: 437px) {
+@container (width < 423px) {
   [data-view='accepted'] .col-memory {
     display: none;
   }
 }
-@container (max-width: 411px) {
+@container (width < 397px) {
   [data-view='short'] .col-time {
     display: none;
   }
 }
-@container (max-width: 351px) {
-  [data-view='accepted'] .col-rank {
-    display: none;
-  }
-}
-@container (max-width: 337px) {
+@container (width < 338px) {
   [data-view='short'] .col-rank {
     display: none;
   }
 }
+@container (width < 337px) {
+  [data-view='accepted'] .col-rank {
+    display: none;
+  }
+}
 /* The narrowest pane (320px): what is left still fits without cutting the code badge. */
-@container (max-width: 335px) {
-  .status-table .col-result {
-    width: 72px;
-  }
-  .status-table .col-user {
+@container (width < 292px) {
+  [data-view='short'] .col-user,
+  [data-view='short'] .col-lang {
     width: 84px;
   }
-  .status-table .col-lang {
+}
+@container (width < 291px) {
+  [data-view='accepted'] .col-user,
+  [data-view='accepted'] .col-lang {
     width: 84px;
-  }
-  .status-table .col-time {
-    width: 66px;
   }
 }
 
