@@ -32,12 +32,33 @@
   cheaper model); independent tasks in separate sessions and worktrees
 - Use Claude Code's native agents, worktrees, memory, skills and permission rules; no
   agent framework on top (ruflo was removed, ADR-0017)
+- Read ranges (`sed -n`, `grep -n`) instead of whole files; edit with the Edit/Write
+  tools, not shell replacements; wait for CI with one background `gh pr checks --watch`,
+  never sleep/poll loops
+- Rules live in this file and `docs/` so every machine and session shares them. Claude's
+  auto-memory is per machine: keep only transient state there, never a project rule
+
+## Working with the product owner (the user)
+
+- Reports, questions and button labels to the user are in Korean. Internal work
+  (reasoning, agent briefs, code comments) may be in English
+- Run the work end to end without stopping: merge PRs and release PRs yourself on green
+  CI, keep going through the next milestone, and report once at the end. Ask only for
+  what the owner must do or decide (see Project below); batch those questions
+- Never sit idle waiting for CI, a release job or a background agent: continue the next
+  step, in another worktree if the main checkout is busy
+- Hard gates that stay with the owner: the first Web Store "submit for review" click (#206),
+  any payment, sign-ins and secrets (the owner types them in the site or GitHub
+  settings, never in chat), and accepting agreements on their behalf
+- Owner decisions already made: auto-submit is always on with no warning; translation
+  sends foreign problem text to Google Translate and the privacy policy says so;
+  the repo is public; Chrome Web Store only, publisher `vi-wolhwa`
 
 ## Project: 코딩테스트 in 백준 (Chrome Extension)
 
 Extension that lets users solve Baekjoon (acmicpc.net) problems in a
 coding-test style IDE screen. Product scope and decisions: `docs/PRD.md`;
-milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
+milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (public).
 
 - Never use the Programmers or Baekjoon logo or other brand assets, and never use the Programmers name (PRD §8). Their colors appear only where the product owner decided: the IDE theme and the extension icon
 - Docs, issues and PRs are written in Korean
@@ -58,7 +79,10 @@ milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
     problems found nowhere else on the public web may be opened on acmicpc.net in a
     browser at most one page per minute with a daily cap and a log (product owner
     decision, 2026-11-24). Collected problem text stays local and is never committed;
-    only derived input/output formats are shipped
+    only derived input/output formats are shipped. Scope (2026-11-25): every problem
+    someone posted on the public web (BaekjoonHub repos first, `collect.ts --hub`); a
+    problem posted nowhere is not filled from Baekjoon in bulk. Never route collection
+    through Claude/Anthropic fetch tools
 - Ask the product owner (the user) only for decisions they must make:
   product direction, design approval, costs, publishing, big structural changes.
   Decide technical and process choices yourself and record them as ADRs in `docs/adr/`
@@ -77,6 +101,19 @@ milestones: `docs/roadmap.md`. Repo: `vi-wolhwa/cote-in-baekjoon` (private).
 - Never commit the extension signing key (`*.pem`) or packaged `*.crx` / `*.zip`
 - Manual check: `chrome://extensions` → Developer mode → "Load unpacked" on
   the build output folder, then reload the extension after each build
+
+## Versioning, releases and process
+
+- Full rules: ADR-0016 and `.github/CONTRIBUTING.md` (branches, commits, PRs, labels),
+  `docs/ops/maintenance.md` (triage, severity, release checklist)
+- Conventional Commits with Korean subjects, squash merge; PR title = changelog line.
+  One PR = one issue = one logical change; refactors in their own PR
+- Since 1.0.0: work goes into version milestones `v1.1`, `v1.2` …; the release-please PR
+  is NOT merged right away, only when the milestone is done, at most once a week.
+  S1 (wrong submit, data loss, security) ships the same day, S2 within 2 days
+- After a release, run the "웹스토어 업로드" workflow in `publish` mode (ADR-0013,
+  ADR-0016 §4). Do not merge the next release while one is in review
+- Storage format changes keep reading the old format for one more minor (ADR-0014)
 
 ## Build & Test
 
