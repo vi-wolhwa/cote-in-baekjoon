@@ -218,4 +218,15 @@ describe('retired keys', () => {
     );
     expect(result).toEqual({ ok: true, items: { 'ui:keymap': 'vim' }, skipped: 0 });
   });
+
+  it('drops the old submission history the same way (ADR-0012 개정 3, #209)', () => {
+    const result = parseBackup(
+      JSON.stringify({
+        format: 'cote-in-baekjoon-backup',
+        version: 1,
+        items: { 'history:1000': [], 'ui:keymap': 'vim' },
+      }),
+    );
+    expect(result).toEqual({ ok: true, items: { 'ui:keymap': 'vim' }, skipped: 0 });
+  });
 });
