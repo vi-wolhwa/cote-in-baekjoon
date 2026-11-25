@@ -1,7 +1,7 @@
 /**
  * Uploads a release zip to the Chrome Web Store and optionally submits it for review
  * (Chrome Web Store API v2, #88, ADR-0013). Run by the 웹스토어 업로드 workflow, which only
- * starts by hand after the product owner approves the release (#44).
+ * starts by hand after the product owner approves the release (#206).
  *
  *   node scripts/store/webstore.ts <zip> [--publish | --staged]
  *
