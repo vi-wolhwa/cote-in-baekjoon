@@ -21,6 +21,18 @@
 - Keep agent briefs and reports short; run targeted tests while iterating and the full
   suite once before a PR (CI runs the full E2E suite)
 
+## Working efficiently (product owner's top priority: time, tokens, quality)
+
+- Cost grows with round trips × context length: one session per feature or milestone,
+  batch related edits and checks, keep command output short
+- UI work: show an interactive mockup with real data first and get approval, then
+  implement once; tune sizes in the mockup, not in edit → build → E2E loops
+- Big features: plan → spec/ADR → one implementation pass
+- Subagents only for parallel independent work or wide reading (read-only ones on a
+  cheaper model); independent tasks in separate sessions and worktrees
+- Use Claude Code's native agents, worktrees, memory and skills; ruflo keeps only the
+  pre-bash safety hook and the session-end cost log
+
 ## Project: 코딩테스트 in 백준 (Chrome Extension)
 
 Extension that lets users solve Baekjoon (acmicpc.net) problems in a
