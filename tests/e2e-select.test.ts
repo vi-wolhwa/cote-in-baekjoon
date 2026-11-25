@@ -36,6 +36,9 @@ describe('selectSpecs', () => {
       'history',
     ]);
     expect(selectSpecs(['public/icon/16.png', 'third_party/licenses/LLVM.txt'])).toBe('none');
+    expect(selectSpecs(['.github/workflows/webstore.yml', 'scripts/store/webstore.ts'])).toBe(
+      'none',
+    );
   });
 
   it('runs everything when a file belongs to no area', () => {
