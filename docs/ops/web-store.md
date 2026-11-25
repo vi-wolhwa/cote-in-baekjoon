@@ -61,7 +61,7 @@
 
 **스크린샷** (1280×800, `docs/store/screenshots/`, `scripts/store/screenshots.ts`로 다시 만들 수 있음)
 
-v0.3.0 때 만든 3장(`1-python-pass.png` ~ `3-java-compile-error.png`)은 지금 화면과 다르다. 다음 5장으로 다시 만든다(#202).
+`npm run build` 뒤 `PW_CHANNEL=msedge node scripts/store/screenshots.ts`로 다시 만든다(예시 문제와 가짜 데이터만 쓰고 백준에 요청하지 않음).
 
 | 파일 | 보여 줄 것 |
 | --- | --- |
@@ -71,7 +71,7 @@ v0.3.0 때 만든 3장(`1-python-pass.png` ~ `3-java-compile-error.png`)은 지�
 | `4-exam.png` | 모의 시험 화면(문제 레일, 타이머) |
 | `5-history.png` | 제출 기록 탭(예시 데이터) |
 
-**작은 프로모션 타일** 440×280 (필수): 아이콘과 이름, 한 줄 소개. 브랜드 규칙(PRD §8)을 따른다.
+**작은 프로모션 타일** 440×280 (필수): `docs/store/promo-440x280.png` (`scripts/store/promo.html`). 아이콘과 이름, 한 줄 소개. 브랜드 규칙(PRD §8)을 따른다.
 
 화면 속 문제("산책로의 전망 구간")는 이 프로젝트에서 쓴 예시 문제이며 백준 문제가 아니다(`scripts/store/problem.html`).
 
