@@ -1,13 +1,7 @@
-# Ruflo local secrets and runtime data
+# Local secrets
 .env
 .env.local
 .env.*.local
-.claude-flow/data/
-.claude-flow/logs/
-.claude-flow/sessions/
-
-# Ruflo init backups
-.claude/settings.json.bak-*
 
 # Node / build output
 node_modules/
@@ -21,18 +15,6 @@ build/
 
 # Claude Code local (per-machine) settings
 .claude/settings.local.json
-
-# Ruflo runtime state (machine-local, changes every session)
-.swarm/
-.claude-flow/metrics/
-.claude-flow/mods/
-.claude-flow/policy/
-.claude-flow/protector-mod/
-.claude-flow/security/
-.claude-flow/harness-active-policy.json
-.claude-flow/memory-package.json
-.claude/proven-config.json
-.claude/.proven-config-version
 
 # Build and test output
 .output/
