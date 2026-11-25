@@ -56,15 +56,15 @@ const COLUMNS_OF: Record<View, Column[]> = {
     COLUMNS.length,
     COLUMNS.at,
   ],
-  // Shortest first, so code length leads.
+  // The same columns in the same order as 맞힌 사람; narrow panes keep code length longest.
   short: [
     COLUMNS.rank,
     COLUMNS.user,
     COLUMNS.language,
     COLUMNS.gap,
-    COLUMNS.length,
     COLUMNS.time,
     COLUMNS.memory,
+    COLUMNS.length,
     COLUMNS.at,
   ],
 };

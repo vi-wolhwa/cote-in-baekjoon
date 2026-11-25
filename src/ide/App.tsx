@@ -18,6 +18,7 @@ import { runCases } from './run-cases';
 import { RunOutput, type RunOutputProps } from './RunOutput';
 import { Sidebar } from './Sidebar';
 import { EDITOR_MIN_PX, PROBLEM_MIN_PX, SplitPane } from './SplitPane';
+import { FULL_TABLE_PANE_PX } from './history/StatusTable';
 import * as store from './storage';
 import { SubmitPanel, useSubmit } from './submit';
 import { FormatCard } from './solution/FormatCard';
@@ -338,6 +339,8 @@ function Workspace({ problem, embedded }: { problem: Problem; embedded: boolean 
               // The problem and history tables stay readable; the editor keeps some room too.
               minFirstPx={PROBLEM_MIN_PX}
               minPx={EDITOR_MIN_PX}
+              // Every column of the 제출 기록 tables fits from here (권장 너비).
+              snapFirstPx={FULL_TABLE_PANE_PX}
               onResize={(h) => setSplit((s) => ({ ...s, horizontal: h }))}
               onResizeEnd={saveSplit}
               first={

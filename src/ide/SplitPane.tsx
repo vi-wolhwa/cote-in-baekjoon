@@ -1,10 +1,12 @@
 import type { ComponentChildren } from 'preact';
-import { useRef } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 
 /** Narrowest the problem pane gets: it could be dragged away entirely before. */
 export const PROBLEM_MIN_PX = 320;
 /** Narrowest the editor side next to it gets. */
 export const EDITOR_MIN_PX = 360;
+/** A drag this close to the snap size lands on it. */
+export const SNAP_RANGE_PX = 12;
 
 interface Props {
   direction: 'horizontal' | 'vertical';
@@ -16,6 +18,8 @@ interface Props {
   minPx?: number;
   /** Minimum size of the first pane in pixels, when it needs more than minPx. */
   minFirstPx?: number;
+  /** A size of the first pane, in pixels, that dragging snaps to and shows (권장 너비). */
+  snapFirstPx?: number;
   first: ComponentChildren;
   second: ComponentChildren;
 }
@@ -28,11 +32,21 @@ export function SplitPane({
   onResizeEnd,
   minPx = 0,
   minFirstPx = minPx,
+  snapFirstPx,
   first,
   second,
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const horizontal = direction === 'horizontal';
+  /** The drag is resting on the snap size. */
+  const [snapped, setSnapped] = useState(false);
+
+  /** `px` pulled to the snap size when it is near. */
+  const snap = (px: number): number => {
+    const near = snapFirstPx !== undefined && Math.abs(px - snapFirstPx) <= SNAP_RANGE_PX;
+    setSnapped(near);
+    return near ? (snapFirstPx as number) : px;
+  };
 
   /** `pct` limited so both panes keep their minimum size in a split of `total` pixels. */
   const clamp = (pct: number, total: number) => {
@@ -53,10 +67,11 @@ export function SplitPane({
     const start = horizontal ? rect.left : rect.top;
 
     const move = (e: PointerEvent) => {
-      const pos = (horizontal ? e.clientX : e.clientY) - start;
+      const pos = snap((horizontal ? e.clientX : e.clientY) - start);
       onResize(clamp((pos / total) * 100, total));
     };
     const up = () => {
+      setSnapped(false);
       gutter.removeEventListener('pointermove', move);
       gutter.removeEventListener('pointerup', up);
       onResizeEnd?.();
@@ -73,7 +88,13 @@ export function SplitPane({
     event.preventDefault();
     const rect = root.current?.getBoundingClientRect();
     const total = rect ? (horizontal ? rect.width : rect.height) : 0;
-    onResize(clamp(size + (event.key === inc ? step : -step), total));
+    let next = size + (event.key === inc ? step : -step);
+    // A step over the snap size stops on it first.
+    if (snapFirstPx !== undefined && total > 0) {
+      const at = (snapFirstPx / total) * 100;
+      if ((size < at && next > at) || (size > at && next < at)) next = at;
+    }
+    onResize(clamp(next, total));
     onResizeEnd?.();
   };
 
@@ -100,7 +121,10 @@ export function SplitPane({
         tabIndex={0}
         onPointerDown={onPointerDown}
         onKeyDown={onKeyDown}
-      />
+        data-snapped={snapped || undefined}
+      >
+        {snapped && <span class="split-snap-label">권장 너비</span>}
+      </div>
       <div class="split-pane split-pane-rest">{second}</div>
     </div>
   );
