@@ -10,7 +10,6 @@
 [![Chrome 웹스토어에서 설치](https://img.shields.io/badge/Chrome_웹스토어에서_설치-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/haamkmjcfncehfmnabiahbdghcemfjmn)
 
 [![버전](https://img.shields.io/chrome-web-store/v/haamkmjcfncehfmnabiahbdghcemfjmn?label=버전&style=flat-square)](https://chromewebstore.google.com/detail/haamkmjcfncehfmnabiahbdghcemfjmn)
-[![라이선스](https://img.shields.io/github/license/vi-wolhwa/cote-in-baekjoon?label=라이선스&style=flat-square)](LICENSE)
 
 <img src="docs/store/screenshots/1-solve.png" alt="왼쪽에 문제, 오른쪽에 에디터와 실행 결과가 있는 풀이 화면">
 
@@ -125,6 +124,8 @@ npm run e2e                                     # Playwright (빌드 후)
 - [제품 요구사항 (PRD)](docs/PRD.md) · [로드맵](docs/roadmap.md) · [설계 결정 (ADR)](docs/adr/)
 - 함께 들어 있는 오픈소스와 라이선스: 도움말 페이지 아래 "오픈소스 라이선스" 또는 `third_party/licenses/`
 
-## 📄 라이선스
+## 📄 저작권
 
-[MIT](LICENSE). 확장에 함께 들어 있는 오픈소스(Pyodide, LLVM, TeaVM, OpenJDK javac 등)는 각자의 라이선스를 따릅니다.
+Copyright © 2026 vi-wolhwa. All rights reserved.<br>
+이 저장소의 코드는 공개되어 있지만 오픈소스 라이선스를 부여하지 않습니다. 허락 없이 복제·수정·배포할 수 없습니다.<br>
+확장에 함께 들어 있는 오픈소스(Pyodide, LLVM, TeaVM, OpenJDK javac 등)는 각자의 라이선스를 따릅니다.
