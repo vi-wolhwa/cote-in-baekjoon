@@ -10,8 +10,6 @@
 [![Chrome 웹스토어에서 설치](https://img.shields.io/badge/Chrome_웹스토어에서_설치-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/haamkmjcfncehfmnabiahbdghcemfjmn)
 
 [![버전](https://img.shields.io/chrome-web-store/v/haamkmjcfncehfmnabiahbdghcemfjmn?label=버전&style=flat-square)](https://chromewebstore.google.com/detail/haamkmjcfncehfmnabiahbdghcemfjmn)
-[![사용자](https://img.shields.io/chrome-web-store/users/haamkmjcfncehfmnabiahbdghcemfjmn?label=사용자&style=flat-square)](https://chromewebstore.google.com/detail/haamkmjcfncehfmnabiahbdghcemfjmn)
-[![평점](https://img.shields.io/chrome-web-store/rating/haamkmjcfncehfmnabiahbdghcemfjmn?label=평점&style=flat-square)](https://chromewebstore.google.com/detail/haamkmjcfncehfmnabiahbdghcemfjmn/reviews)
 [![라이선스](https://img.shields.io/github/license/vi-wolhwa/cote-in-baekjoon?label=라이선스&style=flat-square)](LICENSE)
 
 <img src="docs/store/screenshots/1-solve.png" alt="왼쪽에 문제, 오른쪽에 에디터와 실행 결과가 있는 풀이 화면">
