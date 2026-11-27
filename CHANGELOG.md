@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v1.0.0...v1.1.0) (2026-11-27)
+
+
+### 기능
+
+* **store:** 웹스토어 워크플로에 자격 증명·게시 상태만 확인하는 status 모드 ([#232](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/232)) ([58d3d41](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/58d3d414ae39c825144b1d562fbb6fd0c9a51723))
+
+
+### 버그 수정
+
+* **store:** 스크린샷 스크립트의 타입 검사 오류 고치기 ([#229](https://github.com/vi-wolhwa/cote-in-baekjoon/issues/229)) ([6c42d0e](https://github.com/vi-wolhwa/cote-in-baekjoon/commit/6c42d0e44e35bf58d5af161b9bdf601497e9a1f9))
+
 ## [1.0.0](https://github.com/vi-wolhwa/cote-in-baekjoon/compare/v0.24.0...v1.0.0) (2026-11-25)
 
 
